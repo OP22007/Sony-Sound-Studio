@@ -8,6 +8,8 @@ Versions before 0.1.2 need one manual upgrade to an updater-enabled build. The u
 
 The native companion fetches a fixed HTTPS feed and verifies each downloaded package against its compiled signing public key before installation. A failed download or signature leaves headphone sessions running. The Windows installer shuts down sessions and cleans up Tauri before exiting; other platforms restart after installation. No GitHub access token is shipped in the app. Release notes are displayed as plain text.
 
+Packages must also carry a signed version matching the feed. This prevents a modified feed from presenting an older signed installer as a newer release. Tauri's release builder signs this version automatically.
+
 The updater temporarily buffers the installer in memory during download and verification; this memory is released after installation or failure. It does not add a background polling service. The app contacts GitHub only when you request an update check or installation.
 
 Updater signatures do not replace Windows code signing or Apple signing/notarization. macOS previews still have the unsigned-app warning.

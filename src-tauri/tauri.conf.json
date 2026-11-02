@@ -37,6 +37,7 @@
   },
   "plugins": {
     "updater": {
+      "requireSignedVersion": true,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEUzODIzODI3RjA2NTE0NzgKUldSNEZHWHdKemlDNHdDbUNUTU9ZcnV0ZU9Vclh1bnJaTnBvbld0YzFQZkcySlViTXVMa2pwMmcK",
       "endpoints": ["https://github.com/OP22007/Sony-Sound-Studio/releases/download/updater-preview/latest.json"]
     }
