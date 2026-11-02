@@ -1,0 +1,20 @@
+# Original app packages and private reverse-engineering evidence are research inputs.
+*.apk
+*.apkm
+.research/
+node_modules/
+__pycache__/
+*.pyc
+dist/
+src-tauri/target/
+**/target/
+src-tauri/gen/schemas/
+tests/artifacts/
+extensions/media-mode-firefox/
+tests/tests/artifacts/
+playwright-report/
+test-results/
+*.log
+.env
+.env.*
+!.env.example

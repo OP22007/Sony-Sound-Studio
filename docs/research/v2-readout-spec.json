@@ -1,0 +1,29 @@
+{
+  "status": "Static original-artifact observations; hardware verification applies only to identity, firmware and battery on Windows XM6",
+  "artifactSha256": "58837826f5f145cd0ad9689a298d2bfe9702f4d51d6d4e67d41440175ec0892c",
+  "protocol": "MDR V2 table1, DATA_MDR 0x0c",
+  "deviceInfo": {
+    "requestsHex": { "model": "04 01", "firmware": "04 02" },
+    "response": "05 subtype byteLength utf8Bytes; exact length 3+byteLength, nonempty UTF8",
+    "evidence": ["ev_592cbe08f36be099d1653f4a6aa99ffec5c692878e243c73a876b4d20c3f182e2", "ev_9731bdf47f7117029294d0625ee21d2ebe1ea17a0f83ad6c5bc4e7810ce427a3", "ev_f63710020ff857d78eaffe496f08aa01ecad6089d9430ea6cc6a560e68a44fc7"]
+  },
+  "battery": {
+    "requestHex": "22 00",
+    "response": "23 00 level charging; exact length 4; level 0..100",
+    "charging": { "0": "notCharging", "1": "charging", "2": "unknown", "3": "charged" },
+    "evidence": ["ev_45622438c4fb5df56da97db35aad77895450a35f9b082c3f0c89dd71debcd1380", "ev_45ffa55747c2a4c87e446d7d7ee7f5f85b97c6eab09da9c53127269f6fc9e7ff5", "ev_909b1cb1fb7669469e132a74afcabf057da3bfcc87c1f3959e7ffdc24a1e1178"]
+  },
+  "supportedFunctions": {
+    "requestHex": "06 00",
+    "response": "07 00 count (functionType version)[count]; exact length 3+2*count; entries start offset3; version unsigned byte",
+    "limitations": "FunctionType table1 enum mapping still requires inspection; retain unknown type/version diagnostically without enabling controls. Static validator uses signed Java byte count; restrict count to 0..127 pending further evidence.",
+    "evidence": ["ev_bd992fcc7c78bb1d8760feae0d36e5e772d1a38d3cf06aaa23eb2fd600f8ab22", "ev_4576f9cda22f538ed89e35ed9be918af265ac6e318e680ff60aff5fc0cad71cd", "ev_b4d52443cef72c4d95b30c6a3554c81a73ef0da33427b4e51f85d27585f097d30", "ev_90523ed315f987c1096d2b0f6a75d8b0069f77c8b539b8033bb6de7c3dc6c067", "ev_3088840ba8d5ed9338697d16c55efa2124c5cea97f9eaeb66abbe33624fc5f4e1", "ev_9b69828ff0e6baf278af27c8095cd3b99332b1d04f2a8c93cc5244e52deec0f8"]
+  },
+  "ncasm": {
+    "requestLayouts": { "getCapability": "60 inquiry", "getStatus": "62 inquiry", "getParam": "66 inquiry" },
+    "inquiryExamples": { "01": "NC_ON_OFF", "11": "NC_ON_OFF_AND_ASM_ON_OFF", "12": "NC_MODE_SWITCH_AND_ASM_ON_OFF", "13": "NC_ON_OFF_AND_ASM_SEAMLESS", "14": "NC_MODE_SWITCH_AND_ASM_SEAMLESS", "15": "MODE_NC_ASM_AUTO_NC_MODE_SWITCH_AND_ASM_SEAMLESS", "16": "MODE_NC_ASM_DUAL_SINGLE_NC_MODE_SWITCH_AND_ASM_SEAMLESS" },
+    "status": "Partial schema only. Do not guess device inquiry or send SET; capability response dispatcher sn0.u.b.e and enum-to-variant mapping sn0.u.a require completion. Param dispatcher sn0.i0.b.e; sn0.p0.b.e is another variant. Exact modes/ranges/recovery baseline still unresolved.",
+    "evidence": ["ev_624d809371e328a0fff26e1b54414c886b7649c0594b50a43b4b6617a0ca28315", "ev_2c188c1bce5efb5b239b551411ca2ee93b3cb0521b5f1af96ac1a5ceb84c367f", "ev_a076805c0deb9d16d15359337119a5cfb149b6ba0702f7edabc5259f47ac6fd12", "ev_24e57089beb8a992b6ef1a966eda5b01e4a34d574f5e73b2a26fda390e04fff3", "ev_2556355acf8580b35ca0162ee55d1c491e52ea1efc80ba1fbcd2925e66aeae90a", "ev_a039fe4a5371975fcf0bd756b11725a8074bfa93a1b443204901a7327833f47e7"]
+  },
+  "evidenceStorage": "Evidence IDs resolve in private REA export .research/evidence/readout-and-control-research.json; decompiled source is excluded from version control. No ACK alone proves successful operation."
+}

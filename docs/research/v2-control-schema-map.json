@@ -1,0 +1,161 @@
+{
+  "artifact": {
+    "sha256": "58837826f5f145cd0ad9689a298d2bfe9702f4d51d6d4e67d41440175ec0892c",
+    "basis": "JADX static inspection of the shipped APK; it was not executed. This describes app-side protocol schema, not observed XM6 device behavior.",
+    "evidenceStore": ".research/evidence/readout-and-control-research.json"
+  },
+  "supportedFunctions": {
+    "request": { "table": 1, "data": [6, 0], "command": "CONNECT_GET_SUPPORT_FUNCTION" },
+    "response": {
+      "table": 1,
+      "data": "[0x07, 0x00, count, (functionType, version) repeated count times]",
+      "length": "exactly 3 + 2*count bytes",
+      "parser": "count read unsigned; pair i starts at offset 3+2*i; FunctionType.fromByteCode(Table.NO_1, type); NO_USE entries omitted; version converted unsigned.",
+      "validation": "response class checks command bytes and exact count-derived length before parser",
+      "evidence": ["ev_9b69828ff0e6baf278af27c8095cd3b99332b1d04f2a8c93cc5244e52deec0f8", "ev_3088840ba8d5ed9338697d16c5efa2124c5cea97f9eaeb66abbe33624fc5f4e1", "ev_4576f9cda22f538ed89e35ed9be918af265ac6e318e680ff60aff5fc0cad71cd"]
+    },
+    "functionTypeEnum": {
+      "class": "com.sony.songpal.tandemfamily.message.mdr.v2.FunctionType",
+      "inspection": "Enum class summary lists function names. fromByteCode(table, byte) iterates values and returns the matching table+byte, otherwise NO_USE. The large <clinit> failed REA disassembly; the selected numeric tuples below were obtained from raw static DEX initializer instructions in the exact artifact.",
+      "selectedConstants": [
+        { "table": "NO_1", "byte": "0x55", "name": "CUSTOM_EQ" },
+        { "table": "NO_1", "byte": "0x59", "name": "CUSTOMIZABLE_SOUND_EFFECT" },
+        { "table": "NO_1", "byte": "0x66", "name": "AMBIENT_SOUND_MODE_ONOFF" },
+        { "table": "NO_1", "byte": "0x67", "name": "AMBIENT_SOUND_MODE_LEVEL_ADJUSTMENT" },
+        { "table": "NO_1", "byte": "0x69", "name": "AMBIENT_SOUND_CONTROL_MODE_SELECT" },
+        { "table": "NO_1", "byte": "0x70", "name": "AUTO_NCASM" }
+      ],
+      "selectedConstantsBasis": "Analyst static decode of constructor tuples in FunctionType.<clinit> from the artifact DEX; no runtime device support was observed.",
+      "evidence": ["ev_4a6a6d99e91ca2bbde6d82fa1e69435842d5bb64569818336e0b3e3f027b78c9", "ev_5addef8063fd7ed13e3d7802622942f35d759841051b7ab6018ea756e2727df1"]
+    },
+    "countCaveat": "The parser treats count unsigned while the validator expression uses a signed Java byte multiplication. Do not impose the earlier proposed 0..127 range without confirming the exact inherited validator semantics; oversized values are constrained by exact packet length and available array bytes."
+  },
+  "ncasm": {
+    "commands": {
+      "capabilityGet": { "id": "0x60", "data": "[0x60, inquiry]" },
+      "statusGet": { "id": "0x62", "data": "[0x62, inquiry]" },
+      "statusSet": { "id": "0x64", "data": "setter schema unresolved" },
+      "paramGet": { "id": "0x66", "data": "[0x66, inquiry]" },
+      "paramSet": { "id": "0x68", "data": "setter schema unresolved" },
+      "evidence": ["ev_90523ed315f987c1096d2b0f6a75d8b0069f77c8b539b8033bb6de7c3dc6c067", "ev_624d809371e328a0fff26e1b5414c886b7649c0594b50a43b4b6617a0ca28315", "ev_2c188c1bce5efb5b239b551411ca2ee93b3cb0521b5f1af96ac1a5ceb84c367f", "ev_a076805c0deb9d16d1535933719a5cfb149b6ba0702f7edabc5259f47ac6fd12"]
+    },
+    "inquiries": [
+      { "byte": "0x01", "name": "NC_ON_OFF" },
+      { "byte": "0x11", "name": "NC_ON_OFF_AND_ASM_ON_OFF" },
+      { "byte": "0x12", "name": "NC_MODE_SWITCH_AND_ASM_ON_OFF" },
+      { "byte": "0x13", "name": "NC_ON_OFF_AND_ASM_SEAMLESS" },
+      { "byte": "0x14", "name": "NC_MODE_SWITCH_AND_ASM_SEAMLESS" },
+      { "byte": "0x15", "name": "MODE_NC_ASM_AUTO_NC_MODE_SWITCH_AND_ASM_SEAMLESS" },
+      { "byte": "0x16", "name": "MODE_NC_ASM_DUAL_SINGLE_NC_MODE_SWITCH_AND_ASM_SEAMLESS" },
+      { "byte": "0x17", "name": "MODE_NC_ASM_DUAL_NC_MODE_SWITCH_AND_ASM_SEAMLESS" },
+      { "byte": "0x18", "name": "MODE_NC_NCSS_ASM_DUAL_NC_MODE_SWITCH_AND_ASM_SEAMLESS" },
+      { "byte": "0x19", "name": "MODE_NC_ASM_DUAL_NC_MODE_SWITCH_AND_ASM_SEAMLESS_NA" },
+      { "byte": "0x21", "name": "ASM_ON_OFF" },
+      { "byte": "0x22", "name": "ASM_SEAMLESS" },
+      { "byte": "0x30", "name": "NC_AMB_TOGGLE" },
+      { "byte": "0x40", "name": "NC_TEST_MODE" },
+      { "byte": "0xff", "name": "OUT_OF_RANGE" }
+    ],
+    "inquiryEvidence": ["ev_24e57089beb8a992b6ef1a966eda5b01e4a34d574f5e73b2a26fda390e04fff3"],
+    "getters": {
+      "capability": "request factory appends inquiry byte to the NCASM_GET_CAPABILITY command header; no trailing request parameters evidenced.",
+      "status": "request factory appends inquiry byte to NCASM_GET_STATUS command header. One evidenced status serializer appends inquiry, ValueChangeStatus, NcAsmOnOffValue in that order after command header; this is only one branch, not a universal status schema.",
+      "param": "request factory appends inquiry byte to NCASM_GET_PARAM command header; response dispatch is inquiry-specific. The captured dispatcher requires at least two bytes and selects a response parser by inquiry enum ordinal, but only eleven cases are mapped in the captured method; remaining inquiries are not proven supported by that dispatcher.",
+      "evidence": ["ev_624d809371e328a0fff26e1b5414c886b7649c0594b50a43b4b6617a0ca28315", "ev_2c188c1bce5efb5b239b551411ca2ee93b3cb0521b5f1af96ac1a5ceb84c367f", "ev_a076805c0deb9d16d1535933719a5cfb149b6ba0702f7edabc5259f47ac6fd12", "ev_0a13b5a70ec09bd101b20ec5090b32fad58de8b6f16cb3b349240061817ece64", "ev_d93c8a4ca9cca555173213d16d32a925b10609cb874bc9b417ec20cc170755d8"]
+    },
+    "paramGetInquiry0x17": {
+      "requestData": "[0x66, 0x17]",
+      "requestValidator": "exactly 2 bytes; request command 0x66; known inquiry required",
+      "responseData": "[0x67, 0x17, NcAsmMode, AmbientSoundMode, ambientLevelByte]",
+      "responseLength": 7,
+      "responseValidator": "RET_PARAM header 0x67; exact length 7; inquiry byte 0x17; NcAsmMode and AmbientSoundMode must decode to known values. The level byte is read unsigned and has no range check in this protocol parser.",
+      "fieldOffsets": { "command": 0, "inquiry": 1, "ncAsmMode": 4, "ambientSoundMode": 5, "ambientLevel": 6 },
+      "responseClass": "sn0.l0",
+      "decodedEnums": {
+        "NcAsmMode": { "0x00": "NC", "0x01": "ASM" },
+        "AmbientSoundMode": { "0x00": "NORMAL", "0x01": "VOICE" }
+      },
+      "evidence": ["ev_2c188c1bce5efb5b239b551411ca2ee93b3cb0521b5f1af96ac1a5ceb84c367f", "ev_46e56a076ec1fda1bcebbcbf74427b44440f6b0a0892845bcd449c66fe1cb0c5", "ev_f6b4cf1febfa70d7021193a4c233b4f769fc76e795d43b811013d44ba7a10195", "ev_5589794e6cb91bb064e262531357dd7c462ace5621603c52b8b83bb6d455aeb2", "ev_72d33b1c5afe46c537d71b4e549e51eb793b9d361eff07f9b1f2d75261bbed78", "ev_7798f3122f3d3754be61bc50c333e45adedd541f4687d731ef1f0c9f9166fae0", "ev_1217d90f4236f1b321626789b29cbbb482e18710a224bf5aa38b7c04865a3b77", "ev_b5a973649f2f3b22b42c0064f284e5e72226688384096ad451a586bc3e2cc42d", "ev_1b4e898bcbaa503ab4ffc94a9e4dc538e9395f7441a8d2b34288941a9c9ef847", "ev_2bedb9595194f7c0b5cf9b765a477962c3d6b9257504d9cd2064a2f4b2913882", "ev_28ce0f4737b46a99877195f3c385c351c0fa7348c0a4a2d407f000bc6bf3b272", "ev_d46c7dec1b32dbd839095807c24b4d37e79f85436e5b2f72006fb5337acaace2"]
+    },
+    "paramSetInquiry0x17": {
+      "requestData": "[0x68, 0x17, ValueChangeStatus, NcAsmOnOffValue, NcAsmMode, AmbientSoundMode, ambientLevelByte]",
+      "fieldOffsets": { "command": 0, "inquiry": 1, "valueChangeStatus": 2, "ncAsmOnOffValue": 3, "ncAsmMode": 4, "ambientSoundMode": 5, "ambientLevel": 6 },
+      "requestLength": 7,
+      "serializer": "NCASM_SET_PARAM builder accepts ValueChangeStatus, NcAsmOnOffValue, NcAsmMode, AmbientSoundMode, int; writes inquiry/status/onOff then mode/ambientMode and (int & 0xff).",
+      "validator": "outer builder requires command 0x68 plus valid ValueChangeStatus at offset 2 and NcAsmOnOffValue at offset 3; inquiry-specific validator requires exact length 7, inquiry 0x17 and known NcAsmMode/AmbientSoundMode. No semantic level min/max/step validation in the wire parser.",
+      "enumCodes": {
+        "ValueChangeStatus": { "0x00": "UNDER_CHANGING", "0x01": "CHANGED" },
+        "NcAsmOnOffValue": { "0x00": "OFF", "0x01": "ON" },
+        "NcAsmMode": { "0x00": "NC", "0x01": "ASM" },
+        "AmbientSoundMode": { "0x00": "NORMAL", "0x01": "VOICE" }
+      },
+      "range": "No fixed range established. The serializer truncates the int to its low byte (wire encoding 0..255), while the application feature maps slider values using capability-provided ambient range min/max/step. Exact XM6 3.1.5 values require its live capability response/readback; do not assume 0..255 is the device's accepted semantic range.",
+      "evidence": ["ev_3a57a378460974e2691b82c520a155dbfa67c02e12fc71f2ef4ab0bbfdf73635", "ev_2694bed7e4757806d12204ecf7cb878d39456ef74677c7a76f5bfda956cf014d", "ev_20bef408870cd47dd5987af21f8c70e3d1195a731e0f124cc05dbcafb091f929", "ev_bb1bde16a66284deacf09dd78eb5b415fc9ac67aac92f10c86fdfa20de85959d", "ev_b2ab1191558b2b41f7e7aab7554f366e40fa58c6bad97e789e5c4ee30676d0bd", "ev_1217d90f4236f1b321626789b29cbbb482e18710a224bf5aa38b7c04865a3b77", "ev_b1926dbcc3fb9655bcd69879cdbb416d35192145c45cdaa1ca08321ad6dd936d", "ev_b6e675a765658bf1dc8dc6c9fa7ddf4e0503743d31430b1d517a2ed520e5dac1", "ev_411973c12947e33b139f3b5c7228f90372f793ef4a0c4846f7402a0eac7aad03", "ev_64e8727bd57e3ab4931c983fe69873322c78bbe5dbf8e831197f52772ad5ed25", "ev_b8448a163853c68674074de3feca76834425d890288c7ec23b136c4800480eef", "ev_5e5cc812ff36c7c6db6bf3416a03491b8249b66de6eb79894fe41697edb106b9", "ev_eaefb8ee071c718da7824e2710413567e68269d6db9d17465ddde21df73b0d4f", "ev_5b6eb326e931f31c57f5ff8cb733c152004ee7e29b4a2552e43d0c991ea87c82", "ev_ca8255d5f3a84f48264cbd31900be98babb86020290973d3a62a4db04e04d102", "ev_ad82a4369a245a940fea89666ef9014374cab49334defdc1bf4c232cf68ce990", "ev_a20e8044f115495bcbf08f7a66d46fc195facb7a7985a3c17dc8f11dcaabff5e", "ev_b0098e84de453182b9141ebdee839f659d83cdffd4361309c26cd73cfeed97dc"]
+    },
+    "validatorLimits": "Captured outer response validators require matching command header and payload length > 1, but type-specific response lengths/field ranges were not captured for every branch. The complete static 0x17 branch is documented above; other inquiries remain incomplete.",
+    "set": "One NCASM_SET_PARAM inquiry 0x17 serializer and validator branch is established as above; another status-shaped setter branch exists. Do not send until the actual device advertises this capability and a live XM6 3.1.5 baseline/readback establishes current values, permitted ambient level range, and a reversible restore path. ACK/response behavior alone does not establish application."
+  },
+  "eqebb": {
+    "commands": {
+      "capabilityGet": "0x50",
+      "capabilityResponse": "0x51",
+      "statusGet": "0x52",
+      "statusResponse": "0x53",
+      "statusNotify": "0x55",
+      "paramGet": "0x56",
+      "paramResponse": "0x57",
+      "paramSet": "0x58",
+      "paramNotify": "0x59",
+      "extendedInfoGet": "0x5a",
+      "extendedInfoResponse": "0x5b",
+      "evidence": ["ev_90523ed315f987c1096d2b0f6a75d8b0069f77c8b539b8033bb6de7c3dc6c067"]
+    },
+    "inquiries": [
+      { "byte": "0x00", "name": "PRESET_EQ" },
+      { "byte": "0x01", "name": "EBB" },
+      { "byte": "0x02", "name": "PRESET_EQ_NONCUSTOMIZABLE" },
+      { "byte": "0x03", "name": "PRESET_EQ_AND_ULT_MODE" },
+      { "byte": "0x04", "name": "PRESET_EQ_AND_ERRORCODE" },
+      { "byte": "0x30", "name": "SOUND_EFFECT" },
+      { "byte": "0x31", "name": "CUSTOM_EQ" },
+      { "byte": "0x32", "name": "TURN_KEY_EQ" },
+      { "byte": "0x33", "name": "CUSTOMIZABLE_SOUND_EFFECT_SELECT" },
+      { "byte": "0x34", "name": "CUSTOMIZABLE_SOUND_EFFECT_RESET" },
+      { "byte": "0x35", "name": "CUSTOMIZABLE_SOUND_EFFECT_CUSTOM" },
+      { "byte": "0x36", "name": "CUSTOMIZABLE_SOUND_EFFECT_EXTERNAL_UPDATE" },
+      { "byte": "0x40", "name": "ULT_BTN_SOUND_EFFECT_ASSIGN" },
+      { "byte": "0xff", "name": "OUT_OF_RANGE" }
+    ],
+    "inquiryEvidence": ["ev_043429e85ec5f6ca365b830cb68da3a9418ced65691d4ce784617a0912c983b1"],
+    "getters": {
+      "capabilityGet": {
+        "requestData": "[0x50, inquiry]",
+        "validator": "matching table/command superclass validation, exactly 2 bytes, inquiry decode must not be OUT_OF_RANGE",
+        "factoryClass": "jn0.a.b",
+        "evidence": ["ev_2955cfb7c771c41f11c2b64e521154710aee45e923cb16420c0ad598866affe2", "ev_79bcbeade4607ba7d5d0e5cdfe9f53ec42e1f6e6a18f0a54a340749768536a1a", "ev_d23c1621f6f103e710b52604175fc2de8efe60295b432a30ce4d222796fc2857"]
+      },
+      "paramGet": {
+        "requestData": "[0x56, inquiry]",
+        "validator": "matching table/command superclass validation, exactly 2 bytes, inquiry decode must not be OUT_OF_RANGE",
+        "factoryClass": "jn0.d.b",
+        "evidence": ["ev_97be2a1e8e963bd49fb2d31a7c62954fe3dc0bc69842fad5b0fa18d722224a7d", "ev_0fea2085feea3a382c884b38f5920b7e46cd2fd4891939d73951ef3490697c42", "ev_aa9a5464920a5e9582ebdeb6a03eda5b2036a070a7c83a85bc8935a4404b3db8"]
+      },
+      "responseDispatch": "Capability response dispatcher uses inquiry enum. PRESET_EQ and EBB map to the generic capability response class; other inquiry branches in this dispatcher map to another class. The full branch/return value schema and device-specific bounds are still not established. Parameter getter responses and application-facing band value parsing remain under investigation.",
+      "statusGet": {
+        "requestData": "[0x52, inquiry]",
+        "validator": "matching table/command superclass validation, exactly 2 bytes, inquiry decode must not be OUT_OF_RANGE",
+        "factoryClass": "jn0.e.b",
+        "evidence": ["ev_bc2bb8ada780a03e82b796c6bfdd501f17b843d765d10522affde099af5ad564", "ev_e6fafa240cc09e66c7871b74898ba1d23f20c4a7ffcbadd4262842ab3125fe83", "ev_68ec46688910aa9e1016106290c4be8227cb91cabef95804c05d0697d9c72c10"]
+      },
+      "statusResponse": "An object parser class exists, but its complete byte-field layout and response (0x53) validator have not been established. Do not treat the request parser's validator as response validation."
+    },
+    "set": "EQEBB_SET_PARAM command ID exists, but the serializer for a particular inquiry is not enough to establish safe accepted ranges. Do not send. No band count, frequency grid or gain range is claimed."
+  },
+  "eq": {
+    "family": "EQEBB",
+    "status": "Static GET_CAPABILITY and GET_PARAM factories/validators plus the inquiry enum are now identified under eqebb. Status GET and complete returned-value layouts remain unresolved. No EQ band count, frequency grid, dB range, gain step, or device support claim is stated.",
+    "set": "EQEBB_SET_PARAM command ID exists, but a verified serializer plus full inquiry-specific accepted ranges and safe baseline are not established. Do not send.",
+    "evidenceGap": "Response branch classes and their complete validators/field semantics remain to be inspected; for model support require a runtime capability response from the actual device."
+  },
+  "supportBoundary": "Static schema evidence documents what the companion APK can encode and parse. It does not prove the headset advertises a feature, accepts a request, or applies a setting. The separately hardware-verified model/firmware/battery observations in v2-readout-spec.json do not extend to controls."
+}

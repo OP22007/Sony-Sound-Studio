@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sound Connect</title>
+    <style>
+      body { width: 280px; margin: 0; padding: 16px; color: #e9edf2; background: #151a20; font: 14px system-ui, sans-serif; }
+      h1 { margin: 0 0 8px; font-size: 17px; }
+      p { margin: 0 0 12px; color: #abb5c1; line-height: 1.4; }
+      label { display: block; margin-bottom: 6px; font-weight: 600; }
+      input { box-sizing: border-box; width: 100%; padding: 9px; color: inherit; background: #202832; border: 1px solid #465360; border-radius: 6px; }
+      button { margin-top: 10px; padding: 8px 12px; color: #10151a; background: #91d8bb; border: 0; border-radius: 6px; font-weight: 700; cursor: pointer; }
+      #status { min-height: 1.4em; margin-top: 10px; color: #91d8bb; }
+    </style>
+  </head>
+  <body>
+    <h1>Sound Connect</h1>
+    <p>Enter the pairing token shown by the desktop app. Media state is sent only to this computer.</p>
+    <form id="pair-form">
+      <label for="token">Pairing token</label>
+      <input id="token" name="token" type="password" autocomplete="off" required>
+      <button type="submit">Connect</button>
+    </form>
+    <div id="status" role="status" aria-live="polite"></div>
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Sound Connect Media Mode",
+  "version": "1.0.1",
+  "description": "Reports whether a tab is playing movie, music, or other media to Sound Connect on this computer.",
+  "permissions": ["storage", "tabs", "scripting"],
+  "host_permissions": ["<all_urls>", "http://127.0.0.1:47653/*"],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "action": {
+    "default_title": "Sound Connect Media Mode",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "sound-connect-media-mode@local"
+    }
+  }
+}

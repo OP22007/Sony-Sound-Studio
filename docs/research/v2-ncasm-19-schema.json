@@ -1,0 +1,122 @@
+{
+  "artifact": {
+    "sha256": "58837826f5f145cd0ad9689a298d2bfe9702f4d51d6d4e67d41440175ec0892c",
+    "basis": "Static inspection of Sony Sound Connect Android APK; APK was not executed. Device captures below are separate live diagnostic observations supplied during the XM6 test.",
+    "evidenceStores": [
+      ".research/evidence/ncasm-19-schema-evidence.json",
+      ".research/evidence/ncasm-19-setter-accessor-evidence.json",
+      ".research/evidence/ncasm-19-offset-evidence.json",
+      ".research/evidence/ncasm-19-base-accessors.json",
+      ".research/evidence/ncasm-19-dispatch-evidence.json",
+      ".research/evidence/ncasm-parser-more.json",
+      ".research/evidence/ncasm-enum-init.json",
+      ".research/evidence/v2-ncasm-onoff-enum.json",
+      ".research/evidence/v2-ncasm-17-set-constraints.json",
+      ".research/evidence/protocol-enums.json",
+      ".research/evidence/ncasm-notify-research.json",
+      ".research/evidence/ncasm-continuation.json"
+    ]
+  },
+  "inquiry": {
+    "byte": "0x19",
+    "name": "MODE_NC_ASM_DUAL_NC_MODE_SWITCH_AND_ASM_SEAMLESS_NA",
+    "request": {
+      "get": "[0x66, 0x19]",
+      "setCommand": "0x68",
+      "notifyCommand": "0x69"
+    },
+    "responseLength": 9,
+    "responseLayout": [
+      { "offset": 0, "name": "command", "meaning": "0x67 for GET response; 0x69 for notification" },
+      { "offset": 1, "name": "inquiry", "meaning": "0x19" },
+      { "offset": 2, "name": "valueChangeStatus", "type": "ValueChangeStatus" },
+      { "offset": 3, "name": "inheritedOnOff", "type": "NcAsmOnOffValue" },
+      { "offset": 4, "name": "ncAsmMode", "type": "NcAsmMode" },
+      { "offset": 5, "name": "ambientSoundMode", "type": "AmbientSoundMode" },
+      { "offset": 6, "name": "ambientLevel", "type": "unsigned byte" },
+      { "offset": 7, "name": "modeSpecificOnOff", "type": "NcAsmOnOffValue" },
+      { "offset": 8, "name": "noiseAdaptiveSensitivity", "type": "NoiseAdaptiveSensitivity" }
+    ],
+    "validation": "`un0.g.f` accepts only a 9-byte array with byte 1 equal to inquiry 0x19. It validates byte 4 through NcNcssAsmMode, byte 5 through AmbientSoundMode, byte 7 through NcAsmOnOffValue, and byte 8 through NoiseAdaptiveSensitivity. The inherited parser handles the status and first on/off fields at bytes 2 and 3.",
+    "parser": {
+      "class": "sn0.m0",
+      "inquiryDispatch": "sn0.i0.b.e reads byte 1, decodes NcAsmInquiredType, and the 0x19 branch invokes sn0.m0.b.f to validate and construct sn0.m0.",
+      "statusAccessor": "inherited sn0.i0.e() reads ValueChangeStatus from byte 2",
+      "firstOnOffAccessor": "inherited sn0.i0.c() reads NcAsmOnOffValue from byte 3",
+      "modeAccessor": "sn0.m0.h() delegates to un0.g.c(), byte 4",
+      "ambientAccessor": "sn0.m0.g() delegates to un0.g.b(), byte 5",
+      "levelAccessor": "sn0.m0.f() delegates to un0.g.a(), interpreted unsigned from byte 6",
+      "modeSpecificOnOffAccessor": "sn0.m0.i() delegates to un0.g.d(), byte 7",
+      "sensitivityAccessor": "sn0.m0.j() delegates to un0.g.e(), byte 8"
+    },
+    "setter": {
+      "builder": "sn0.d1.b.h(ValueChangeStatus, NcAsmOnOffValue, NcAsmMode, AmbientSoundMode, int, NcAsmOnOffValue, NoiseAdaptiveSensitivity)",
+      "serializationOrderAfterCommand": ["inquiry 0x19", "ValueChangeStatus", "inherited NcAsmOnOffValue", "NcAsmMode", "AmbientSoundMode", "low byte of level integer", "mode-specific NcAsmOnOffValue", "NoiseAdaptiveSensitivity"],
+      "fieldWriter": "un0.g.g writes NcAsmMode.byteCode(), AmbientSoundMode.byteCode(), low byte of level, NcAsmOnOffValue.byteCode(), NoiseAdaptiveSensitivity.byteCode() in that order.",
+      "limitation": "This is an APK serializer description. It does not establish that a particular model/firmware supports or applies a SET. Live confirmation requires readback/notification after SET."
+    },
+    "enumValues": {
+      "ValueChangeStatus": { "0x00": "UNDER_CHANGING", "0x01": "CHANGED" },
+      "NcAsmOnOffValue": { "0x00": "OFF", "0x01": "ON" },
+      "NcAsmMode": { "0x00": "NC", "0x01": "ASM" },
+      "AmbientSoundMode": { "0x00": "NORMAL", "0x01": "VOICE" },
+      "NoiseAdaptiveSensitivity": { "0x00": "STANDARD", "0x01": "HIGH", "0x02": "LOW" },
+      "validatorModeDiscrepancy": "The validator uses NcNcssAsmMode (NC=0, ASM=1, NcSS=2), while the typed mode accessor and setter use NcAsmMode (NC=0, ASM=1). Value 2 passes the validator's enum check but maps to OUT_OF_RANGE through the typed NcAsmMode accessor."
+    }
+  },
+  "notificationDispatch": {
+    "notificationCommand": "NCASM_NTFY_PARAM (0x69)",
+    "factoryBehavior": "The table-1 message factory maps NCASM_NTFY_PARAM to switch case 72 and returns a new sn0.d.b parser instance. The NCASM parameter inquiry decoder reads byte 1, maps inquiry 0x19 to sn0.m0.b.f, and validates/constructs sn0.m0.",
+    "evidence": ["ev_02f384b8b4a842ef266e1b0e26f966e4546da187f3ee7755b6544579458b8ad0", "ev_70c0b8aa27aacba29abf284532a2263eda6294bcb17b1173d4bfa85b16d48c4e", "ev_9efb8b1a46436a83be769765029323eae447bfd63109891640d1bb21085d5e5e", "ev_2cf5b703ef7016a9bcafd1f68fb1bba394e37491da028b990b56d610cae45ad9"]
+  },
+  "liveObservations": {
+    "device": "WH-1000XM6, firmware 3.1.5 (reported by user)",
+    "captures": [
+      {
+        "bytes": "67 19 01 01 00 00 01 00 00",
+        "source": "User-provided GET19 diagnostic log",
+        "decodeBySchema": "GET response, status=CHANGED, inherited on/off=ON, mode=NC, ambient=NORMAL, level=1, mode-specific on/off=OFF, sensitivity=STANDARD"
+      },
+      {
+        "bytes": "69 19 01 00 00 00 01 00 00",
+        "source": "User-provided Off NC notification diagnostic log",
+        "decodeBySchema": "status=CHANGED, inherited on/off=OFF, mode=NC, ambient=NORMAL, level=1, mode-specific on/off=OFF, sensitivity=STANDARD"
+      },
+      {
+        "bytes": "69 19 01 01 01 00 01 00 00",
+        "source": "User-provided ambient-mode notification diagnostic log; user reports ambient is audible",
+        "decodeBySchema": "status=CHANGED, inherited on/off=ON, mode=ASM, ambient=NORMAL, level=1, mode-specific on/off=OFF, sensitivity=STANDARD"
+      }
+    ],
+    "finalHardwareVerification": {
+      "result": "User reports the corrected rebuilt Windows app matches all three tested NC/ASM mode selections, confirms the requested state, and follows physical NC/AMB button changes.",
+      "device": "WH-1000XM6",
+      "firmware": "3.1.5",
+      "host": "Windows",
+      "source": "User-confirmed end-to-end hardware test after corrected binary rebuild"
+    },
+    "limit": "The raw byte captures are user-provided live diagnostic observations; the static APK inspection does not independently validate the captures. Hardware verification is specific to WH-1000XM6 firmware 3.1.5 on Windows and does not establish support on XM5, CH720N, macOS, or Linux."
+  },
+  "evidence": {
+    "notificationFactoryDispatch": "ev_70c0b8aa27aacba29abf284532a2263eda6294bcb17b1173d4bfa85b16d48c4e",
+    "commandEnumValue": "ev_d9cccf8ed979ec857809751ef6115ffd04891654386e70e3bfd9b123bdb4f518",
+    "notifyCommandOrdinalMap": "ev_02f384b8b4a842ef266e1b0e26f966e4546da187f3ee7755b6544579458b8ad0",
+    "inquiryDispatch": "ev_9efb8b1a46436a83be769765029323eae447bfd63109891640d1bb21085d5e5e",
+    "validator": "ev_2cf5b703ef7016a9bcafd1f68fb1bba394e37491da028b990b56d610cae45ad9",
+    "baseStatusAccessor": "ev_a3c0746ae7e6bfe0dc6d28ded3b87c4ba555c8324cff5e547a973847da09fb93",
+    "baseOnOffAccessor": "ev_b878c1f35404e68d129cca61d43622425d82412543e75c92ab9c7d19f809d813",
+    "modeAccessor": "ev_4d076f0e5cd575c9d98477027541971f79df66060059891f48d92163471e2391",
+    "ambientAccessor": "ev_3f75495f675c8366ed5cfddf0462a54fcef34006eeba82018e94b77eab31fbdd",
+    "levelAccessor": "ev_6cfb3812411697681782c643e82c25bfdc27118e935ef3e4ffbd406730211f21",
+    "modeSpecificOnOffAccessor": "ev_1b5cc1aa1e6a5d43489b95443f0e460a744697498c182e320a7333e1af6ccd76",
+    "sensitivityAccessor": "ev_42a9228ba12ed0874929214f71e3795d4af08292b8ab75c38ba8bda32abbc576",
+    "setBuilder": "ev_b6f65a103cbf4b9eda495850626964cc2fd5206758790ecbe03bfdd923964394",
+    "fieldWriter": "ev_5a0fa1b15dda4616bafa18408bb7af0050c0b18736aba490273798633ae4bd8c",
+    "ncAsmModeEnum": "ev_d7d0ebbb81ba9284860f9f4db5185227ca8701031449f0da6e6342fe881b4b95",
+    "ambientModeEnum": "ev_07aacc115c57f2f6fd87f7f66df8432845a1eaa110bc25fb02c2d1d3d21c6f5a",
+    "sensitivityEnum": "ev_e218f351c0e67eb38ab6e787d3d8efc2f64e75f3885f43a19bdc9ab50459d975",
+    "validatorNcNcssAsmModeEnum": "ev_25fa1baa3db511bd4b7969e7c57b7960df50ab9461766c94c394418cb43d193f",
+    "onOffEnum": "ev_5e5cc812ff36c7c6db6bf3416a03491b8249b66de6eb79894fe41697edb106b9",
+    "valueChangeStatusEnum": "ev_b8448a163853c68674074de3feca76834425d890288c7ec23b136c4800480eef"
+  }
+}
