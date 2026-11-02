@@ -1,0 +1,92 @@
+name: Branch CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend and browser tests
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node --test extensions/media-mode/test/extension.test.cjs
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Browser failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-failures
+          path: tests/artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  native:
+    name: Native (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Linux
+            runner: ubuntu-22.04
+          - platform: macOS
+            runner: macos-latest
+          - platform: Windows
+            runner: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: branch-ci-${{ matrix.platform }}
+          # PRs may restore caches; trusted main builds populate them.
+          save-if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+      - name: Linux prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - run: npm ci
+      - run: npm run build
+      - run: cargo test --locked --manifest-path src-tauri/Cargo.toml --lib
+      - name: Build native executable
+        run: cargo build --locked --manifest-path src-tauri/Cargo.toml
+
+  gate:
+    name: CI passed
+    if: always()
+    needs: [frontend, native]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 2
+    steps:
+      - name: Require every check to succeed
+        env:
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          NATIVE_RESULT: ${{ needs.native.result }}
+        run: |
+          test "$FRONTEND_RESULT" = success
+          test "$NATIVE_RESULT" = success
