@@ -17,9 +17,9 @@ This project is in active development. **It does not yet provide complete Sony S
 
 ## Preview downloads and feedback
 
-Download installers from [GitHub Releases](https://github.com/OP22007/sony-sound-desktop/releases). The cross-platform preview provides Windows x64, Apple Silicon/Intel macOS and Linux x64 packages. See [platform limitations and testing instructions](docs/releases/v0.1.1.md) before testing. macOS headphone controls are disabled; automatic listening currently requires Windows.
+Download installers from [GitHub Releases](https://github.com/OP22007/Sony-Sound-Studio/releases). The cross-platform preview provides Windows x64, Apple Silicon/Intel macOS and Linux x64 packages. See [platform limitations and testing instructions](docs/releases/v0.1.1.md) before testing. macOS headphone controls are disabled; automatic listening currently requires Windows.
 
-Report bugs, compatibility results and usability reviews using the [preview feedback form](https://github.com/OP22007/sony-sound-desktop/issues/new?template=tester-feedback.yml). Include OS/CPU, app version and headphone model/firmware. Review any diagnostics for personal information before sharing.
+Report bugs, compatibility results and usability reviews using the [preview feedback form](https://github.com/OP22007/Sony-Sound-Studio/issues/new?template=tester-feedback.yml). Include OS/CPU, app version and headphone model/firmware. Review any diagnostics for personal information before sharing.
 
 ## Run locally
 

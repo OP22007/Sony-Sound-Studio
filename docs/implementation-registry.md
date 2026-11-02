@@ -2,7 +2,7 @@
 
 Owner: root orchestrator. Start: 2026-10-31. All agents share this workspace; file ownership below prevents conflicting edits. No reference-project source may be copied. APK and decompiled sources remain private.
 
-Repository: `https://github.com/OP22007/sony-sound-desktop.git`. Local `main` is based on the existing `origin/main` initial commit; its MIT license is preserved. No agent may push or commit independently while integration is in progress.
+Repository: `https://github.com/OP22007/Sony-Sound-Studio.git`. Local `main` is based on the existing `origin/main` initial commit; its MIT license is preserved. No agent may push or commit independently while integration is in progress.
 
 ## Quality gates
 
