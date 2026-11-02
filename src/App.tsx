@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { animate, createScope, stagger } from 'animejs';
-import { Activity, ArrowDownToLine, ArrowRight, AudioLines, Bluetooth, Check, ChevronDown, ChevronRight, CircleHelp, CircleOff, Cpu, Headphones as HeadphoneIcon, Info, Layers3, LoaderCircle, Moon, Plus, Radio, RefreshCw, RotateCcw, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, Sun, Trash2, Volume2, Waves, X } from 'lucide-react';
+import { Activity, ArrowDownToLine, ArrowRight, AudioLines, Bluetooth, Check, ChevronRight, CircleHelp, CircleOff, Cpu, Headphones as HeadphoneIcon, Info, Layers3, LoaderCircle, Moon, Plus, Radio, RefreshCw, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, Sun, Volume2, Waves, X } from 'lucide-react';
 import { browserState, defaultAppPreferences, isAppPreferences, nativeAvailable, nativeCommand, subscribeState } from './bridge';
 import type { AppPreferences, AppState, AppTheme, Device, DeviceControlDescriptor, DeviceControlOption, SettingPrimitive } from './bridge';
-import { defaultSettings, frequencies, previewDevices, stockPresets, validPreview } from './preview';
+import { defaultSettings, previewDevices, validPreview } from './preview';
 import type { PreviewSettings } from './preview';
 import { loadLocal, saveLocal } from './storage';
 import Headphones from './Headphones';
 import SoundVisualization from './SoundVisualization';
 import ListeningModes from './ListeningModes';
+import Equalizer from './Equalizer';
+import type { SavedPreset, DevicePreset } from './eq-presets';
 import MediaFollowing from './MediaFollowing';
 import './sound-studio.css';
 import { batteryReadout, selectNativeSnapshot } from './native-state';
@@ -17,8 +19,6 @@ import { batteryReadout, selectNativeSnapshot } from './native-state';
 type Page = 'sound' | 'automatic' | 'device' | 'coverage' | 'settings';
 type PendingDeviceSetting = { deviceId: string; key: string; value: SettingPrimitive | number[] };
 const isEqualizerBands = (value: unknown): value is number[] => Array.isArray(value) && value.length === 10 && value.every(band => typeof band === 'number' && Number.isInteger(band) && band >= 0 && band <= 12);
-interface SavedPreset { name: string; bands: number[] }
-interface DevicePreset { name: string; bands: number[]; model: string; firmware: string }
 type PreferenceKey = keyof AppPreferences;
 const navigation: { id: Page; label: string; icon: typeof AudioLines }[] = [
   { id: 'sound', label: 'Sound studio', icon: AudioLines },
@@ -177,8 +177,6 @@ export default function App() {
 
   useEffect(() => { document.documentElement.dataset.theme = effectiveTheme; }, [effectiveTheme]);
   useEffect(() => { saveLocal('preview-settings', previewState); }, [previewState]);
-  useEffect(() => { saveLocal('presets', presets); }, [presets]);
-  useEffect(() => { saveLocal('device-presets', devicePresets); }, [devicePresets]);
   useEffect(() => {
     document.documentElement.dataset.reducedMotion = String(reducedMotion);
     if (reducedMotion || document.hidden) return;
@@ -303,7 +301,7 @@ export default function App() {
         <div className="page-heading reveal"><div><div className="eyebrow">MAKE IT SOUND LIKE YOU</div><h1>Your listening space.</h1></div><span className="heading-index">01 <span>/ SOUND</span></span></div>
         <section className="device-hero reveal"><div className="hero-copy"><div className="device-kicker"><span className={`status-dot ${preview || device.connection === 'connected' ? 'online' : ''}`}/>{preview ? 'STUDIO PREVIEW' : device.connection.toUpperCase()}</div><h2>{device.name.replace('WH-', '')}<span>Wireless. Limitless.</span></h2><p>{preview ? 'A little less outside. A little more you.\nShape a sound that feels entirely your own.' : 'Your headphone control workspace. Available settings appear after capability discovery.'}</p><div className="hero-meta">{preview ? <span><HeadphoneIcon size={14}/> Illustrative device studio</span> : <><span><Bluetooth size={14}/> Control channel: {device.connection}</span><span>Battery {batteryReadout(device)}</span></>}</div>{!preview && <button className="button small" disabled={!!busy} onClick={() => void runNative(device.connection === 'connected' ? 'disconnect_device' : 'connect_device', { deviceId: device.id })}>{device.connection === 'connected' ? 'Disconnect' : 'Connect headphone'}<ArrowRight size={14}/></button>}</div><SoundVisualization key={device.id} pending={pendingDeviceSetting?.deviceId === device.id} model={device.model} noise={heroNoiseMode} listening={listeningMode} room={preview ? current.bgmRoomSize ?? 0 : device.settings.bgmRoomSize} bands={visualizationBands} preview={preview} reducedMotion={reducedMotion}/><div className="hero-corner"><span>PERSONAL AUDIO</span><ArrowRight size={17}/></div></section>
         <ListeningModes descriptor={listeningDescriptor} roomDescriptor={roomDescriptor} mode={listeningMode} room={preview ? current.bgmRoomSize ?? 0 : device.settings.bgmRoomSize} preview={preview} busy={!!busy} pending={pendingDeviceSetting?.deviceId === device.id && ['listeningMode', 'bgmRoomSize'].includes(pendingDeviceSetting.key)} onChange={setting}/>
-        <div className="studio-grid"><NoisePanel preview={preview} available={can('noise')} busy={!!busy} settings={current} device={device} onChange={setting}/><Equalizer preview={preview} available={can('equalizer')} busy={!!busy} settings={current} device={device} onChange={setting} presets={presets} devicePresets={devicePresets} onSave={preset => { setPresets(old => [...old.filter(p => p.name !== preset.name), preset].slice(-24)); setNotice(`“${preset.name}” saved to this computer.`); }} onSaveDevice={preset => { setDevicePresets(old => [...old.filter(p => p.name !== preset.name || p.model !== preset.model || p.firmware !== preset.firmware), preset].slice(-24)); setNotice(`“${preset.name}” saved for ${preset.model} ${preset.firmware}.`); }} onDelete={name => { setPresets(old => old.filter(p => p.name !== name)); updatePreview({ preset: 'Custom' }); setNotice('Local preset removed.'); }} onDeleteDevice={name => { setDevicePresets(old => old.filter(p => p.name !== name)); setNotice('Device profile removed from this computer.'); }}/></div>
+        <div className="studio-grid"><NoisePanel preview={preview} available={can('noise')} busy={!!busy} settings={current} device={device} onChange={setting}/><Equalizer key={`${preview}:${device.id}:${device.firmware}`} preview={preview} available={can('equalizer')} busy={!!busy} settings={current} device={device} onChange={setting} presets={presets} devicePresets={devicePresets} onReplace={next => { if (!saveLocal('presets', next)) return false; setPresets(next); setNotice('Preset library saved to this computer.'); return true; }} onReplaceDevice={next => { if (!saveLocal('device-presets', next)) return false; setDevicePresets(next); setNotice('Device preset library saved to this computer.'); return true; }}/></div>
         <section className="enhancement-strip reveal"><span className="enhancement-icon"><Sparkles size={21}/></span><div><h3>{device.model.includes('CH720') ? 'DSEE' : 'DSEE Extreme'}</h3><p>{preview ? 'Explore the sound enhancement control.' : dseeDescriptor ? 'DSEE mode confirmed by your headphone.' : 'DSEE mode requires a verified device capability.'}</p></div>{preview ? <Toggle label="Sound enhancement" checked={current.dsee} disabled={!!busy} onChange={value => updatePreview({ dsee: value })}/> : dseeDescriptor && typeof device.settings.dsee === 'string' ? <div className="dsee-control"><select className="device-control-select" aria-label="DSEE mode" value={String(dseeDescriptor.options?.findIndex(option => option.value === device.settings.dsee) ?? -1)} disabled={!!busy} onChange={event => { const option = dseeDescriptor.options?.[Number(event.target.value)]; if (option) setting('dsee', option.value); }}>{dseeDescriptor.options?.map((option, index) => <option key={`${String(option.value)}-${index}`} value={index}>{option.label}</option>)}</select><small role={dseePending ? 'status' : undefined}>{dseePending ? 'Waiting for headphone confirmation…' : 'Confirmed by headphone'}</small>{dseeError && <small className="dsee-error" role="alert">{dseeError}</small>}</div> : <span className="status-label">Not confirmed</span>}{preview && <span className="subtle-tag">PREVIEW</span>}</section>
       </>)}
       {page === 'automatic' && <><div className="page-heading reveal"><div><div className="eyebrow">FOLLOW YOUR MEDIA</div><h1>Automatic listening.</h1></div><Radio size={28} strokeWidth={1}/></div>{preview ? <Unavailable text="Exit studio preview to configure automatic listening for your headphones."/> : <MediaFollowing deviceConnected={device?.connection === 'connected'} cinemaSupported={!!listeningDescriptor?.options?.some(option => option.value === 'cinema')}/>}</>}
@@ -330,45 +328,6 @@ function NoisePanel({ preview, available, busy, settings, device, onChange }: { 
   </section>;
 }
 
-function Equalizer({ preview, available, busy, settings, device, onChange, presets, devicePresets, onSave, onSaveDevice, onDelete, onDeleteDevice }: { preview: boolean; available: boolean; busy: boolean; settings: PreviewSettings; device: Device; onChange: (key: string, value: unknown) => void; presets: SavedPreset[]; devicePresets: DevicePreset[]; onSave: (preset: SavedPreset) => void; onSaveDevice: (preset: DevicePreset) => void; onDelete: (name: string) => void; onDeleteDevice: (name: string) => void }) {
-  const [saving, setSaving] = useState(false);
-  const [name, setName] = useState('');
-  const [validation, setValidation] = useState('');
-  const realBands = device.settings.equalizer;
-  const liveFrequencies = ['31 Hz', '63 Hz', '125 Hz', '250 Hz', '500 Hz', '1 kHz', '2 kHz', '4 kHz', '8 kHz', '16 kHz'];
-  const compatibleDevicePresets = devicePresets.filter(p => p.model === device.model && p.firmware === device.firmware);
-  const bands = preview ? frequencies : liveFrequencies;
-  const usable = available && (preview || (Array.isArray(realBands) && realBands.length === liveFrequencies.length && realBands.every(v => Number.isInteger(v) && v >= 0 && v <= 12)));
-  const values: number[] = preview ? settings.equalizer : usable ? realBands as number[] : [];
-  const preset = preview ? settings.preset : compatibleDevicePresets.find(p => p.bands.every((v, i) => values[i] === v))?.name ?? 'Custom';
-  const points = values.map((v, i) => [36 + i * 72, preview ? 90 - v * 5 : 145 - v * 10] as [number, number]);
-  const path = points.map(([x, y], i) => i === 0 ? `M${x},${y}` : `C${x - 36},${points[i - 1][1]} ${x - 36},${y} ${x},${y}`).join(' ');
-  function choosePreset(value: string) {
-    if (preview) {
-      const selectedBands = stockPresets[value] ?? presets.find(p => p.name === value)?.bands;
-      if (selectedBands) { onChange('equalizer', [...selectedBands]); onChange('preset', value); }
-      return;
-    }
-    const selectedPreset = compatibleDevicePresets.find(p => p.name === value);
-    if (selectedPreset) onChange('equalizer', [...selectedPreset.bands]);
-  }
-  const isSavedPreset = preview ? presets.some(p => p.name === preset) : compatibleDevicePresets.some(p => p.name === preset);
-  return <section className="sound-panel eq-panel reveal">
-    <div className="section-title"><div><span className="eyebrow">FINELY TUNED TO YOU</span><h2>A signature of your own.</h2></div><SlidersHorizontal size={21} strokeWidth={1.4}/></div>
-    <div className="eq-toolbar">
-      <div className="preset-select">
-        {preview ? <><span>Equalizer</span><select aria-label="Equalizer preset" value={preset} disabled={busy} onChange={e => choosePreset(e.target.value)}>{Object.keys(stockPresets).map(p => <option key={p}>{p}</option>)}{presets.map(p => <option key={p.name}>{p.name}</option>)}<option value="Custom">Custom</option></select><ChevronDown size={12}/></> : compatibleDevicePresets.length ? <><span>Saved device profile</span><select aria-label="Device equalizer profile" value={preset} disabled={!usable || busy} onChange={e => choosePreset(e.target.value)}><option value="Custom">Custom profile</option>{compatibleDevicePresets.map(p => <option key={p.name}>{p.name}</option>)}</select><ChevronDown size={12}/></> : <span>Device steps · 0–12</span>}
-      </div>
-      <div className="eq-actions"><button className="icon-button" aria-label="Reset equalizer" title="Reset equalizer" disabled={!preview || !usable || busy} onClick={() => { onChange('equalizer', [...stockPresets.Balanced]); if (preview) onChange('preset', 'Balanced'); }}><RotateCcw size={15}/></button><button className="text-button" disabled={!usable || busy} onClick={() => { setSaving(s => !s); setValidation(''); }}>Save preset <Plus size={13}/></button></div>
-    </div>
-    <div className={`equalizer ${!usable ? 'unavailable-eq' : ''}`}><div className="eq-scroll"><svg className="eq-curve" viewBox="0 0 720 175" aria-label={usable ? preview ? 'Illustrative equalizer response in decibels' : 'Equalizer device step profile' : 'Equalizer awaiting device data'} role="img"><defs><linearGradient id="eq-fill" x1="0" y1="0" x2="0" y2="1"><stop stopColor="var(--accent)" stopOpacity=".21"/><stop offset="1" stopColor="var(--accent)" stopOpacity="0"/></linearGradient></defs>{[40, 90, 140].map((y, i) => <g key={y}><line x1="26" y1={y} x2="698" y2={y} className={i === 1 ? 'eq-zero' : 'eq-grid'}/><text x="2" y={y + 4}>{preview ? ['+10', '0', '−10'][i] : ['12', '6', '0'][i]}</text></g>)}{points.map(([x], i) => <line key={i} x1={x} y1="24" x2={x} y2="153" className="eq-grid vertical"/>)}{points.length > 1 && <><path d={`${path} L684,165 L36,165 Z`} fill="url(#eq-fill)"/><path className="frequency-path" d={path}/>{points.map(([x, y], i) => <g key={i}><circle cx={x} cy={y} r="7" className="eq-point-halo"/><circle cx={x} cy={y} r="3" className="eq-point"/></g>)}</>}</svg><div className="band-inputs">{bands.map((frequency, i) => <label key={frequency} className="band"><output>{usable ? preview ? `${values[i] > 0 ? '+' : ''}${values[i]}` : values[i] : '—'}</output><input aria-label={preview ? frequency : `${frequency} device equalizer step`} aria-valuetext={usable ? preview ? `${values[i]} decibels` : `${values[i]} device step${values[i] === 1 ? '' : 's'}` : 'Unavailable'} type="range" min={preview ? -10 : 0} max={preview ? 10 : 12} step="1" value={usable ? values[i] : 0} disabled={!usable || busy} onChange={e => { const next = [...values]; next[i] = Number(e.target.value); onChange('equalizer', next); if (preview) onChange('preset', 'Custom'); }}/><span>{frequency.replace(' Hz', '').replace(' kHz', 'k')}</span></label>)}</div></div></div>
-    {!usable && <Unavailable text="Equalizer controls are unavailable because this connected device has not confirmed the equalizer capability and current band steps."/>}
-    {preview && <div className="eq-footnote"><span>ILLUSTRATIVE 10-BAND STUDIO</span><span>±10 dB</span></div>}
-    {!preview && usable && <div className="eq-footnote"><span>LIVE DEVICE EQUALIZER</span><span>0–12 DEVICE STEPS</span></div>}
-    {saving && <form className="save-preset" onSubmit={e => { e.preventDefault(); const clean = name.trim(); const duplicate = preview ? presets.some(p => p.name.toLowerCase() === clean.toLowerCase()) : compatibleDevicePresets.some(p => p.name.toLowerCase() === clean.toLowerCase()); if (!clean || duplicate || Object.hasOwn(stockPresets, clean) || clean === 'Custom' || clean === 'Device') { setValidation('Choose a unique preset name.'); return; } if (preview) { onSave({ name: clean, bands: [...values] }); onChange('preset', clean); } else { onSaveDevice({ name: clean, bands: [...values], model: device.model, firmware: device.firmware ?? '' }); } setSaving(false); setName(''); }}><label htmlFor="preset-name">Preset name</label><div><input id="preset-name" autoFocus maxLength={40} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Late night"/><button className="button small" type="submit">Save preset</button><button className="icon-button" type="button" onClick={() => setSaving(false)} aria-label="Cancel saving preset"><X size={16}/></button></div>{validation && <p role="alert">{validation}</p>}</form>}
-    {isSavedPreset && <button className="text-button delete-preset" onClick={() => preview ? onDelete(preset) : onDeleteDevice(preset)}><Trash2 size={12}/> Delete “{preset}”</button>}
-  </section>;
-}
 
 function Toggle({ checked, onChange, label, disabled = false }: { checked: boolean; onChange: (checked: boolean) => void; label: string; disabled?: boolean }) {
   return <button className="toggle" type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} onClick={() => onChange(!checked)}><span/></button>;

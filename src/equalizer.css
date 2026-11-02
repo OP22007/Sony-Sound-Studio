@@ -1,0 +1,17 @@
+.sony-eq-library { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 20px; }
+.sony-eq-preset { display: grid; grid-template-columns: 1fr 44px; align-items: center; gap: 5px; text-align: left; padding: 12px; background: transparent; border: 1px solid var(--line); border-radius: 8px; color: var(--text); transition: border-color .2s, background-color .2s; }
+.sony-eq-preset:hover:enabled, .sony-eq-preset[aria-pressed='true'] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.sony-eq-preset svg { grid-column: 2; grid-row: 1; width: 44px; overflow: visible; }
+.sony-eq-preset polyline { stroke: var(--accent); fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.sony-eq-preset > span { grid-column: 1; grid-row: 1; font-size: 12px; }
+.sony-eq-preset small { grid-column: 1 / -1; color: var(--text-secondary); font-size: 10px; line-height: 1.5; }
+.sony-eq-preset:disabled { opacity: .45; }
+.eq-library-note { color: var(--text-secondary); font-size: 11px; line-height: 1.7; margin: 12px 0 0; }
+.eq-my-presets { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 16px; }
+.eq-library-heading { display: flex; justify-content: space-between; align-items: center; color: var(--text-secondary); font-size: 11px; margin-bottom: 8px; }
+.eq-saved-row { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid var(--line); min-height: 42px; }
+.eq-saved-name { flex: 1; min-width: 0; text-align: left; justify-content: space-between; overflow-wrap: anywhere; }
+.eq-saved-name[aria-pressed='true'] { color: var(--accent); }
+.eq-unsaved { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-top: 16px; font-size: 11px; color: var(--text-secondary); }
+@media (max-width: 1100px) { .sony-eq-library { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 500px) { .save-preset > div { flex-wrap: wrap; } .save-preset input { flex-basis: 100%; } .eq-unsaved { align-items: start; flex-direction: column; } }
