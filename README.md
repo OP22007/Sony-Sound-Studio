@@ -26,6 +26,7 @@ See [automatic listening setup](docs/media-following.md) for supported rules, br
 - Device controls appear when their capabilities and current values have been established; changes stay pending until confirmation.
 - Dark, light and system appearance, reduced motion, launch at login, start minimized, close to tray and automatic reconnect preferences.
 - Closing to tray releases the studio webview while the native companion remains active. Quit from the tray to disconnect and exit.
+- **Signed in-app updates:** check release notes, download updates and install/restart from App settings on Windows, macOS and Linux AppImage. [Update behavior and maintainer setup](docs/app-updates.md).
 - An explicit **Studio preview** lets you explore XM6, XM5 and CH720N layouts without sending headphone commands.
 - Core operation needs no account, cloud server or telemetry. Preferences and saved presets stay on your computer.
 

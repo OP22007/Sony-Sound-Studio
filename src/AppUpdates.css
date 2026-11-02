@@ -1,0 +1,14 @@
+.app-update-content { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-top: 19px; }
+.app-update-copy { min-width: 0; }
+.app-update-version { display: flex; align-items: center; gap: 11px; font: 8px var(--mono); letter-spacing: 1.2px; color: var(--muted); }
+.app-update-version strong { color: var(--text-secondary); font-size: 10px; letter-spacing: 0; font-weight: 500; }
+.app-update-status { display: flex; align-items: center; gap: 8px; margin: 11px 0 0; color: var(--text-secondary); font-size: 12px; }
+.app-update-status > svg { color: var(--green); }
+.app-update-status.is-error, .app-update-status.is-error > svg { color: var(--danger); }
+.app-update-notes { margin: 9px 0 0 23px; color: var(--muted); font-size: 11px; white-space: pre-line; }
+.app-update-progress { display: block; width: min(100%, 420px); height: 4px; margin: 12px 0 0 23px; accent-color: var(--accent); }
+.app-update-actions { flex-shrink: 0; }
+@media (max-width: 600px) {
+  .app-update-content { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .app-update-actions { align-self: flex-start; }
+}

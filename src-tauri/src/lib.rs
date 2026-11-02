@@ -1,6 +1,7 @@
 mod discovery;
 mod device_controls;
 mod preferences;
+mod app_updates;
 mod media_automation;
 mod media_vlc;
 mod vlc_connection;
@@ -1155,9 +1156,14 @@ pub fn run() {
     let shutdown_runtime = Arc::clone(&runtime);
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_autostart::Builder::new().args(["--autostart"]).build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(app_updates::AppUpdates::new())
         .manage(runtime)
         .invoke_handler(tauri::generate_handler![
             get_app_state,
+            app_updates::get_app_update,
+            app_updates::check_app_update,
+            app_updates::install_app_update,
             discover_devices,
             connect_device,
             disconnect_device,
