@@ -15,6 +15,12 @@ This project is in active development. **It does not yet provide complete Sony S
 - Closing the desktop window is intended to release its webview while Rust/tray state remains active. **Quit** in the tray exits the app. Resource and lifecycle checks must be reported separately from browser tests.
 - No account, server or telemetry is required for core operation. Diagnostic export is explicit and reviewable.
 
+## Preview downloads and feedback
+
+Download installers from [GitHub Releases](https://github.com/OP22007/sony-sound-desktop/releases). The cross-platform preview provides Windows x64, Apple Silicon/Intel macOS and Linux x64 packages. See [platform limitations and testing instructions](docs/releases/v0.1.1.md) before testing. macOS headphone controls are disabled; automatic listening currently requires Windows.
+
+Report bugs, compatibility results and usability reviews using the [preview feedback form](https://github.com/OP22007/sony-sound-desktop/issues/new?template=tester-feedback.yml). Include OS/CPU, app version and headphone model/firmware. Review any diagnostics for personal information before sharing.
+
 ## Run locally
 
 Install Node.js, Rust and the [Tauri 2 platform prerequisites](https://v2.tauri.app/start/prerequisites/). Windows development requires Microsoft C++ Build Tools with Desktop development with C++ and WebView2. macOS needs Xcode command line tools; Linux needs the distribution's WebKitGTK and other Tauri development libraries. Bluetooth adapter support is a separate requirement from building the UI.

@@ -1,0 +1,35 @@
+name: Preview testing feedback
+description: Report a bug, compatibility result or usability review.
+title: '[Preview feedback] '
+body:
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      placeholder: v0.1.1
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Operating system and CPU
+      placeholder: macOS 15 Apple Silicon / Ubuntu 24.04 x64 / Windows 11 x64
+    validations:
+      required: true
+  - type: input
+    id: headphones
+    attributes:
+      label: Headphone model and firmware
+      placeholder: WH-1000XM6, firmware 3.1.5 (or UI-only testing)
+  - type: textarea
+    id: result
+    attributes:
+      label: What worked, and what needs improvement?
+      description: Include steps, expected behavior and actual behavior for bugs. UI reviews and successful compatibility reports are welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Optional screenshots or diagnostics
+      description: Review attachments first. Remove device addresses, pairing keys, passwords, media titles and other private information.

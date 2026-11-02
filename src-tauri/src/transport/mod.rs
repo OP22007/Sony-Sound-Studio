@@ -51,7 +51,7 @@ pub fn status() -> &'static str {
     } else if cfg!(target_os = "linux") {
         "Linux BlueZ paired-device enumeration and RFCOMM transport require bluetoothctl and sdptool; not hardware-tested."
     } else if cfg!(target_os = "macos") {
-        "macOS IOBluetooth paired-device and cached-SDP RFCOMM source adapter is implemented but requires a native build and hardware validation."
+        "macOS supports paired-device discovery. Headphone control connections are currently disabled; device settings are unavailable on this preview."
     } else {
         "Native Bluetooth transport is unavailable on this operating system."
     }

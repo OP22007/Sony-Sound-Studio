@@ -1,0 +1,111 @@
+name: Desktop preview builds
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to build
+        required: true
+        default: v0.1.1
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS Apple Silicon
+            runner: macos-latest
+            target: aarch64-apple-darwin
+            config: src-tauri/tauri.macos.conf.json
+          - label: macOS Intel
+            runner: macos-latest
+            target: x86_64-apple-darwin
+            config: src-tauri/tauri.macos.conf.json
+          - label: Linux x64
+            runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            config: src-tauri/tauri.linux.conf.json
+          - label: Windows x64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            config: src-tauri/tauri.windows.conf.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: ${{ matrix.target }}
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2 xdg-utils
+      - run: npm ci
+      - name: Frontend and extension checks
+        run: |
+          npm run build
+          node --test extensions/media-mode/test/extension.test.cjs
+      - name: Rust unit tests
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml --lib --target ${{ matrix.target }}
+        # Intel binaries are cross-compiled on an ARM Mac; tests execute on the native Mac job.
+        if: matrix.target != 'x86_64-apple-darwin'
+      - name: Package native app
+        run: npm run tauri build -- --ci --target ${{ matrix.target }} --config ${{ matrix.config }} -- --locked
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+      - name: Collect installers and checksums
+        shell: bash
+        run: node scripts/collect-release-assets.mjs ${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.target }}
+          path: src-tauri/target/release-assets/${{ matrix.target }}/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          path: release-assets
+          merge-multiple: true
+      - name: Publish preview with all platform packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          if ! gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --verify-tag --draft --prerelease --title "$RELEASE_TAG — Cross-platform preview" --notes-file "docs/releases/$RELEASE_TAG.md"
+          fi
+          gh release upload "$RELEASE_TAG" release-assets/* --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease --notes-file "docs/releases/$RELEASE_TAG.md"
