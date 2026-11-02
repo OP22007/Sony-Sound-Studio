@@ -32,7 +32,7 @@ test('noise and EQ preview changes are independent for each model and keyboard o
   const ambient = page.getByRole('button', { name: 'Ambient sound', exact: true });
   await ambient.click();
   await expect(ambient).toHaveAttribute('aria-pressed', 'true');
-  await page.getByLabel('Equalizer preset', { exact: true }).selectOption('Balanced');
+  await page.getByLabel('Equalizer preset', { exact: true }).selectOption({ label: 'Off' });
   const bassBand = page.getByRole('slider', { name: '63 Hz', exact: true });
   await expect(bassBand).toHaveValue('0');
   await bassBand.focus();
@@ -46,7 +46,7 @@ test('noise and EQ preview changes are independent for each model and keyboard o
   await expect(bassBand).toHaveValue('1');
   await page.getByRole('button', { name: 'Reset equalizer', exact: true }).click();
   await expect(bassBand).toHaveValue('0');
-  await expect(page.getByLabel('Equalizer preset', { exact: true })).toHaveValue('Balanced');
+  await expect(page.getByLabel('Equalizer preset', { exact: true })).toHaveValue('sony:Off');
   await page.screenshot({ path: 'tests/artifacts/sound-studio-dark.png', fullPage: true });
 });
 
@@ -109,7 +109,7 @@ test('preview interactions produce no unhandled page errors', async ({ page }) =
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await enterPreview(page);
-  await page.getByLabel('Equalizer preset', { exact: true }).selectOption('Vocal');
+  await page.getByLabel('Equalizer preset', { exact: true }).selectOption({ label: 'Clear' });
   await page.getByRole('button', { name: 'Select WH-CH720N', exact: true }).click();
   await page.getByRole('button', { name: 'Device settings', exact: true }).click();
   await page.getByRole('button', { name: 'App settings', exact: true }).click();
@@ -119,15 +119,15 @@ test('preview interactions produce no unhandled page errors', async ({ page }) =
 
 test('custom EQ preset saves locally, survives reload and can be deleted', async ({ page }) => {
   await enterPreview(page);
-  await page.getByLabel('Equalizer preset', { exact: true }).selectOption('Warm');
+  await page.getByLabel('Equalizer preset', { exact: true }).selectOption({ label: 'Heavy' });
   await page.getByRole('button', { name: 'Save preset', exact: true }).click();
   await page.getByLabel('Preset name', { exact: true }).fill('Evening session');
   await page.locator('form').getByRole('button', { name: 'Save preset', exact: true }).click();
-  await expect(page.getByLabel('Equalizer preset', { exact: true })).toHaveValue('Evening session');
+  await expect(page.getByLabel('Equalizer preset', { exact: true })).toHaveValue('local:Evening session');
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Explore studio preview', exact: true }).click();
-  await page.getByLabel('Equalizer preset', { exact: true }).selectOption('Evening session');
-  await expect(page.getByRole('slider', { name: '63 Hz', exact: true })).toHaveValue('3');
+  await page.getByLabel('Equalizer preset', { exact: true }).selectOption({ label: 'Evening session' });
+  await expect(page.getByRole('slider', { name: '63 Hz', exact: true })).toHaveValue('4');
   await page.getByRole('button', { name: 'Delete “Evening session”', exact: true }).click();
   await expect(page.getByLabel('Equalizer preset', { exact: true }).locator('option', { hasText: 'Evening session' })).toHaveCount(0);
 });

@@ -79,11 +79,11 @@ test('noise, listening modes, environments and EQ produce distinct running motio
   await expect(visual).toHaveAttribute('data-listening', 'cinema');
   await expect.poll(choreography).toBe('off/cinema/2');
   const before = await page.locator('.visual-profile .surface-front').getAttribute('d');
-  await page.getByRole('slider', { name: '63 Hz', exact: true }).fill('10');
+  await page.getByRole('slider', { name: '63 Hz', exact: true }).fill('6');
   await expect(visual).toHaveAttribute('data-eq', 'bass');
   await expect.poll(() => page.locator('.visual-profile .surface-front').getAttribute('d')).not.toBe(before);
   const treble = await page.locator('.visual-profile .surface-front').getAttribute('d');
-  await page.getByRole('slider', { name: '16 kHz', exact: true }).fill('10');
+  await page.getByRole('slider', { name: '16 kHz', exact: true }).fill('6');
   await expect(visual).toHaveAttribute('data-eq', 'treble');
   await expect.poll(() => page.locator('.visual-profile .surface-front').getAttribute('d')).not.toBe(treble);
   const pose = await page.locator('.visual-drift').getAttribute('style');

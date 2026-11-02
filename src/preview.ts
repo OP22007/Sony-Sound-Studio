@@ -1,12 +1,8 @@
 import type { Device } from './bridge';
+import { sonyPresets, xm6Frequencies } from './eq-presets';
 
-export const frequencies = ['63 Hz', '125 Hz', '250 Hz', '500 Hz', '1 kHz', '2 kHz', '4 kHz', '8 kHz', '12 kHz', '16 kHz'];
-export const stockPresets: Record<string, number[]> = {
-  Balanced: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  Warm: [3, 3, 2, 1, 0, -1, -1, 0, 1, 1],
-  Vocal: [-2, -1, 0, 1, 3, 4, 3, 1, 0, -1],
-  Immersive: [4, 3, 1, 0, -1, 0, 2, 3, 3, 2],
-};
+export const frequencies = xm6Frequencies;
+export const stockPresets: Record<string, number[]> = Object.fromEntries(sonyPresets.map(p => [p.name, [...p.bands]]));
 
 export interface PreviewSettings {
   noise: 'cancelling' | 'ambient' | 'off'; ambient: number; equalizer: number[];
@@ -14,7 +10,7 @@ export interface PreviewSettings {
   listeningMode?: 'standard' | 'backgroundMusic' | 'cinema'; bgmRoomSize?: number;
 }
 export const defaultSettings: PreviewSettings = {
-  noise: 'cancelling', ambient: 10, equalizer: [...stockPresets.Immersive], preset: 'Immersive',
+  noise: 'cancelling', ambient: 10, equalizer: [...stockPresets.Off], preset: 'Off',
   bass: 2, dsee: true, speak: false, wear: true, touch: true, listeningMode: 'standard', bgmRoomSize: 0,
 };
 export const previewDevices: Device[] = [

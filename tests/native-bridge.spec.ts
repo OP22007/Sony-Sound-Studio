@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 async function installNativeFixture(page: Page, noiseSupported: boolean, options: {
+  firmware?: string;
   noiseSettings?: Record<string, unknown>;
   applySettings?: Record<string, unknown>;
   deviceSettings?: Record<string, unknown>;
@@ -29,7 +30,7 @@ async function installNativeFixture(page: Page, noiseSupported: boolean, options
       diagnostics: [],
       devices: [{
         id: 'test-device', name: 'WH-1000XM6', model: 'WH-1000XM6', connection: 'connected',
-        battery: null, firmware: null,
+        battery: null, firmware: options.firmware ?? null,
         capabilities: options.deviceCapabilities ?? (noiseSupported ? ['noise'] : []),
         settings: { ...(noiseSupported ? { noise: 'cancelling', ...options.noiseSettings } : {}), ...options.deviceSettings },
       }],
@@ -130,6 +131,54 @@ test('Sound Studio applies negotiated listening modes and EQ arrays only after d
   await expect(bass).toHaveValue('6');
   await page.evaluate(() => (window as unknown as { __finishApply: () => void }).__finishApply());
   await expect(bass).toHaveValue('7');
+});
+
+test('Sony EQ curves use confirmed device steps; custom profiles rename and update without extra writes', async ({ page }) => {
+  await installNativeFixture(page, true, {
+    firmware: '3.1.5', deviceCapabilities: ['noise', 'equalizer'],
+    deviceSettings: { equalizer: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6] },
+  });
+  await page.goto('/');
+  const selector = page.getByLabel('Device equalizer profile', { exact: true });
+  const low = page.getByRole('slider', { name: '31 Hz device equalizer step', exact: true });
+  await selector.selectOption({ label: 'Heavy' });
+  await expect(low).toHaveValue('6');
+  await expect(selector).toBeDisabled();
+  await page.evaluate(() => (window as unknown as { __finishApply: () => void }).__finishApply());
+  await expect(low).toHaveValue('10');
+  await expect(page.getByRole('slider', { name: '125 Hz device equalizer step', exact: true })).toHaveValue('5');
+  await page.getByRole('button', { name: 'Save preset', exact: true }).click();
+  await page.getByLabel('Preset name', { exact: true }).fill('My bass');
+  await page.getByRole('form', { name: 'Save preset', exact: true }).getByRole('button', { name: 'Save preset', exact: true }).click();
+  const callsBefore = await page.evaluate(() => (window as unknown as { __fixtureCalls: string[] }).__fixtureCalls.filter(x => x === 'apply_setting').length);
+  await page.getByRole('button', { name: 'Rename “My bass”', exact: true }).click();
+  await page.getByLabel('New preset name').fill('Daily listening');
+  await page.getByRole('button', { name: 'Rename preset', exact: true }).click();
+  expect(await page.evaluate(() => (window as unknown as { __fixtureCalls: string[] }).__fixtureCalls.filter(x => x === 'apply_setting').length)).toBe(callsBefore);
+  await low.fill('11');
+  await expect(low).toHaveValue('10');
+  await page.evaluate(() => (window as unknown as { __finishApply: () => void }).__finishApply());
+  await expect(low).toHaveValue('11');
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('sound-connect:device-presets') ?? '[]'));
+  expect(saved).toEqual([{ name: 'Daily listening', model: 'WH-1000XM6', firmware: '3.1.5', bands: [11, 10, 5, 5, 6, 6, 6, 6, 6, 6] }]);
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Apply “Daily listening”', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Apply “Daily listening”', exact: true }).click();
+  await expect(low).toHaveValue('6');
+  await page.evaluate(() => (window as unknown as { __finishApply: () => void }).__finishApply());
+  await expect(low).toHaveValue('11');
+});
+
+test('rejected Sony preset leaves the previous confirmed EQ selection and bands intact', async ({ page }) => {
+  await installNativeFixture(page, true, { deviceCapabilities: ['noise', 'equalizer'], deviceSettings: { equalizer: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6] } });
+  await page.goto('/');
+  const selector = page.getByLabel('Device equalizer profile', { exact: true });
+  await selector.selectOption({ label: 'Game' });
+  await page.evaluate(() => (window as unknown as { __rejectApply: () => void }).__rejectApply());
+  await expect(selector).toHaveValue('sony:Off');
+  await expect(page.getByRole('slider', { name: '31 Hz device equalizer step', exact: true })).toHaveValue('6');
+  await expect(page.getByRole('alert')).toContainText('timed out');
 });
 
 test('Follow media uses native opt-in, displays readback status, and releases a manual hold', async ({ page }) => {
