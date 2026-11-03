@@ -125,6 +125,7 @@ test('Sound Studio applies negotiated listening modes and EQ arrays only after d
   await page.getByRole('button', { name: 'Cafe', exact: true }).click();
   await page.evaluate(() => (window as unknown as { __finishApply: () => void }).__finishApply());
   await expect(page.locator('.sound-visual')).toHaveAttribute('data-room', '2');
+  await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
   const bass = page.getByRole('slider', { name: '31 Hz device equalizer step', exact: true });
   await bass.focus();
   await bass.press('ArrowRight');
@@ -140,6 +141,7 @@ test('Sony EQ curves use confirmed device steps; custom profiles rename and upda
     deviceSettings: { equalizer: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6] },
   });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
   const selector = page.getByLabel('Device equalizer profile', { exact: true });
   const low = page.getByRole('slider', { name: '31 Hz device equalizer step', exact: true });
   await selector.selectOption({ label: 'Heavy' });
@@ -164,6 +166,7 @@ test('Sony EQ curves use confirmed device steps; custom profiles rename and upda
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('sound-connect:device-presets') ?? '[]'));
   expect(saved).toEqual([{ name: 'Daily listening', model: 'WH-1000XM6', firmware: '3.1.5', bands: [11, 10, 5, 5, 6, 6, 6, 6, 6, 6] }]);
   await page.reload();
+  await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Apply “Daily listening”', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Apply “Daily listening”', exact: true }).click();
   await expect(low).toHaveValue('6');
@@ -174,6 +177,7 @@ test('Sony EQ curves use confirmed device steps; custom profiles rename and upda
 test('rejected Sony preset leaves the previous confirmed EQ selection and bands intact', async ({ page }) => {
   await installNativeFixture(page, true, { deviceCapabilities: ['noise', 'equalizer'], deviceSettings: { equalizer: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6] } });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
   const selector = page.getByLabel('Device equalizer profile', { exact: true });
   await selector.selectOption({ label: 'Game' });
   await page.evaluate(() => (window as unknown as { __rejectApply: () => void }).__rejectApply());
@@ -257,8 +261,9 @@ test('native controls stay unavailable without negotiated capabilities', async (
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('button', { name: 'Select WH-1000XM6', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Noise cancelling', exact: true })).toBeDisabled();
-  await expect(page.getByRole('slider', { name: '63 Hz device equalizer step', exact: true })).toBeDisabled();
   await expect(page.getByText('Noise control is unavailable because this connected device has not confirmed its current mode.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
+  await expect(page.getByRole('slider', { name: '63 Hz device equalizer step', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Exit preview', exact: true })).toHaveCount(0);
   const calls = await page.evaluate(() => (window as unknown as { __fixtureCalls: string[] }).__fixtureCalls);
   expect(calls).not.toContain('apply_setting');

@@ -22,7 +22,7 @@ export default function ListeningModes({ descriptor, roomDescriptor, mode, room,
   const options = preview ? [{ value: 'standard', label: 'Standard' }, { value: 'backgroundMusic', label: 'Background Music' }, { value: 'cinema', label: 'Cinema' }] : descriptor?.options ?? [];
   const rooms = preview ? [{ value: 0, label: 'My room' }, { value: 1, label: 'Living room' }, { value: 2, label: 'Cafe' }] : roomDescriptor?.options ?? [];
   return <section className="listening-studio reveal" aria-label="Listening mode">
-    <div className="listening-heading"><span className="eyebrow">SET THE SCENE</span><h2>How do you want to listen?</h2><p>{pending ? 'Waiting for headphone confirmation…' : preview ? 'Explore the listening experience.' : options.length ? 'Listening modes reported by your headphones.' : 'Connect a supported headphone to confirm its listening modes.'}</p></div>
+    <div className="listening-heading"><span className="eyebrow">LISTEN YOUR WAY</span><h2>Sound mode</h2><p>{pending ? 'Waiting for headphone confirmation…' : preview ? 'Explore the listening experience.' : options.length ? 'Listening modes reported by your headphones.' : 'Connect a supported headphone to confirm its listening modes.'}</p></div>
     <div className="listening-options" role="group" aria-label="Sound modes">{options.map(option => {
       const detail = details[String(option.value)];
       const Icon = detail?.icon ?? Headphones;

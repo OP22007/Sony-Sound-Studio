@@ -9,6 +9,7 @@ interface Props {
   listening: string;
   room: unknown;
   bands: number[];
+  initialBands?: number[];
   preview: boolean;
   reducedMotion: boolean;
   pending: boolean;
@@ -20,15 +21,16 @@ const sceneName = (value: string) => value === 'cinema' ? 'Cinema' : value === '
 const noiseName = (value: string) => value === 'cancelling' ? 'Noise cancelling' : value === 'ambient' ? 'Ambient sound' : value === 'off' ? 'Noise control off' : 'Headphone studio';
 const roomSpan = (room: unknown) => room === 2 ? 1.2 : room === 1 ? 1 : .82;
 
-export default function SoundVisualization({ model, noise, listening, room, bands, preview, reducedMotion, pending }: Props) {
+export default function SoundVisualization({ model, noise, listening, room, bands, initialBands, preview, reducedMotion, pending }: Props) {
   const stage = useRef<HTMLDivElement>(null);
   const surface = useRef<SVGSVGElement>(null);
   const motions = useRef(new Set<Motion>());
   const visible = useRef(true);
   const gradient = useId().replaceAll(':', '');
   const profile = buildSoundSurface(bands, preview);
-  const initialPaths = useRef(profile.paths);
-  const previousLevels = useRef(profile.levels);
+  const initialProfile = useRef(buildSoundSurface(initialBands ?? bands, preview));
+  const initialPaths = useRef(initialProfile.current.paths);
+  const previousLevels = useRef(initialProfile.current.levels);
   const previousScene = useRef(listening);
   const previousRoom = useRef(roomSpan(room));
   const bandSignature = `${preview}/${bands.join(',')}`;

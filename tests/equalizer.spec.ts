@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 async function preview(page: import('@playwright/test').Page) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Explore studio preview', exact: true }).click();
+  await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
 }
 
 test('XM6 factory presets match the supplied Sony curves and leave preview isolated', async ({ page }) => {
@@ -43,6 +44,7 @@ test('custom preset can be updated, renamed, reloaded and deleted without changi
   await expect(bass).toHaveValue('5');
   await page.reload();
   await page.getByRole('button', { name: 'Explore studio preview', exact: true }).click();
+  await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
   await page.getByRole('button', { name: 'Apply “Late night”', exact: true }).click();
   await expect(bass).toHaveValue('5');
   await page.getByLabel('Equalizer preset', { exact: true }).selectOption({ label: 'Heavy' });
