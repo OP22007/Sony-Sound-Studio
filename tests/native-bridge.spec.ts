@@ -60,6 +60,7 @@ async function installNativeFixture(page: Page, noiseSupported: boolean, options
           if (command === 'plugin:event|listen') { eventHandlers.set(args?.event ?? '', args?.handler ?? 0); return Promise.resolve(1); }
           if (command.startsWith('plugin:event|')) return Promise.resolve(1);
           if (command === 'get_app_state') return Promise.resolve(snapshot());
+          if (command === 'get_app_update') return Promise.resolve({ currentVersion: '0.1.2', status: 'idle', version: null, notes: null, downloaded: 0, total: null, error: null });
           if (command === 'get_media_automation') return Promise.resolve({ ...media });
           if (command === 'get_vlc_connection') return Promise.resolve({ ...vlc });
           if (command === 'test_vlc_connection') return Promise.resolve({ ...vlc, playing: true, kind: 'movie', status: 'VLC connection test succeeded; playback detected.' });

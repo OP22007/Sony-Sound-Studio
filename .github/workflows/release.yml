@@ -18,7 +18,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate:
+    name: Validate trusted release tag
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+          fetch-depth: 0
+      - name: Require a versioned commit on protected main
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          git fetch origin main
+          git merge-base --is-ancestor HEAD origin/main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"
+          test -f "docs/releases/$RELEASE_TAG.md"
+          node -e 'const fs=require("fs"); const v=process.env.RELEASE_TAG.slice(1); for(const p of ["package.json","src-tauri/tauri.conf.json"]) { if(JSON.parse(fs.readFileSync(p)).version !== v) throw Error("Release version mismatch: "+p); }'
+
   build:
+    needs: validate
     name: ${{ matrix.label }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
@@ -75,6 +95,8 @@ jobs:
         run: npm run tauri build -- --ci --target ${{ matrix.target }} --config ${{ matrix.config }} -- --locked
         env:
           APPIMAGE_EXTRACT_AND_RUN: '1'
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       - name: Collect installers and checksums
         shell: bash
         run: node scripts/collect-release-assets.mjs ${{ matrix.target }}
@@ -88,6 +110,9 @@ jobs:
   publish:
     needs: build
     runs-on: ubuntu-22.04
+    concurrency:
+      group: updater-preview-publish
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
@@ -99,13 +124,30 @@ jobs:
           pattern: desktop-*
           path: release-assets
           merge-multiple: true
-      - name: Publish preview with all platform packages
+      - name: Publish version release, then update signed preview channel
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          PREVIEW_TAG: updater-preview
+          REPOSITORY: ${{ github.repository }}
         run: |
           if ! gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             gh release create "$RELEASE_TAG" --verify-tag --draft --prerelease --title "$RELEASE_TAG — Cross-platform preview" --notes-file "docs/releases/$RELEASE_TAG.md"
           fi
           gh release upload "$RELEASE_TAG" release-assets/* --clobber
           gh release edit "$RELEASE_TAG" --draft=false --prerelease --notes-file "docs/releases/$RELEASE_TAG.md"
+
+          mkdir -p previous-feed
+          previous_args=()
+          if gh release view "$PREVIEW_TAG" > /dev/null 2>&1; then
+            gh release download "$PREVIEW_TAG" --pattern latest.json --dir previous-feed
+            previous_args+=("$PWD/previous-feed/latest.json")
+          fi
+          published_at=$(gh release view "$RELEASE_TAG" --json publishedAt --jq .publishedAt)
+          node scripts/generate-updater-manifest.mjs release-assets "$RELEASE_TAG" "docs/releases/$RELEASE_TAG.md" "$published_at" "https://github.com/$REPOSITORY/releases/download/$RELEASE_TAG" latest.json "${previous_args[@]}"
+
+          if ! gh release view "$PREVIEW_TAG" > /dev/null 2>&1; then
+            gh release create "$PREVIEW_TAG" --target "$GITHUB_SHA" --draft --prerelease --title "Updater preview channel" --notes "Fixed signed updater channel for supported desktop platforms."
+          fi
+          gh release edit "$PREVIEW_TAG" --draft=false --prerelease --title "Updater preview channel" --notes "Fixed signed updater channel for supported desktop platforms."
+          gh release upload "$PREVIEW_TAG" latest.json --clobber

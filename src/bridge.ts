@@ -46,6 +46,15 @@ export function isAppPreferences(value: unknown): value is AppPreferences {
 export interface AppState {
   revision: number; platform: string; transportStatus: string; devices: Device[]; diagnostics: string[];
 }
+export interface AppUpdateSnapshot {
+  currentVersion: string;
+  status: 'idle' | 'checking' | 'available' | 'upToDate' | 'downloading' | 'installing' | 'error' | 'unsupported';
+  version: string | null;
+  notes: string | null;
+  downloaded: number;
+  total: number | null;
+  error: string | null;
+}
 export const nativeAvailable = isTauri();
 export const browserState: AppState = {
   revision: 0, platform: 'Browser', transportStatus: 'Open the desktop app to discover your headphones.',

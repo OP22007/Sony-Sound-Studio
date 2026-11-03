@@ -10,6 +10,8 @@ const expected = {
   'x86_64-pc-windows-msvc': ['.exe'],
 }[target];
 if (!expected) throw new Error('Unknown release target');
+const updaterExtension = target === 'x86_64-pc-windows-msvc' ? '.exe'
+  : target.includes('apple-darwin') ? '.app.tar.gz' : '.AppImage';
 const root = path.resolve('src-tauri/target', target, 'release/bundle');
 const destination = path.resolve('src-tauri/target/release-assets', target);
 await mkdir(destination, { recursive: true });
@@ -18,7 +20,7 @@ async function visit(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const source = path.join(directory, entry.name);
     if (entry.isDirectory() && !entry.name.endsWith('.app')) await visit(source);
-    else if (entry.isFile() && expected.some(extension => entry.name.endsWith(extension))) {
+    else if (entry.isFile() && (expected.some(extension => entry.name.endsWith(extension)) || entry.name.endsWith(updaterExtension) || entry.name.endsWith(`${updaterExtension}.sig`))) {
       // Include architecture explicitly and use URL-safe names across all installers.
       const name = `${target}-${entry.name.replaceAll(' ', '.')}`;
       await copyFile(source, path.join(destination, name));
@@ -31,6 +33,9 @@ await visit(root);
 for (const extension of expected) {
   if (!collected.some(file => file.name.endsWith(extension))) throw new Error(`Missing ${extension} package for ${target}`);
 }
+const updater = collected.find(file => file.name.endsWith(updaterExtension));
+if (!updater) throw new Error(`Missing updater artifact ${updaterExtension} for ${target}`);
+if (!collected.some(file => file.name === `${updater.name}.sig`)) throw new Error(`Missing updater signature for ${updater.name}`);
 collected.sort((a, b) => a.name.localeCompare(b.name));
 await writeFile(path.join(destination, `SHA256SUMS-${target}.txt`), collected.map(file => `${file.hash}  ${file.name}\n`).join(''));
 console.log(`Collected ${collected.length} installers for ${target}`);
