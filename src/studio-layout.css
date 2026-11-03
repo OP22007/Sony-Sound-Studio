@@ -37,6 +37,7 @@
 .studio-controls .noise-panel .section-title { margin-bottom: 22px; }
 .studio-controls .noise-panel .section-title > svg { display: block; }
 .studio-controls .noise-panel .section-title h2 { font-size: 20px; }
+.studio-controls .noise-panel .section-title p { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .studio-controls .segmented button { min-height: 82px; }
 .studio-controls .segmented button span { font-size: 11px; }
 .studio-controls .mode-note { min-height: 44px; justify-content: flex-start; }

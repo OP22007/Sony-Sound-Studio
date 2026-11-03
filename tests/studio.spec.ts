@@ -57,6 +57,9 @@ test('Equalizer has its own tab; listening and noise controls share the Sound st
   };
 
   await assertSideBySide();
+  const modeOptions = await page.locator('.listening-options').boundingBox();
+  const noiseOptions = await page.locator('.noise-panel .segmented').boundingBox();
+  expect(Math.abs(modeOptions!.y - noiseOptions!.y)).toBeLessThan(3);
   await page.screenshot({ path: 'tests/artifacts/equalizer-layout-desktop-dark.png', fullPage: true });
   await page.getByRole('button', { name: 'Light theme', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
