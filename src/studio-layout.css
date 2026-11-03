@@ -1,0 +1,73 @@
+.studio-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr);
+  margin-top: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+.studio-controls > .listening-studio {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 22px;
+  border: 0;
+  margin: 0;
+  padding: 28px;
+}
+.studio-controls .listening-heading h2 { margin: 8px 0; font-size: 20px; font-weight: 450; }
+.studio-controls .listening-heading p { font-size: 12px; line-height: 1.6; }
+.studio-controls .listening-choice { flex-direction: column; align-items: flex-start; position: relative; min-height: 110px; padding: 16px 12px; }
+.studio-controls .listening-choice strong { font-size: 12px; }
+.studio-controls .listening-choice small { display: block; font-size: 11px; }
+.studio-controls .listening-choice i { position: absolute; top: 19px; right: 13px; }
+.studio-controls .listening-environment { flex-wrap: wrap; gap: 12px; }
+.studio-controls .listening-environment > div { flex-wrap: wrap; }
+.studio-controls > .noise-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 28px;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--line);
+  border-radius: 0;
+}
+.studio-controls .noise-panel .section-title { margin-bottom: 22px; }
+.studio-controls .noise-panel .section-title > svg { display: block; }
+.studio-controls .noise-panel .section-title h2 { font-size: 20px; }
+.studio-controls .segmented button { min-height: 82px; }
+.studio-controls .segmented button span { font-size: 11px; }
+.studio-controls .mode-note { min-height: 44px; justify-content: flex-start; }
+.studio-controls .mode-note p { font-size: 12px; }
+.equalizer-device { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 12px; padding-bottom: 5px; }
+.equalizer-workspace { max-width: 1120px; margin: 6px auto 0; }
+.equalizer-workspace > .eq-panel { padding: 28px; }
+.equalizer-workspace .sony-eq-library { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.equalizer-workspace .eq-scroll { min-width: 0; }
+.equalizer-workspace .eq-curve { max-height: none; }
+.equalizer-workspace .band-inputs { padding-inline: 0; gap: 0; }
+.equalizer-workspace .enhancement-strip { margin-top: 20px; }
+@media (max-width: 1180px) {
+  .studio-controls { grid-template-columns: minmax(0, 1fr); }
+  .studio-controls > .noise-panel { border-left: 0; border-top: 1px solid var(--line); }
+  .studio-controls .listening-choice { flex-direction: row; align-items: center; min-height: 86px; }
+  .equalizer-workspace .sony-eq-library { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  .sidebar nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding-bottom: 8px; }
+  .sidebar nav .nav-item { justify-content: flex-start; flex-direction: row; gap: 9px; min-height: 44px; font-size: 12px; border-radius: 6px; padding: 10px; }
+}
+@media (max-width: 600px) {
+  .studio-controls > .listening-studio, .studio-controls > .noise-panel { padding: 22px 18px; }
+  .studio-controls { margin-top: 18px; }
+  .studio-controls .listening-options { gap: 6px; }
+  .studio-controls .listening-choice { flex-direction: column; align-items: flex-start; padding: 14px 9px; gap: 12px; min-height: 110px; }
+  .studio-controls .listening-choice small { font-size: 10px; }
+  .studio-controls .listening-choice i { display: none; }
+  .equalizer-device { font-size: 10px; gap: 6px; }
+  .equalizer-workspace > .eq-panel { padding: 20px 16px; }
+  .equalizer-workspace .sony-eq-library { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sidebar nav .nav-item { font-size: 11px; gap: 7px; padding: 9px 7px; }
+}

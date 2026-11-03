@@ -7,7 +7,7 @@ A local desktop companion for Sony headphones. Shape your sound, switch listenin
 ### Sound Studio
 
 - **Noise control:** switch between noise cancelling, Ambient Sound and Off, with device confirmation and physical-button state updates on the tested WH-1000XM6.
-- **Equalizer workspace:** choose XM6 Off, Heavy, Clear, Hard, Soft or Game curves; create, update, rename and delete local custom presets. The visualization responds to bass, mids and treble. [Preset behavior and evidence](docs/research/eq-presets.md).
+- **Dedicated Equalizer tab:** choose XM6 Off, Heavy, Clear, Hard, Soft or Game curves; create, update, rename and delete local custom presets, and adjust supported DSEE modes. Sound Studio keeps listening modes and noise controls together. The visualization responds to bass, mids and treble. [Preset behavior and evidence](docs/research/eq-presets.md).
 - **Listening modes:** Standard, Background Music and Cinema appear when supported by the connected device. Background Music includes model-supported room options such as My room, Living room and Cafe.
 - **Animated headphone scenes:** official model artwork, distinct listening-mode environments and transitions that respond to sound settings.
 

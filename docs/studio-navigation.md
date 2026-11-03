@@ -1,0 +1,11 @@
+# Studio navigation design
+
+Purpose: make listening-mode and noise-control changes immediate, and give frequency tuning its own workspace. The visual direction is refined personal audio: the established graphite/ivory surfaces, warm accent, system body typography and condensed device type remain. The animated Sony render is the visual anchor; no additional decorative illustration is introduced. A subjective design-feasibility score is 17/19 (impact 4, fit 5, feasibility 5, performance 5, consistency risk 2).
+
+Sound Studio contains the existing device hero followed by one divided control surface: Sound mode on the left, Noise control on the right. Controls stack below 1180px. The redundant noise illustration is removed; mode changes still affect the hero scene. Equalizer becomes the second navigation destination, with a wider curve/editor, factory presets, local presets and DSEE. Both pages continue to use the same selected headphone, native state and preview state. Navigation must never send a setting command or reset confirmed settings.
+
+Spacing uses the existing 4/8px rhythm: 24px between hero and controls and 28px internal padding, reduced at narrow widths. Existing semantic colors, focus rings and reduced-motion behavior apply. No additional animation library or continuous animation is added. Navigation becomes a two-row, three-column grid below 900px so all six destinations remain readable.
+
+Required states: no headphone (find or preview), connected with verified capabilities, unsupported/unconfirmed controls, pending native changes, errors and explicit browser preview. The Equalizer route preserves the existing capability gates, device confirmations and local preset persistence.
+
+Acceptance: Sound Studio has no EQ editor or DSEE strip; both mode groups remain usable. Equalizer contains the existing full editor. Switching pages preserves EQ and NC values without issuing native writes. Presets still save/rename/delete. At 1440px, 960px and 390px there is no page overflow, clipped navigation or overlapping artwork. Inspect dark and light renders and verify keyboard adjustment, native pending/failure behavior and reduced motion using the existing browser suite.
