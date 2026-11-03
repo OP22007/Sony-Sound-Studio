@@ -8,7 +8,7 @@ on:
       tag:
         description: Existing version tag to build
         required: true
-        default: v0.1.1
+        default: v0.1.3
 
 permissions:
   contents: read
@@ -147,7 +147,7 @@ jobs:
           node scripts/generate-updater-manifest.mjs release-assets "$RELEASE_TAG" "docs/releases/$RELEASE_TAG.md" "$published_at" "https://github.com/$REPOSITORY/releases/download/$RELEASE_TAG" latest.json "${previous_args[@]}"
 
           if ! gh release view "$PREVIEW_TAG" > /dev/null 2>&1; then
-            gh release create "$PREVIEW_TAG" --target "$GITHUB_SHA" --draft --prerelease --title "Updater preview channel" --notes "Fixed signed updater channel for supported desktop platforms."
+            gh release create "$PREVIEW_TAG" --target "$GITHUB_SHA" --draft --prerelease --title "App update feed (metadata only)" --notes "Machine-readable update feed. Download installers from [$RELEASE_TAG](https://github.com/$REPOSITORY/releases/tag/$RELEASE_TAG)."
           fi
-          gh release edit "$PREVIEW_TAG" --draft=false --prerelease --title "Updater preview channel" --notes "Fixed signed updater channel for supported desktop platforms."
+          gh release edit "$PREVIEW_TAG" --draft=false --prerelease --title "App update feed (metadata only)" --notes "Machine-readable update feed. Download installers from [$RELEASE_TAG](https://github.com/$REPOSITORY/releases/tag/$RELEASE_TAG)."
           gh release upload "$PREVIEW_TAG" latest.json --clobber
