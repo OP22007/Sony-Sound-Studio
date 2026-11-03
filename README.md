@@ -40,7 +40,7 @@ Get the [latest preview release](https://github.com/OP22007/Sony-Sound-Studio/re
 | macOS Apple Silicon / Intel | DMG | UI and paired-device discovery; headphone control connections are disabled |
 | Linux x64 | DEB, RPM, AppImage | BlueZ discovery and RFCOMM implemented; hardware validation remains outstanding |
 
-These are unsigned preview builds; macOS builds are not notarized. Read the [installation and testing notes](docs/releases/v0.1.1.md) before installing. Automatic listening currently requires Windows. On Linux, install the packages providing `bluetoothctl` and `sdptool` and pair through your operating system first.
+These are preview builds with signed updater packages; macOS builds are not notarized and the Windows installer has no Authenticode publisher signature. Read the [installation and testing notes](docs/releases/v0.1.3.md) before installing. Automatic listening currently requires Windows. On Linux, install the packages providing `bluetoothctl` and `sdptool` and pair through your operating system first.
 
 **This project is in development and does not yet offer full Sony Sound Connect feature parity.** Hardware confirmation covers XM6 noise-mode tracking and a tested EQ-band change/readback on Windows; it does not establish every control, model or firmware. XM5 and CH720N still need hardware validation. Firmware updates and factory reset are unavailable.
 
