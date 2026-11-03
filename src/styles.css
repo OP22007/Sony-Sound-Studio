@@ -14,7 +14,7 @@
 :root[data-theme='light'] {
   color-scheme: light; --bg: #f3f1e9; --sidebar: #eae8df; --surface: #faf8f1;
   --surface-raised: #e9e8de; --surface-hover: #e0dfd3; --text: #282c23;
-  --text-secondary: #62695a; --muted: #6f7568; --accent: #94591b; --accent-text: #fff8eb;
+  --text-secondary: #62695a; --muted: #6d7366; --accent: #94591b; --accent-text: #fff8eb;
   --accent-wash: #ab742310; --line: #262c1c16; --line-strong: #262c1c30; --green: #5b6d3b;
   --danger: #a24032; --danger-wash: #c45b4210;
   background: var(--bg); color: var(--text);
