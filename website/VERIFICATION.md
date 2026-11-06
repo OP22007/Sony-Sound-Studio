@@ -10,4 +10,6 @@ Verified locally on 6 November 2026:
 
 The headphone images are authentic vendor product photography. The interactive 3D geometry is an independently authored acoustic sculpture, not a headphone mesh. Website mode and EQ interactions are visual demonstrations only.
 
-Automated graphics checks used Chromium software rendering; they do not establish frame-rate or energy use on physical phones. Real-device GPU testing and a live Pages/Vercel deployment remain unverified. No deployment was performed.
+Automated graphics checks used Chromium software rendering; they do not establish frame-rate or energy use on physical phones. Real-device GPU testing remains outstanding.
+
+Published to https://op22007.github.io/Sony-Sound-Studio/ using the prebuilt `gh-pages` branch. GitHub's Pages deployment succeeded. The source is in PR #6; protected-main CI must pass before merging. `node scripts/capture-live.mjs` checks the public page and saves screenshots under the ignored test-results directory.
