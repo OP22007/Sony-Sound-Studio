@@ -1,0 +1,21 @@
+Sony Sound Studio website
+
+Sony 1000X THE COLLEXION black hero: official Sony product photography, downloaded 6 November 2026.
+Product page: https://www.sony.co.uk/headphones/products/1000x-the-collexion
+Image: https://sony.scene7.com/is/image/sonyglobalsolutions/Product-Intro-Plate-10-1?fmt=png-alpha&wid=1200
+Displayed as banner artwork only; inclusion does not establish app compatibility or hardware validation.
+
+Website code and procedural 3D acoustic scene: independently authored for this project; root MIT license applies.
+
+Sony WH-1000XM6, WH-1000XM5 and WH-CH720N imagery: original Sony product renders, copied without alteration from the app's public/headphones assets.
+OnePlus Nord Buds 3 Pro imagery: original OnePlus product render, copied without alteration from the app's public/headphones assets.
+Exact original URLs and SHA-256 digests: https://github.com/OP22007/Sony-Sound-Studio/blob/main/public/headphones/SOURCES.md
+Vendor artwork/trademarks remain the property of their owners, are excluded from the MIT code license, and do not imply endorsement or a blanket redistribution license.
+
+Manrope variable font: SIL Open Font License 1.1; provided through @fontsource-variable/manrope. License included in the package at node_modules/@fontsource-variable/manrope/LICENSE.
+
+studio-preview.png: actual screenshot of Sony Sound Studio's explicit browser preview. Preview state does not assert a live device connection.
+social.png: screenshot of this website's product hero.
+
+OnePlus Nord Buds 3 Pro exact image URL: https://oasis.opstatics.com/content/dam/oasis/page/franklin/en/assets/images-amazing-buds-1.png
+SHA-256: 40380c89fbcf7702b94019c644a4d6e236c8612eccd0eec3de51b20bc341e143
