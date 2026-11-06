@@ -27,7 +27,9 @@ Production output is `website/dist`. Relative asset paths support both a GitHub 
 2. Run **Product website** from the Actions tab using **Run workflow** on the branch containing this site.
 3. The workflow builds, tests and deploys the static output to Pages. Pull requests affecting the website run checks without deployment.
 
-The default canonical URL is `https://op22007.github.io/Sony-Sound-Studio/`. Change it if the repository name or domain changes. Creating the site locally does not publish it or change repository visibility.
+The default canonical URL is `https://op22007.github.io/Sony-Sound-Studio/`. Change it if the repository name or domain changes. Creating the site locally does not publish it or change repository visibility. Once the workflow is on `main`, changes to the website also build, test and deploy automatically.
+
+The initial launch uses a prebuilt `gh-pages` branch with Pages configured to **Deploy from a branch**, `/` folder. This provides a publishing path independent of the source pull request's Actions checks. To update that deployment, build locally, publish only `dist` (plus an empty `.nojekyll`) to `gh-pages`, and request a Pages build. Keep source work in the website pull request. Before using the Actions deployment above, switch Pages' source to **GitHub Actions**.
 
 ## Vercel
 
