@@ -28,3 +28,7 @@ Published to https://op22007.github.io/Sony-Sound-Studio/ using the prebuilt `gh
 
 Fixed intrinsic image sizing overflowing the fixed-height directory and model artwork panels. Added a regression check at 390, 1440 and 1722px; it passes. Production build passes. Reviewed fresh desktop/mobile screenshots showing the complete XM6 and XM5 silhouettes.
 
+
+## Full Sony catalog — 2026-11-07
+
+Expanded the registry to all 62 entries in Sony USA Sound Connect article 00346846 (September 2026 list): 47 headphones/earphones, two gaming models and 13 speakers. Together with 30 OnePlus catalog names, the directory contains 92 devices and the sitemap contains 94 URLs. Catalog-only Sony models retain Unknown Windows/Linux support and Not implemented macOS controls, using shared registry defaults. Added category and catalog-only filters. All 30 browser tests and the production build passed. Phone-app catalog inclusion does not establish desktop implementation or hardware validation.

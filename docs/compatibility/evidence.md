@@ -29,3 +29,9 @@ Owner-supplied Windows diagnostics for OnePlus Nord Buds 3 Pro reported product/
 ## Updating evidence
 
 Attach model, firmware, OS version, app release/commit, test date, feature, requested value and observed result. Prefer matching device readback plus physical observation where applicable. Remove Bluetooth addresses, serial numbers, browser pairing keys and personal media metadata before submitting. Maintainers review reports; the website never automatically promotes an issue report to confirmed compatibility.
+
+## Sony catalog
+
+Source: [Sony USA article 00346846: Sound Connect compatible models](https://www.sony.com/electronics/support/articles/00346846), listed as of September 2026 and reviewed 2026-11-07. The list contains 47 headphones/earphones, two gaming models and 13 speakers. All 62 are represented in the registry. Regional differences and later additions may exist.
+
+This official list establishes phone-app compatibility only. Three models have explicit desktop profiles: WH-1000XM6, WH-1000XM5 and WH-CH720N. The other entries are Catalog only with unknown model-specific desktop support, not “working” and not “hardware unsupported.” Their presence does not enable any desktop controls. Speakers and gaming models need separate transport and feature research.

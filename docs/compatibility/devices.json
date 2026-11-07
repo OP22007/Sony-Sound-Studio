@@ -62,6 +62,13 @@
       "kind": "owner report",
       "url": "evidence.md#nord-observation",
       "detail": "Windows product/capability replies and audible noise-mode change reported. Ambiguous final readback remains a known issue pending post-fix retest."
+    },
+    "sony-catalog": {
+      "title": "Sony official Sound Connect compatibility catalog",
+      "kind": "official phone-app catalog",
+      "url": "evidence.md#sony-catalog",
+      "sourceUrl": "https://www.sony.com/electronics/support/articles/00346846",
+      "detail": "Sony USA article 00346846, listed as of September 2026; reviewed 2026-11-07. It lists 47 headphones/earphones, two gaming models and 13 speakers. It establishes compatibility with Sony’s phone app only, not this independent desktop project."
     }
   },
   "devices": [
@@ -280,7 +287,8 @@
       "evidence": [
         "xm6-noise",
         "xm6-eq"
-      ]
+      ],
+      "category": "headphones"
     },
     {
       "id": "wh-1000xm5",
@@ -496,7 +504,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "implementation"
-      ]
+      ],
+      "category": "headphones"
     },
     {
       "id": "wh-ch720n",
@@ -712,7 +721,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "implementation"
-      ]
+      ],
+      "category": "headphones"
     },
     {
       "id": "oneplus-flow-buds",
@@ -932,7 +942,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds-pro-4",
@@ -1152,7 +1163,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds-pro-3",
@@ -1370,7 +1382,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds-clip",
@@ -1590,7 +1603,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds-pro-2",
@@ -1808,7 +1822,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds-pro-2r",
@@ -2026,7 +2041,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds-pro-2-light-edition",
@@ -2246,7 +2262,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds-pro",
@@ -2464,7 +2481,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds-4",
@@ -2682,7 +2700,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds-3",
@@ -2900,7 +2919,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds-ace-3",
@@ -3120,7 +3140,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds-ace-2",
@@ -3338,7 +3359,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds-z2",
@@ -3556,7 +3578,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds-z",
@@ -3775,7 +3798,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds-ace",
@@ -3993,7 +4017,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-nord-buds-4-pro",
@@ -4213,7 +4238,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-nord-buds-4",
@@ -4433,7 +4459,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-nord-buds-3-pro",
@@ -4652,7 +4679,8 @@
       "evidence": [
         "oneplus-catalog",
         "nord-observation"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-nord-buds-3",
@@ -4870,7 +4898,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-nord-buds-2",
@@ -5088,7 +5117,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds-3v",
@@ -5308,7 +5338,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds-v",
@@ -5526,7 +5557,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds-n",
@@ -5744,7 +5776,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-nord-buds",
@@ -5962,7 +5995,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-nord-buds-3r",
@@ -6180,7 +6214,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-nord-buds-2r",
@@ -6398,7 +6433,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-nord-buds-ce",
@@ -6616,7 +6652,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-buds",
@@ -6835,7 +6872,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "earbuds"
     },
     {
       "id": "oneplus-bullets-wireless-z3",
@@ -7053,7 +7091,8 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
-      ]
+      ],
+      "category": "neckband"
     },
     {
       "id": "oneplus-bulletswireless-z2-anc",
@@ -7271,7 +7310,1582 @@
       "reviewedOn": "2026-11-07",
       "evidence": [
         "oneplus-catalog"
+      ],
+      "category": "neckband"
+    },
+    {
+      "id": "wh-1000xx",
+      "name": "1000X THE COLLEXION (WH-1000XX)",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [
+        "WH-1000XX",
+        "1000X THE COLLEXION"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": "sony-1000x-collexion-black.png",
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
       ]
+    },
+    {
+      "id": "wf-l900",
+      "name": "LinkBuds (WF-L900)",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [
+        "WF-L900",
+        "LinkBuds"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-lc900",
+      "name": "LinkBuds Clip (WF-LC900)",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [
+        "WF-LC900",
+        "LinkBuds Clip"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-ls910n",
+      "name": "LinkBuds Fit (WF-LS910N)",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [
+        "WF-LS910N",
+        "LinkBuds Fit"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-l910",
+      "name": "LinkBuds Open (WF-L910)",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [
+        "WF-L910",
+        "LinkBuds Open"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-ls900n",
+      "name": "LinkBuds S (WF-LS900N)",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [
+        "WF-LS900N",
+        "LinkBuds S"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-l900uc",
+      "name": "LinkBuds UC (WF-L900UC)",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [
+        "WF-L900UC",
+        "LinkBuds UC"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "mdr-xb950b1",
+      "name": "MDR-XB950B1",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "mdr-xb950n1",
+      "name": "MDR-XB950N1",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wh-ult900n",
+      "name": "ULT WEAR (WH-ULT900N)",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [
+        "WH-ULT900N",
+        "ULT WEAR"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-1000x",
+      "name": "WF-1000X",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-1000xm3",
+      "name": "WF-1000XM3",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-1000xm4",
+      "name": "WF-1000XM4",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-1000xm5",
+      "name": "WF-1000XM5",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-1000xm6",
+      "name": "WF-1000XM6",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-c500",
+      "name": "WF-C500",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-c510",
+      "name": "WF-C510",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-c700n",
+      "name": "WF-C700N",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-c710n",
+      "name": "WF-C710N",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-h800",
+      "name": "WF-H800",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-sp700n",
+      "name": "WF-SP700N",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-sp800n",
+      "name": "WF-SP800N",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-sp900",
+      "name": "WF-SP900",
+      "brand": "Sony",
+      "category": "earbuds",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wh-1000xm2",
+      "name": "WH-1000XM2",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wh-1000xm3",
+      "name": "WH-1000XM3",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wh-1000xm4",
+      "name": "WH-1000XM4",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wh-1000xm4c",
+      "name": "WH-1000XM4C",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wh-ch520",
+      "name": "WH-CH520",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wh-ch530",
+      "name": "WH-CH530",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wh-ch700n",
+      "name": "WH-CH700N",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wh-ch730n",
+      "name": "WH-CH730N",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wh-h800",
+      "name": "WH-H800",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wh-h810",
+      "name": "WH-H810",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wh-h900n",
+      "name": "WH-H900N",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wh-h910n",
+      "name": "WH-H910N",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wh-xb700",
+      "name": "WH-XB700",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wh-xb900n",
+      "name": "WH-XB900N",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wh-xb910n",
+      "name": "WH-XB910N",
+      "brand": "Sony",
+      "category": "headphones",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wi-1000x",
+      "name": "WI-1000X",
+      "brand": "Sony",
+      "category": "neckband",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wi-1000xm2",
+      "name": "WI-1000XM2",
+      "brand": "Sony",
+      "category": "neckband",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wi-c100",
+      "name": "WI-C100",
+      "brand": "Sony",
+      "category": "neckband",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wi-c600n",
+      "name": "WI-C600N",
+      "brand": "Sony",
+      "category": "neckband",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wi-h700",
+      "name": "WI-H700",
+      "brand": "Sony",
+      "category": "neckband",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wi-sp600n",
+      "name": "WI-SP600N",
+      "brand": "Sony",
+      "category": "neckband",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wf-g700n",
+      "name": "INZONE Buds (WF-G700N)",
+      "brand": "Sony",
+      "category": "gaming",
+      "aliases": [
+        "WF-G700N",
+        "INZONE Buds"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "wh-g910n",
+      "name": "INZONE H9 II (WH-G910N)",
+      "brand": "Sony",
+      "category": "gaming",
+      "aliases": [
+        "WH-G910N",
+        "INZONE H9 II"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "ht-an7",
+      "name": "BRAVIA Theatre U (HT-AN7)",
+      "brand": "Sony",
+      "category": "speaker",
+      "aliases": [
+        "HT-AN7",
+        "BRAVIA Theatre U"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "srs-ls1",
+      "name": "LinkBuds Speaker (SRS-LS1)",
+      "brand": "Sony",
+      "category": "speaker",
+      "aliases": [
+        "SRS-LS1",
+        "LinkBuds Speaker"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "srs-ns7",
+      "name": "SRS-NS7",
+      "brand": "Sony",
+      "category": "speaker",
+      "aliases": [],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "srs-ult10",
+      "name": "ULT FIELD 1 (SRS-ULT10)",
+      "brand": "Sony",
+      "category": "speaker",
+      "aliases": [
+        "SRS-ULT10",
+        "ULT FIELD 1"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "srs-ult30",
+      "name": "ULT FIELD 3 (SRS-ULT30)",
+      "brand": "Sony",
+      "category": "speaker",
+      "aliases": [
+        "SRS-ULT30",
+        "ULT FIELD 3"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "srs-ult50",
+      "name": "ULT FIELD 5 (SRS-ULT50)",
+      "brand": "Sony",
+      "category": "speaker",
+      "aliases": [
+        "SRS-ULT50",
+        "ULT FIELD 5"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "srs-ult70",
+      "name": "ULT FIELD 7 (SRS-ULT70)",
+      "brand": "Sony",
+      "category": "speaker",
+      "aliases": [
+        "SRS-ULT70",
+        "ULT FIELD 7"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "srs-ult500",
+      "name": "ULT TOWER 5 (SRS-ULT500)",
+      "brand": "Sony",
+      "category": "speaker",
+      "aliases": [
+        "SRS-ULT500",
+        "ULT TOWER 5"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "srs-ult700",
+      "name": "ULT TOWER 7 (SRS-ULT700)",
+      "brand": "Sony",
+      "category": "speaker",
+      "aliases": [
+        "SRS-ULT700",
+        "ULT TOWER 7"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "srs-ult900",
+      "name": "ULT TOWER 9 (SRS-ULT900)",
+      "brand": "Sony",
+      "category": "speaker",
+      "aliases": [
+        "SRS-ULT900",
+        "ULT TOWER 9"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "srs-ult900ac",
+      "name": "ULT TOWER 9AC (SRS-ULT900AC)",
+      "brand": "Sony",
+      "category": "speaker",
+      "aliases": [
+        "SRS-ULT900AC",
+        "ULT TOWER 9AC"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "srs-ult1000",
+      "name": "ULT TOWER 10 (SRS-ULT1000)",
+      "brand": "Sony",
+      "category": "speaker",
+      "aliases": [
+        "SRS-ULT1000",
+        "ULT TOWER 10"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    },
+    {
+      "id": "srs-ult3000",
+      "name": "ULT TOWER MAX (SRS-ULT3000)",
+      "brand": "Sony",
+      "category": "speaker",
+      "aliases": [
+        "SRS-ULT3000",
+        "ULT TOWER MAX"
+      ],
+      "productIds": [],
+      "profile": "sony-catalog",
+      "availability": "catalog",
+      "summary": "Phone-app catalog · desktop compatibility unknown",
+      "artwork": null,
+      "platforms": {},
+      "testContext": {
+        "firmware": "Not recorded",
+        "appVersion": "No model-specific desktop test recorded",
+        "testedOn": "Not recorded"
+      },
+      "reviewedOn": "2026-11-07",
+      "evidence": [
+        "sony-catalog"
+      ]
+    }
+  ],
+  "profiles": {
+    "sony-catalog": {
+      "platforms": {
+        "windows": {
+          "connection": {
+            "status": "unknown",
+            "note": "Listed for Sony’s phone app. Model-specific desktop transport, feature capabilities and hardware behavior have not been established.",
+            "evidence": [
+              "sony-catalog"
+            ]
+          },
+          "battery": {
+            "status": "unknown",
+            "note": "Listed for Sony’s phone app. Model-specific desktop transport, feature capabilities and hardware behavior have not been established.",
+            "evidence": [
+              "sony-catalog"
+            ]
+          },
+          "noise": {
+            "status": "unknown",
+            "note": "Listed for Sony’s phone app. Model-specific desktop transport, feature capabilities and hardware behavior have not been established.",
+            "evidence": [
+              "sony-catalog"
+            ]
+          },
+          "ambient": {
+            "status": "unknown",
+            "note": "Listed for Sony’s phone app. Model-specific desktop transport, feature capabilities and hardware behavior have not been established.",
+            "evidence": [
+              "sony-catalog"
+            ]
+          },
+          "eq": {
+            "status": "unknown",
+            "note": "Listed for Sony’s phone app. Model-specific desktop transport, feature capabilities and hardware behavior have not been established.",
+            "evidence": [
+              "sony-catalog"
+            ]
+          },
+          "bass": {
+            "status": "unknown",
+            "note": "Listed for Sony’s phone app. Model-specific desktop transport, feature capabilities and hardware behavior have not been established.",
+            "evidence": [
+              "sony-catalog"
+            ]
+          },
+          "listening": {
+            "status": "unknown",
+            "note": "Listed for Sony’s phone app. Model-specific desktop transport, feature capabilities and hardware behavior have not been established.",
+            "evidence": [
+              "sony-catalog"
+            ]
+          },
+          "settings": {
+            "status": "unknown",
+            "note": "Listed for Sony’s phone app. Model-specific desktop transport, feature capabilities and hardware behavior have not been established.",
+            "evidence": [
+              "sony-catalog"
+            ]
+          },
+          "firmware": {
+            "status": "not-implemented",
+            "note": "Desktop firmware updates and factory reset are not implemented.",
+            "evidence": [
+              "implementation"
+            ]
+          }
+        },
+        "macos": {
+          "connection": {
+            "status": "not-implemented",
+            "note": "macOS control connections are disabled; phone-app compatibility does not establish desktop support.",
+            "evidence": [
+              "implementation"
+            ]
+          },
+          "battery": {
+            "status": "not-implemented",
+            "note": "macOS control connections are disabled; phone-app compatibility does not establish desktop support.",
+            "evidence": [
+              "implementation"
+            ]
+          },
+          "noise": {
+            "status": "not-implemented",
+            "note": "macOS control connections are disabled; phone-app compatibility does not establish desktop support.",
+            "evidence": [
+              "implementation"
+            ]
+          },
+          "ambient": {
+            "status": "not-implemented",
+            "note": "macOS control connections are disabled; phone-app compatibility does not establish desktop support.",
+            "evidence": [
+              "implementation"
+            ]
+          },
+          "eq": {
+            "status": "not-implemented",
+            "note": "macOS control connections are disabled; phone-app compatibility does not establish desktop support.",
+            "evidence": [
+              "implementation"
+            ]
+          },
+          "bass": {
+            "status": "not-implemented",
+            "note": "macOS control connections are disabled; phone-app compatibility does not establish desktop support.",
+            "evidence": [
+              "implementation"
+            ]
+          },
+          "listening": {
+            "status": "not-implemented",
+            "note": "macOS control connections are disabled; phone-app compatibility does not establish desktop support.",
+            "evidence": [
+              "implementation"
+            ]
+          },
+          "settings": {
+            "status": "not-implemented",
+            "note": "macOS control connections are disabled; phone-app compatibility does not establish desktop support.",
+            "evidence": [
+              "implementation"
+            ]
+          },
+          "firmware": {
+            "status": "not-implemented",
+            "note": "macOS control connections are disabled; phone-app compatibility does not establish desktop support.",
+            "evidence": [
+              "implementation"
+            ]
+          }
+        },
+        "linux": {
+          "connection": {
+            "status": "unknown",
+            "note": "Listed for Sony’s phone app. Model-specific desktop transport, feature capabilities and hardware behavior have not been established.",
+            "evidence": [
+              "sony-catalog"
+            ]
+          },
+          "battery": {
+            "status": "unknown",
+            "note": "Listed for Sony’s phone app. Model-specific desktop transport, feature capabilities and hardware behavior have not been established.",
+            "evidence": [
+              "sony-catalog"
+            ]
+          },
+          "noise": {
+            "status": "unknown",
+            "note": "Listed for Sony’s phone app. Model-specific desktop transport, feature capabilities and hardware behavior have not been established.",
+            "evidence": [
+              "sony-catalog"
+            ]
+          },
+          "ambient": {
+            "status": "unknown",
+            "note": "Listed for Sony’s phone app. Model-specific desktop transport, feature capabilities and hardware behavior have not been established.",
+            "evidence": [
+              "sony-catalog"
+            ]
+          },
+          "eq": {
+            "status": "unknown",
+            "note": "Listed for Sony’s phone app. Model-specific desktop transport, feature capabilities and hardware behavior have not been established.",
+            "evidence": [
+              "sony-catalog"
+            ]
+          },
+          "bass": {
+            "status": "unknown",
+            "note": "Listed for Sony’s phone app. Model-specific desktop transport, feature capabilities and hardware behavior have not been established.",
+            "evidence": [
+              "sony-catalog"
+            ]
+          },
+          "listening": {
+            "status": "unknown",
+            "note": "Listed for Sony’s phone app. Model-specific desktop transport, feature capabilities and hardware behavior have not been established.",
+            "evidence": [
+              "sony-catalog"
+            ]
+          },
+          "settings": {
+            "status": "unknown",
+            "note": "Listed for Sony’s phone app. Model-specific desktop transport, feature capabilities and hardware behavior have not been established.",
+            "evidence": [
+              "sony-catalog"
+            ]
+          },
+          "firmware": {
+            "status": "not-implemented",
+            "note": "Desktop firmware updates and factory reset are not implemented.",
+            "evidence": [
+              "implementation"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "catalogSources": [
+    {
+      "brand": "Sony",
+      "url": "https://www.sony.com/electronics/support/articles/00346846",
+      "asOf": "2026-09",
+      "reviewedOn": "2026-11-07",
+      "models": 62
     }
   ]
 }
