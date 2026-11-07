@@ -114,6 +114,8 @@ Release baseline: 0.1.3. OnePlus is development-source work. Sony catalog-only m
 | [OnePlus Bullets Wireless Z3](https://op22007.github.io/Sony-Sound-Studio/devices/oneplus-bullets-wireless-z3/) | Development source only | Experimental · hardware testing needed | Not implemented | Untested |
 | [OnePlus BulletsWireless Z2 ANC](https://op22007.github.io/Sony-Sound-Studio/devices/oneplus-bulletswireless-z2-anc/) | Development source only | Experimental · hardware testing needed | Not implemented | Untested |
 
+Artwork: [source URLs and SHA-256 records](artwork.json). Exact-model images are available for 91 of 92 entries; OnePlus Flow Buds remains unverified. Artwork is separate from hardware compatibility.
+
 ## Feature matrix
 
 ### WH-1000XM6

@@ -32,3 +32,9 @@ Device directory artwork provenance (exact-model originals; vendor rights retain
 | oneplus-buds-pro.jpg | https://www.oneplus.in/oneplus-buds-pro | https://oasis.opstatics.com/content/dam/oasis/page/2022/operation/mar/0307/buds-pro/KV_new_S.jpg | 6bd985bf45e4138b2287ebb3222e8460942e1d73e70041e5d02272c9785e83f3 |
 | oneplus-bullets-wireless-z2-anc.jpg | https://www.oneplus.in/oneplus-bullets-wireless-z2-anc | https://oasis.opstatics.com/content/dam/oasis/page/2023/global/product/darwin/darwin-share.jpg | e59ccbee526825be292ca232789f4bacf11f48127d05edeeedb445a741047ae95 |
 | oneplus-bullets-wireless-z3.webp | https://www.oneplus.in/oneplus-bullets-wireless-z3 | https://www.oneplus.com/content/dam/oneplus/2025/product-station/bullets-wireless-z3/images/images-kv-bg-1-da19cc.jpg.webp | 7b38948c1298786a8202f1c6429c193f760f6370fbe1bd2de231f1d9cf879de8 |
+
+2026-11-07 device directory artwork expansion:
+76 additional exact-model original images, with source URLs, SHA-256 hashes, dimensions and review notes recorded at:
+https://github.com/OP22007/Sony-Sound-Studio/blob/codex/website-scroll-launch/docs/compatibility/artwork.json
+74 images are from manufacturer product pages, image catalogs or press releases. MDR-XB950B1 is from the exact-model John Lewis listing; Buds 3V is OnePlus launch artwork reproduced by IT Home (publisher watermark retained).
+The white Buds Pro 2R / China light edition images are identical manufacturer files, explicitly assigned to those variants by their regional product pages. No related-model artwork is used for Flow Buds.

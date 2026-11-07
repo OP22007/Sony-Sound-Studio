@@ -32,3 +32,14 @@ Fixed intrinsic image sizing overflowing the fixed-height directory and model ar
 ## Full Sony catalog — 2026-11-07
 
 Expanded the registry to all 62 entries in Sony USA Sound Connect article 00346846 (September 2026 list): 47 headphones/earphones, two gaming models and 13 speakers. Together with 30 OnePlus catalog names, the directory contains 92 devices and the sitemap contains 94 URLs. Catalog-only Sony models retain Unknown Windows/Linux support and Not implemented macOS controls, using shared registry defaults. Added category and catalog-only filters. All 30 browser tests and the production build passed. Phone-app catalog inclusion does not establish desktop implementation or hardware validation.
+
+
+## Exact-model artwork expansion — 2026-11-07
+
+Added 76 visually reviewed, exact-model original image files. The directory now has artwork for all 62 Sony models and 29 of 30 OnePlus entries (91/92 total). OnePlus Flow Buds retains an explicit unavailable placeholder because its catalog identity could not be matched to authentic manufacturer artwork.
+
+Manufacturer product pages, Japanese model-image catalogs and press assets supply 74 images. MDR-XB950B1 uses its exact-model John Lewis product listing; Buds 3V uses launch artwork reproduced by IT Home with its watermark retained. White Buds Pro 2R and the China light edition share identical manufacturer image bytes, explicitly assigned to those variants by the regional pages. Rejected color swatches, text layers and loading placeholders during visual review.
+
+The provenance manifest records source page, original image URL, SHA-256, dimensions and review date for every new file. Generation checks hashes, minimum dimensions and model associations. Model pages link to their artwork source separately from device-feature evidence. Existing compatibility statuses are unchanged.
+
+Production build, generated-table consistency and all 30 browser tests passed, including all 92 model pages/image URLs and mobile/desktop image containment. Production-preview directory screenshots and contact sheets were reviewed. Source changes stay on the website branch; publishing prebuilt Pages does not merge protected main.
