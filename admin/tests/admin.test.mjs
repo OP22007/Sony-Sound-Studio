@@ -98,6 +98,16 @@ test('OAuth callback rejects a non-owner before issuing a session',async()=>{
   const result=await request(handler,`/auth/callback?code=x&state=${pending.state}`,{cookieValue:cookie(cfg,'oauth',seal(pending,cfg,'oauth')).split(';')[0]});
   assert.equal(result.statusCode,403);assert.equal(typeof result.headers['set-cookie'],'string');
 });
+test('token exchange failures provide safe actionable guidance without leaking upstream data',async()=>{
+  for(const [error,expected] of [['incorrect_client_credentials',/Client ID or Client Secret/],['bad_verification_code',/already used/],['redirect_uri_mismatch',/callback URL/],['pkce_verification_failed',/one browser tab/],['unknown-error',/check the GitHub App credentials/]]){
+    const pending={state:random(),verifier:random()};
+    const handler=createHandler({env,fetcher:async()=>new Response(JSON.stringify({error,error_description:'secret-upstream-details',access_token:'must-not-leak'}))});
+    const result=await request(handler,`/auth/callback?code=test&state=${pending.state}`,{cookieValue:cookie(cfg,'oauth',seal(pending,cfg,'oauth')).split(';')[0]});
+    assert.equal(result.statusCode,403);assert.match(result.json().error,expected);
+    assert.doesNotMatch(result.body,/secret-upstream-details|must-not-leak/);
+    assert.equal(typeof result.headers['set-cookie'],'string');
+  }
+});
 test('writes reject wrong origins, missing CSRF, non-JSON and oversized input',async()=>{
   const mock=mockGitHub(),handler=createHandler({env,fetcher:mock.fetcher});
   for(const headers of [{origin:'https://attacker.example'},{'x-csrf-token':''},{'content-type':'text/plain'}]){

@@ -6,6 +6,19 @@ import { generateCompatibility } from '../lib/compatibility.mjs';
 
 const json = (res, status, value) => { res.statusCode=status; res.setHeader('Content-Type','application/json; charset=utf-8'); res.end(JSON.stringify(value)); };
 const redirect = (res, url) => {res.statusCode=303; res.setHeader('Location',url); res.end();};
+// Only expose known error codes and our own guidance, never upstream descriptions.
+function authorizationError(code) {
+  const messages={
+    incorrect_client_credentials:'GitHub rejected the configured Client ID or Client Secret. Check that both belong to the same GitHub App in Vercel Production, then redeploy.',
+    bad_verification_code:'The GitHub sign-in code expired, was already used, or did not match this request. Start a fresh sign-in from /auth/login; do not refresh the callback page.',
+    redirect_uri_mismatch:'The GitHub App callback URL must be https://sound-studio-admin.vercel.app/auth/callback.',
+    pkce_verification_failed:'GitHub could not verify this sign-in session. Start a fresh sign-in from /auth/login in one browser tab.',
+    unverified_user_email:'Verify your GitHub account email address, then start sign-in again.',
+    access_denied:'GitHub authorization was declined. Start sign-in again and authorize the app with OP22007.',
+    application_suspended:'This GitHub App is suspended. Check its GitHub settings before signing in again.',
+  };
+  return Object.hasOwn(messages,code) ? messages[code] : 'GitHub did not authorize sign-in. Start again from /auth/login. If it repeats, check the GitHub App credentials and installation.';
+}
 async function body(req) {
   if (Number(req.headers['content-length']) > 150000) throw new HttpError(413, 'Request is too large.');
   if (req.body !== undefined) {
@@ -36,9 +49,8 @@ export function createHandler({env=process.env, fetcher=fetch}={}) {
         res.setHeader('Set-Cookie',cookie(cfg,'oauth','',0));
         if (!pending || !equal(pending.state,url.searchParams.get('state')) || !url.searchParams.get('code')) throw new HttpError(403,'Sign-in expired or state did not match. Start sign-in again.');
         const response=await fetcher('https://github.com/login/oauth/access_token',{method:'POST',headers:{Accept:'application/json','Content-Type':'application/json'},body:JSON.stringify({client_id:cfg.clientId,client_secret:cfg.clientSecret,code:url.searchParams.get('code'),redirect_uri:cfg.origin+'/auth/callback',code_verifier:pending.verifier,...(cfg.authMode === 'github-app' ? {repository_id:cfg.repoId} : {})}),signal:AbortSignal.timeout(20000)});
-        if(!response.ok) throw new HttpError(502,'GitHub sign-in failed. Please start again.');
         const auth=await response.json();
-        if(typeof auth.access_token !== 'string' || auth.error) throw new HttpError(403,'GitHub did not authorize sign-in.');
+        if(!response.ok || typeof auth.access_token !== 'string' || auth.error) throw new HttpError(response.ok ? 403 : 502,authorizationError(auth.error));
         const gh=githubClient(auth.access_token,cfg,fetcher); const user=await requireOwner(gh,cfg);
         const lifetime=Math.min(14400, Number(auth.expires_in)||14400);
         res.setHeader('Set-Cookie',[cookie(cfg,'oauth','',0),cookie(cfg,'session',seal({token:auth.access_token,userId:user.id,csrf:random()},cfg,'session',lifetime),lifetime)]);
