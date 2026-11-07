@@ -104,8 +104,17 @@ test('token exchange failures provide safe actionable guidance without leaking u
     const handler=createHandler({env,fetcher:async()=>new Response(JSON.stringify({error,error_description:'secret-upstream-details',access_token:'must-not-leak'}))});
     const result=await request(handler,`/auth/callback?code=test&state=${pending.state}`,{cookieValue:cookie(cfg,'oauth',seal(pending,cfg,'oauth')).split(';')[0]});
     assert.equal(result.statusCode,403);assert.match(result.json().error,expected);
+    assert.ok(result.json().error.includes(`(GitHub error: ${error})`));
     assert.doesNotMatch(result.body,/secret-upstream-details|must-not-leak/);
     assert.equal(typeof result.headers['set-cookie'],'string');
+  }
+});
+test('malformed GitHub error fields cannot leak arbitrary upstream content',async()=>{
+  for(const error of ['sensitive details / ? =', '<script>alert(1)</script>', 'x'.repeat(100), {secret:'private'}]){
+    const pending={state:random(),verifier:random()},handler=createHandler({env,fetcher:async()=>new Response(JSON.stringify({error}))});
+    const result=await request(handler,`/auth/callback?code=test&state=${pending.state}`,{cookieValue:cookie(cfg,'oauth',seal(pending,cfg,'oauth')).split(';')[0]});
+    assert.equal(result.statusCode,403);assert.match(result.json().error,/GitHub error: invalid_token_response/);
+    assert.doesNotMatch(result.body,/sensitive details|<script>|private/);
   }
 });
 test('writes reject wrong origins, missing CSRF, non-JSON and oversized input',async()=>{

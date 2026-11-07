@@ -6,7 +6,7 @@ import { generateCompatibility } from '../lib/compatibility.mjs';
 
 const json = (res, status, value) => { res.statusCode=status; res.setHeader('Content-Type','application/json; charset=utf-8'); res.end(JSON.stringify(value)); };
 const redirect = (res, url) => {res.statusCode=303; res.setHeader('Location',url); res.end();};
-// Only expose known error codes and our own guidance, never upstream descriptions.
+// Expose bounded machine error codes and our own guidance, never upstream descriptions.
 function authorizationError(code) {
   const messages={
     incorrect_client_credentials:'GitHub rejected the configured Client ID or Client Secret. Check that both belong to the same GitHub App in Vercel Production, then redeploy.',
@@ -16,8 +16,11 @@ function authorizationError(code) {
     unverified_user_email:'Verify your GitHub account email address, then start sign-in again.',
     access_denied:'GitHub authorization was declined. Start sign-in again and authorize the app with OP22007.',
     application_suspended:'This GitHub App is suspended. Check its GitHub settings before signing in again.',
+    invalid_repository:'GitHub rejected access to the configured repository. Install this GitHub App on OP22007/Sony-Sound-Studio and approve its repository permissions.',
+    no_access:'This GitHub App does not have the required access. Install it on OP22007/Sony-Sound-Studio and approve its repository permissions.',
   };
-  return Object.hasOwn(messages,code) ? messages[code] : 'GitHub did not authorize sign-in. Start again from /auth/login. If it repeats, check the GitHub App credentials and installation.';
+  const safeCode=typeof code === 'string' && /^[a-z][a-z_-]{0,63}$/.test(code) ? code : 'invalid_token_response';
+  return (Object.hasOwn(messages,safeCode) ? messages[safeCode] : 'GitHub did not authorize sign-in. Start again from /auth/login. If it repeats, check the GitHub App credentials and installation.')+` (GitHub error: ${safeCode})`;
 }
 async function body(req) {
   if (Number(req.headers['content-length']) > 150000) throw new HttpError(413, 'Request is too large.');
