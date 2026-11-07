@@ -43,3 +43,11 @@ Manufacturer product pages, Japanese model-image catalogs and press assets suppl
 The provenance manifest records source page, original image URL, SHA-256, dimensions and review date for every new file. Generation checks hashes, minimum dimensions and model associations. Model pages link to their artwork source separately from device-feature evidence. Existing compatibility statuses are unchanged.
 
 Production build, generated-table consistency and all 30 browser tests passed, including all 92 model pages/image URLs and mobile/desktop image containment. Production-preview directory screenshots and contact sheets were reviewed. Source changes stay on the website branch; publishing prebuilt Pages does not merge protected main.
+
+## Owner compatibility admin — 2026-11-07
+
+Added the separate `admin/` Vercel application with GitHub OAuth state/PKCE and a server-side account-ID check for OP22007 (140067318). Encrypted HttpOnly sessions, CSRF/origin checks, bounded feature edits and non-forced branch updates protect private routes and writes. No admin HTML or backend is included in the GitHub Pages build. Extracted the static compatibility renderer into a shared pure module so admin publication and website builds use the same output.
+
+Owner reviews record per-model, per-platform, per-feature statuses and test evidence. Confirmation requires a complete hardware test context. GitHub save and Pages publication are explicit separate operations; original tests and shared profile defaults are preserved. Deployment requests are not presented as completed deployments.
+
+19 Node tests passed for authentication denial, cookie tampering/expiry, OAuth state/PKCE, CSRF, confirmation requirements, markup escaping, atomic source commits, stale saves/publications and failed deployment requests. All 34 browser tests passed (four admin workflow/layout tests plus the existing 30 website checks); production build and generated-table consistency passed. Desktop/mobile editor screenshots were reviewed. OAuth/GitHub operations are mocked in automated tests. Live Vercel/OAuth validation remains pending the owner's project URL, OAuth app registration and environment secrets; no claim of completed online deployment is made.

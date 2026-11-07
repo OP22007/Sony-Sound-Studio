@@ -5,12 +5,14 @@ on:
     branches: [main]
     paths:
       - 'website/**'
+      - 'admin/**'
       - 'docs/compatibility/**'
       - '.github/workflows/website.yml'
   workflow_dispatch:
   pull_request:
     paths:
       - 'website/**'
+      - 'admin/**'
       - 'docs/compatibility/**'
       - '.github/workflows/website.yml'
 
@@ -36,6 +38,7 @@ jobs:
           cache: npm
           cache-dependency-path: website/package-lock.json
       - run: npm ci
+      - run: npm --prefix ../admin test
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm test
