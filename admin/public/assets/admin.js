@@ -50,17 +50,18 @@ function renderFeatures() {
   for(const button of document.querySelectorAll('[data-platform]'))button.setAttribute('aria-pressed',String(button.dataset.platform===platform));
 }
 function renderForm() {
+  const now=new Date(), today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
   const draft=drafts.get(platform+'/'+feature), cell=effective()[feature], current=draft||cell;
   $('feature-name').textContent=state.registry.features[feature];$('current-status').textContent=state.registry.statuses[cell.status];$('current-note').textContent=cell.note;
   $('current-evidence').replaceChildren();
   for(const id of cell.evidence){const record=state.registry.evidence[id];const details=document.createElement('details');details.append(text('summary',record.title),text('p',record.detail));$('current-evidence').append(details);}
   $('status').value=current.status;$('note').value=current.note;
   for(const key of testKeys) {
-    const value=draft?.test?.[key]||'';
+    const value=draft?.test?.[key] ?? (key==='testedOn'?today:'');
     if(['firmware','appVersion'].includes(key)) renderVersion(key,value);
     else $(key).value=value;
   }
-  $('testedOn').max=new Date().toISOString().slice(0,10);
+  $('testedOn').max=today;
   formDirty=false;validation();controls();
 }
 function renderVersion(key,value) {
