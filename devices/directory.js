@@ -2,6 +2,7 @@ const form = document.querySelector('.filters');
 if (form) {
   const cards = [...document.querySelectorAll('.device-card')];
   const search = document.querySelector('#device-search');
+  const category = document.querySelector('#device-category');
   const brand = document.querySelector('#device-brand');
   const platform = document.querySelector('#device-platform');
   const status = document.querySelector('#device-status');
@@ -12,6 +13,7 @@ if (form) {
     for (const card of cards) {
       const matches = terms.every(term => card.dataset.search.includes(term)) &&
         (!brand.value || card.dataset.brand === brand.value) &&
+        (!category.value || card.dataset.category === category.value) &&
         (!build.value || card.dataset.availability === build.value) &&
         (!status.value || card.dataset[platform.value].split(' ').includes(status.value));
       card.hidden = !matches;
