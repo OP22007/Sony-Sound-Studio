@@ -20,6 +20,7 @@ function mockGitHub({ownerId=cfg.ownerId,refConflict=false,failPagesBuild=false,
     let result;
     if(url==='https://github.com/login/oauth/access_token')result={access_token:'test-access-token'};
     else if(path==='/user')result={id:ownerId,login:'OP22007'};
+    else if(path.endsWith('/releases'))result=[{tag_name:'v0.1.3',draft:false},{tag_name:'v9.9.9',draft:true}];
     else if(path.includes('/git/ref/heads/'))result={object:{sha:path.endsWith('gh-pages')?'pages-head':refConflict?'changed-head':'source-head'}};
     else if(path.includes('/git/commits/')&&method==='GET')result={tree:{sha:'base-tree'}};
     else if(path.includes('/contents/docs/compatibility/')){const value=path.endsWith('artwork.json')?artwork:baseline;result={encoding:'base64',content:Buffer.from(JSON.stringify(value)).toString('base64')};}
@@ -129,11 +130,21 @@ test('owner can load private dashboard and state without receiving a GitHub toke
   const mock=mockGitHub(),handler=createHandler({env,fetcher:mock.fetcher});
   assert.match((await request(handler,'/',{signedIn:true})).body,/test-form/);
   const response=await request(handler,'/api/state',{signedIn:true});assert.equal(response.statusCode,200);assert.equal(response.json().registry.devices.length,92);assert.equal(response.json().csrf,session.csrf);assert.doesNotMatch(response.body,/test-access-token|test-secret/);
+  assert.deepEqual(response.json().appVersions,['v0.1.3']);
 });
-test('confirmation requires complete hardware evidence and a real test date',()=>{
-  for(const key of ['firmware','appVersion','testedOn','osVersion','requested','readback','observed','steps']){
+test('release lookup failure keeps the editor available with recorded and custom version choices',async()=>{
+  const mock=mockGitHub(),handler=createHandler({env,fetcher:async(url,options)=>new URL(url).pathname.endsWith('/releases')?new Response('{}',{status:503}):mock.fetcher(url,options)});
+  const response=await request(handler,'/api/state',{signedIn:true});assert.equal(response.statusCode,200);
+  assert.deepEqual(response.json().appVersions,[]);assert.equal(response.json().registry.devices.length,92);
+});
+test('confirmation requires version context and a real test date; detailed observations are optional',()=>{
+  for(const key of ['firmware','appVersion','testedOn']){
     const data=input();delete data.changes[0].test[key];assert.throws(()=>applyEdits(baseline,data,cfg.ownerId),/requires/);
   }
+  const minimal=input();for(const key of ['osVersion','requested','readback','observed','steps'])delete minimal.changes[0].test[key];
+  const updated=applyEdits(baseline,minimal,cfg.ownerId);
+  assert.equal(updated.devices.find(m=>m.id===minimal.modelId).platforms.windows.noise.status,'confirmed');
+  assert.equal(generateCompatibility(updated,artwork).size,94);
   const data=input();data.changes[0].test.testedOn='2026-02-31';assert.throws(()=>applyEdits(baseline,data,cfg.ownerId),/real test date/);
   data.changes[0].test.testedOn='2026-99-99';assert.throws(()=>applyEdits(baseline,data,cfg.ownerId),/real test date/);
 });

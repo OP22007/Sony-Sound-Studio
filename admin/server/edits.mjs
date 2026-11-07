@@ -37,7 +37,7 @@ export function applyEdits(original, input, ownerId, now = new Date()) {
       if (url.protocol !== 'https:' || url.username || url.password) throw new HttpError(400, 'Evidence link must be an HTTPS URL without credentials.');
     }
     if (status === 'confirmed') {
-      for (const key of ['firmware','appVersion','testedOn','osVersion','requested','readback','observed','steps']) {
+      for (const key of ['firmware','appVersion','testedOn']) {
         if (!fields[key] || /^(unknown|not recorded|n\/a|none)$/i.test(fields[key])) throw new HttpError(400, `Confirmed working requires ${key}.`);
       }
     }

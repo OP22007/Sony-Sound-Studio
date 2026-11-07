@@ -1,7 +1,8 @@
 'use strict';
 const $ = id => document.getElementById(id);
-const testKeys = ['testedOn','firmware','appVersion','osVersion','requested','readback','observed','steps','reference'];
-let state, model, platform='windows', feature='connection', busy=false, formDirty=false;
+const testKeys = ['testedOn','firmware','appVersion','requested','readback','observed','steps','reference'];
+const clientOS = navigator.userAgentData?.platform || navigator.platform || navigator.userAgent;
+let state, model, platform=/mac/i.test(clientOS)?'macos':/linux/i.test(clientOS)?'linux':'windows', feature='connection', busy=false, formDirty=false;
 const drafts = new Map();
 const text = (tag,value,className) => {const el=document.createElement(tag);el.textContent=value;if(className)el.className=className;return el;};
 function notify(message, error=false) { $('notice').textContent=message;$('notice').className=error?'notice error':'notice'; }
@@ -54,13 +55,36 @@ function renderForm() {
   $('current-evidence').replaceChildren();
   for(const id of cell.evidence){const record=state.registry.evidence[id];const details=document.createElement('details');details.append(text('summary',record.title),text('p',record.detail));$('current-evidence').append(details);}
   $('status').value=current.status;$('note').value=current.note;
-  for(const key of testKeys)$(key).value=draft?.test?.[key]||'';
+  for(const key of testKeys) {
+    const value=draft?.test?.[key]||'';
+    if(['firmware','appVersion'].includes(key)) renderVersion(key,value);
+    else $(key).value=value;
+  }
   $('testedOn').max=new Date().toISOString().slice(0,10);
   formDirty=false;validation();controls();
 }
+function renderVersion(key,value) {
+  const records=Object.values(state.registry.evidence);
+  const known=key==='firmware'
+    ? [model.testContext?.firmware,...records.filter(r=>r.models?.includes(model.id)).flatMap(r=>[...(r.firmware||[]),r.test?.firmware])]
+    : [...(state.appVersions||[]),...state.registry.devices.map(m=>m.testContext?.appVersion),...records.map(r=>r.test?.appVersion)];
+  const versions=[...new Set(known.filter(v=>typeof v==='string'&&v.trim()&&!/^(unknown|not recorded|n\/a|none)$/i.test(v.trim())).map(v=>v.trim()))];
+  const select=$(key);select.replaceChildren();
+  for(const [id,label] of [['','Choose a version…'],...versions.map(v=>[v,v]),['__other__','Other version / enter manually…']]){
+    const option=text('option',label);option.value=id;select.append(option);
+  }
+  select.value=value?(versions.includes(value)?value:'__other__'):'';
+  $(key+'-custom').value=select.value==='__other__'?value:'';
+}
+function testValue(key) {return ['firmware','appVersion'].includes(key)&&$(key).value==='__other__'?$(key+'-custom').value:$(key).value;}
 function validation() {
   const confirmed=$('status').value==='confirmed';
-  for(const key of testKeys)$(key).required=confirmed&&key!=='reference';
+  for(const key of testKeys)$(key).required=confirmed&&['testedOn','firmware','appVersion'].includes(key);
+  for(const key of ['firmware','appVersion']){
+    const custom=$(key).value==='__other__';
+    $(key+'-custom-field').hidden=!custom;
+    $(key+'-custom').required=confirmed&&custom;
+  }
 }
 function renderDrafts() {
   $('draft-count').textContent=`${drafts.size} feature ${drafts.size===1?'change':'changes'}`;$('drafts').replaceChildren();
@@ -72,9 +96,10 @@ $('search').addEventListener('input',()=>{if(state)listModels();});
 $('summary').addEventListener('input',controls);
 for(const button of document.querySelectorAll('[data-platform]'))button.addEventListener('click',()=>{if(!allowNavigation())return;platform=button.dataset.platform;renderFeatures();renderForm();});
 $('test-form').addEventListener('input',()=>{formDirty=true;validation();controls();});
+$('test-form').addEventListener('change',()=>{formDirty=true;validation();controls();});
 $('status').addEventListener('change',()=>{formDirty=true;validation();controls();});
 $('test-form').addEventListener('submit',event=>{
-  event.preventDefault();drafts.set(platform+'/'+feature,{platform,feature,status:$('status').value,note:$('note').value,test:Object.fromEntries(testKeys.map(key=>[key,$(key).value]))});formDirty=false;renderDrafts();renderFeatures();notify('Result added to this model’s review. Save when the review is ready.');
+  event.preventDefault();drafts.set(platform+'/'+feature,{platform,feature,status:$('status').value,note:$('note').value,test:Object.fromEntries(testKeys.map(key=>[key,testValue(key)]))});formDirty=false;renderDrafts();renderFeatures();notify('Result added to this model’s review. Save when the review is ready.');
 });
 $('save').addEventListener('click',async()=>{
   busy=true;controls();notify('Saving the review to GitHub…');

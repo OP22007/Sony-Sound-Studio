@@ -74,8 +74,9 @@ export function createHandler({env=process.env, fetcher=fetch}={}) {
       }
       if (path === '/api/state' && req.method === 'GET') {
         const snapshot=await readSnapshot(gh,cfg);
-        const [registry,pages]=await Promise.all([readJSON(gh,cfg,'docs/compatibility/devices.json',snapshot.sha),readSnapshot(gh,cfg,'gh-pages')]);
-        return json(res,200,{registry,baseSha:snapshot.sha,pagesSha:pages.sha,csrf:token.csrf,user:{login:user.login},branch:cfg.branch});
+        const [registry,pages,releases]=await Promise.all([readJSON(gh,cfg,'docs/compatibility/devices.json',snapshot.sha),readSnapshot(gh,cfg,'gh-pages'),gh(`/repos/${cfg.repo}/releases?per_page=100`).catch(()=>[])]);
+        const appVersions=Array.isArray(releases) ? releases.filter(r=>!r.draft && typeof r.tag_name === 'string').map(r=>r.tag_name) : [];
+        return json(res,200,{registry,appVersions,baseSha:snapshot.sha,pagesSha:pages.sha,csrf:token.csrf,user:{login:user.login},branch:cfg.branch});
       }
       if (path === '/api/save' && req.method === 'POST') {
         const input=await body(req), snapshot=await readSnapshot(gh,cfg);

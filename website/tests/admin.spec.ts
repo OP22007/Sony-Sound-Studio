@@ -12,7 +12,7 @@ async function workspace(page: any, rejectSave = false) {
     const path = new URL(route.request().url()).pathname;
     if (path === '/') return route.fulfill({ contentType: 'text/html', body: dashboard });
     if (path.startsWith('/assets/')) return route.fulfill({ contentType: path.endsWith('.js') ? 'text/javascript' : 'text/css', body: readFileSync(new URL('admin/public' + path, root), 'utf8') });
-    if (path === '/api/state') return route.fulfill({ json: { registry: structuredClone(original), baseSha: 'source-head', pagesSha: 'pages-head', csrf: 'test-csrf', user: { login: 'OP22007' }, branch: 'codex/website-scroll-launch' } });
+    if (path === '/api/state') return route.fulfill({ json: { registry: structuredClone(original), appVersions:['0.1.3','0.1.4'], baseSha: 'source-head', pagesSha: 'pages-head', csrf: 'test-csrf', user: { login: 'OP22007' }, branch: 'codex/website-scroll-launch' } });
     if (path === '/api/save') {
       const data = route.request().postDataJSON(); writes.push(data);
       expect(route.request().headers()['x-csrf-token']).toBe('test-csrf');
@@ -36,7 +36,10 @@ async function stageResult(page: any) {
   await page.locator('#features').getByRole('button', { name: /Noise control & transparency/ }).click();
   await page.locator('#status').selectOption('confirmed');
   await page.locator('#note').fill('Three modes and button tracking verified.');
-  for (const [key, value] of Object.entries({ testedOn: '2026-01-01', firmware: '3.1.5', appVersion: '0.1.3', osVersion: 'Windows 11', requested: 'ANC, Ambient, Off', readback: 'All modes matched', observed: 'Audible changes matched', steps: 'Select each mode and then press the hardware button.' })) await page.locator('#' + key).fill(value);
+  await page.locator('[data-platform="windows"]').click();
+  await page.locator('#testedOn').fill('2026-01-01');
+  await page.locator('#firmware').selectOption('3.1.5');
+  await page.locator('#appVersion').selectOption('0.1.3');
   await page.getByRole('button', { name: 'Add result to review' }).click();
 }
 
@@ -50,6 +53,8 @@ test('owner editor stages evidence, saves to GitHub and publishes only saved sta
   await page.locator('#save').click();
   await expect(page.locator('#notice')).toContainText('Saved to GitHub');
   expect(writes[0].changes[0]).toMatchObject({ platform: 'windows', feature: 'noise', status: 'confirmed', test: { firmware: '3.1.5' } });
+  expect(writes[0].changes[0].test).toMatchObject({requested:'',readback:'',observed:'',steps:''});
+  expect(writes[0].changes[0].test.osVersion).toBeUndefined();
   await expect(page.locator('#draft-count')).toHaveText('0 feature changes');
   await page.locator('#publish').click();
   await expect(page.locator('#notice')).toContainText('deployment requested');
@@ -82,4 +87,26 @@ test('owner editor fits mobile and desktop without horizontal overflow', async (
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await expect(page.locator('#model-name')).toBeVisible();
   }
+});
+test('version dropdowns stay model-specific and support custom versions',async({page})=>{
+  const writes=await workspace(page);await stageResult(page);
+  await page.locator('#firmware').selectOption('__other__');await page.locator('#firmware-custom').fill('4.2.0');
+  await page.locator('#appVersion').selectOption('__other__');await page.locator('#appVersion-custom').fill('codex-test-commit');
+  await page.getByRole('button',{name:'Add result to review'}).click();
+  await page.locator('#save').click();await expect(page.locator('#notice')).toContainText('Saved to GitHub');
+  expect(writes[0].changes[0].test).toMatchObject({firmware:'4.2.0',appVersion:'codex-test-commit'});
+  await expect(page.locator('#firmware option[value="4.2.0"]')).toHaveCount(1);
+  await page.locator('#search').fill('WH-1000XM5');await page.locator('#models').getByRole('button',{name:'WH-1000XM5',exact:true}).click();
+  await expect(page.locator('#firmware option[value="4.2.0"]')).toHaveCount(0);
+  await expect(page.locator('#appVersion option[value="0.1.4"]')).toHaveCount(1);
+});
+test('platform defaults to the detected OS and can be overridden',async({page})=>{
+  await page.addInitScript(()=>{
+    Object.defineProperty(navigator,'userAgentData',{value:{platform:'macOS'},configurable:true});
+  });
+  await workspace(page);
+  await expect(page.locator('[data-platform="macos"]')).toHaveAttribute('aria-pressed','true');
+  await page.locator('[data-platform="linux"]').click();
+  await expect(page.locator('[data-platform="linux"]')).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('#osVersion')).toHaveCount(0);
 });
