@@ -1,9 +1,12 @@
+import { configureDownloads } from './platform-downloads';
 import { animate, createTimeline, stagger } from 'animejs';
 import { mountScrollMotion } from './scroll-motion';
 import type { SoundStageController, SoundStageMode } from './sound-stage';
 
 const $ = <T extends Element = HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 const $$ = <T extends Element = HTMLElement>(selector: string) => [...document.querySelectorAll<T>(selector)];
+configureDownloads();
+
 const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
 const forceStatic = matchMedia('(min-width: 0px)');
 let motionPaused = motionPreference.matches;

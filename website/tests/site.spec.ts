@@ -1,5 +1,34 @@
 import { expect, test } from '@playwright/test';
 
+for (const device of [
+  { platform: 'Win32', ua: 'Windows NT 10.0', touch: 0, label: 'Get the Windows preview', target: 'windows' },
+  { platform: 'MacIntel', ua: 'Macintosh', touch: 0, label: 'Choose your Mac preview', target: 'macos' },
+  { platform: 'Linux x86_64', ua: 'X11; Linux x86_64', touch: 0, label: 'Get the Linux preview', target: 'linux' },
+  { platform: 'MacIntel', ua: 'Macintosh', touch: 5, label: 'View desktop downloads', target: '' },
+  { platform: 'Linux armv8l', ua: 'Android', touch: 5, label: 'View desktop downloads', target: '' },
+  { platform: '', ua: 'Unknown', touch: 0, label: 'View desktop downloads', target: '' },
+]) {
+  test(`download recommendation: ${device.platform} / ${device.ua} / ${device.touch}`, async ({ page }) => {
+    await page.addInitScript(device => {
+      Object.defineProperties(navigator, {
+        platform: { value: device.platform }, userAgent: { value: device.ua },
+        maxTouchPoints: { value: device.touch }, userAgentData: { value: undefined },
+      });
+    }, device);
+    await page.goto('/');
+    const primary = page.locator('[data-os-download]');
+    await expect(primary).toContainText(device.label);
+    await expect(page.locator('.platform-card')).toHaveCount(3);
+    if (device.target) {
+      await expect(page.locator(`#download-${device.target}`)).toHaveClass(/is-recommended/);
+      await expect(primary).toHaveAttribute('href', device.target === 'macos' ? '#download-macos' : 'https://github.com/OP22007/Sony-Sound-Studio/releases');
+    } else {
+      await expect(primary).toHaveAttribute('href', '#download');
+      await expect(page.locator('.is-recommended')).toHaveCount(0);
+    }
+  });
+}
+
 test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
 });
@@ -103,7 +132,7 @@ test('mobile navigation supports keyboard opening, link navigation and Escape', 
 
 test('downloads link to real releases and disclose platform limitations', async ({ page }) => {
   await page.goto('/');
-  for (const link of await page.locator('.platform-card').all()) await expect(link).toHaveAttribute('href', 'https://github.com/OP22007/Sony-Sound-Studio/releases/latest');
+  for (const link of await page.locator('.platform-card').all()) await expect(link).toHaveAttribute('href', 'https://github.com/OP22007/Sony-Sound-Studio/releases');
   await expect(page.locator('.platform-card').filter({ hasText: 'macOS' })).toContainText('Headphone control is not enabled');
   await page.locator('summary').filter({ hasText: 'Is this the official Sony app?' }).click();
   await expect(page.locator('details[open]')).toContainText('unaffiliated');
@@ -156,7 +185,7 @@ test('JavaScript-disabled mobile visitors can read the site and use download nav
   await page.goto('http://127.0.0.1:4321/');
   await expect(page.getByRole('navigation').getByRole('link', { name: 'Get the preview' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await page.getByRole('link', { name: 'Meet your new studio', exact: true }).click();
+  await page.getByRole('link', { name: 'View desktop downloads', exact: true }).click();
   await expect(page).toHaveURL(/#download$/);
   await expect(page.locator('.platform-card')).toHaveCount(3);
   await context.close();
