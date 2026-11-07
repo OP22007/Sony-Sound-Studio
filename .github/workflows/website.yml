@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - 'website/**'
+      - 'docs/compatibility/**'
       - '.github/workflows/website.yml'
   workflow_dispatch:
   pull_request:
     paths:
       - 'website/**'
+      - 'docs/compatibility/**'
       - '.github/workflows/website.yml'
 
 permissions:

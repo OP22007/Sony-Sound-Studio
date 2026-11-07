@@ -18,3 +18,8 @@ test-results/
 .env
 .env.*
 !.env.example
+
+# Generated from the compatibility registry by website/scripts/generate-devices.mjs
+website/public/devices/index.html
+website/public/devices/*/
+website/public/devices/manrope.woff2

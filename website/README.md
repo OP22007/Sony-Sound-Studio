@@ -52,3 +52,9 @@ Set the environment variable `SITE_URL` to your final HTTPS domain, such as `htt
 One Anime.js entrance sequence, intersection-triggered content reveals, interpolated EQ curves and a mode-reactive WebGL scene. Three.js is loaded separately from the essential page. The scene caps pixel density, pauses outside the viewport/in a background document, respects reduced motion, provides a manual pause and disposes resources. The page uses native scrolling. Phone GPU/frame-time performance still requires real-device testing.
 
 Scrolling choreographs a separate product layer, counter-moving oversized typography, a rotating acoustic dial, the app preview unfolding in perspective, EQ depth and model parallax. Heading words enter in staggered Anime.js sequences. One event-scheduled animation frame batches layout reads and style writes; there is no permanent scroll render loop. System reduced motion and the footer pause button disable all scroll transforms.
+
+## Device directory
+
+`docs/compatibility/devices.json` is the shared compatibility registry. Run `npm run devices` after reviewing a change to regenerate static model pages and the GitHub table in `docs/compatibility/README.md`. Build and development startup validate the registry and reject stale generated Markdown. Generated HTML and the directory font are ignored; CSS and filter JavaScript are maintained in `public/devices/`. The production sitemap includes all model pages.
+
+Confirmation must cite hardware evidence for the recorded model, firmware and platform. Do not use a review date as a test date. Missing mappings remain Unknown. Exact-model art is optional and must have provenance in CREDITS.txt. Evidence links currently target the source branch until this website is merged; update the branch reference in the generator when retiring that branch.
