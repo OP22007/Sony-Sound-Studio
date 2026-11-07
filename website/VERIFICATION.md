@@ -13,3 +13,13 @@ The headphone images are authentic vendor product photography. The interactive 3
 Automated graphics checks used Chromium software rendering; they do not establish frame-rate or energy use on physical phones. Real-device GPU testing remains outstanding.
 
 Published to https://op22007.github.io/Sony-Sound-Studio/ using the prebuilt `gh-pages` branch. GitHub's Pages deployment succeeded. The source is in PR #6; protected-main CI must pass before merging. `node scripts/capture-live.mjs` checks the public page and saves screenshots under the ignored test-results directory.
+
+## Device directory — 2026-11-07
+
+- Shared registry validates 33 named models (three Sony profiles; 30 OnePlus names / 32 product IDs), all nine feature groups on Windows/macOS/Linux, evidence references and scoped hardware confirmations.
+- Existing website suite: 21 passed. Device-directory suite: 7 passed after correcting local directory-index routing and the filter test locator.
+- Directory tests cover combined filters, aliases/product IDs, all 33 static pages and exact-model image URLs, unresolved Nord readback, 320/390/1440px layouts and no-JavaScript navigation.
+- Production build and generated GitHub-table consistency check passed. Production sitemap contains 35 URLs.
+- Production-preview screenshots reviewed at desktop and mobile widths; browser filtering returned three Sony models with no page errors.
+- Published directory, XM6 page and Nord Buds 3 Pro page each returned HTTP 200 from GitHub Pages.
+- No new device hardware validation was performed. Unknown test dates/builds remain unknown; protocol research is not promoted to hardware confirmation. Source changes remain on the existing website pull request; prebuilt Pages publishing does not merge protected main.
