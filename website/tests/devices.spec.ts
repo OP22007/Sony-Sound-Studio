@@ -83,3 +83,23 @@ test('directory and detailed compatibility remain available without JavaScript',
   await expect(page.locator('tbody tr')).toHaveCount(9);
   await context.close();
 });
+
+test('product artwork fits its panel instead of overflowing and being clipped', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const width of [390, 1440, 1722]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/devices/');
+    for (const image of await page.locator('.card-art img').all()) {
+      const bounds = await image.evaluate(img => {
+        const panel = img.parentElement!.getBoundingClientRect();
+        const rect = img.getBoundingClientRect();
+        return { fits: rect.top >= panel.top - 1 && rect.bottom <= panel.bottom + 1 && rect.left >= panel.left - 1 && rect.right <= panel.right + 1 };
+      });
+      expect(bounds.fits).toBe(true);
+      await expect(image).toHaveCSS('object-fit', 'contain');
+    }
+    await page.goto('/devices/wh-1000xm6/');
+    const dimensions = await page.locator('.model-art img').evaluate(img => ({ image: img.getBoundingClientRect().height, panel: img.parentElement!.getBoundingClientRect().height }));
+    expect(dimensions.image).toBeLessThanOrEqual(dimensions.panel);
+  }
+});

@@ -23,3 +23,8 @@ Published to https://op22007.github.io/Sony-Sound-Studio/ using the prebuilt `gh
 - Production-preview screenshots reviewed at desktop and mobile widths; browser filtering returned three Sony models with no page errors.
 - Published directory, XM6 page and Nord Buds 3 Pro page each returned HTTP 200 from GitHub Pages.
 - No new device hardware validation was performed. Unknown test dates/builds remain unknown; protocol research is not promoted to hardware confirmation. Source changes remain on the existing website pull request; prebuilt Pages publishing does not merge protected main.
+
+## Artwork containment correction — 2026-11-07
+
+Fixed intrinsic image sizing overflowing the fixed-height directory and model artwork panels. Added a regression check at 390, 1440 and 1722px; it passes. Production build passes. Reviewed fresh desktop/mobile screenshots showing the complete XM6 and XM5 silhouettes.
+
