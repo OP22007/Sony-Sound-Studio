@@ -44,6 +44,7 @@ test('configuration fails closed and pins owner ID, repository and working branc
   assert.throws(()=>config({}),/required/);assert.throws(()=>config({...env,SESSION_SECRET:'short'}),/32 random bytes/);
   assert.throws(()=>config({...env,ADMIN_ORIGIN:'http://unsafe.example'}),/HTTPS/);
   assert.throws(()=>config({...env,SOURCE_BRANCH:'main'}),/codex/);
+  assert.throws(()=>config({...env,GITHUB_AUTH_MODE:'unknown'}),/GITHUB_AUTH_MODE/);
   assert.equal(config({...env,ADMIN_GITHUB_USER_ID:'999'}).ownerId,140067318);
 });
 test('sealed sessions reject tampering, expiry, wrong purpose and different origin',()=>{
@@ -72,11 +73,24 @@ test('OAuth uses state and S256 PKCE, rejects state mismatch before token exchan
   const mock=mockGitHub(),handler=createHandler({env,fetcher:mock.fetcher});
   const start=await request(handler,'/auth/login');const url=new URL(start.headers.location);
   assert.equal(url.searchParams.get('code_challenge_method'),'S256');assert.equal(url.searchParams.get('redirect_uri'),cfg.origin+'/auth/callback');
+  assert.equal(url.searchParams.get('scope'),'public_repo');
   const cookieValue=start.headers['set-cookie'].split(';')[0],pending=unseal(cookieValue.split('=')[1],cfg,'oauth');
   assert.equal(url.searchParams.get('code_challenge'),challenge(pending.verifier));
   const bad=await request(handler,'/auth/callback?code=test-code&state=wrong',{cookieValue});assert.equal(bad.statusCode,403);assert.equal(mock.calls.length,0);
   const good=await request(handler,`/auth/callback?code=test-code&state=${pending.state}`,{cookieValue});assert.equal(good.statusCode,303);
   assert.match(good.headers['set-cookie'][1],/__Host-studio_session=/);assert.doesNotMatch(good.headers['set-cookie'][1],/test-access-token/);
+  assert.equal(mock.calls[0].data.code_verifier,pending.verifier);
+  assert.equal(mock.calls[0].data.repository_id,undefined);
+});
+test('GitHub App sign-in omits OAuth scopes and restricts the token to the fixed repository',async()=>{
+  const appEnv={...env,GITHUB_AUTH_MODE:'github-app'},mock=mockGitHub(),handler=createHandler({env:appEnv,fetcher:mock.fetcher});
+  const start=await request(handler,'/auth/login'),url=new URL(start.headers.location);
+  assert.equal(url.searchParams.has('scope'),false);
+  assert.equal(url.searchParams.get('code_challenge_method'),'S256');
+  const cookieValue=start.headers['set-cookie'].split(';')[0],pending=unseal(cookieValue.split('=')[1],config(appEnv),'oauth');
+  const result=await request(handler,`/auth/callback?code=test-code&state=${pending.state}`,{cookieValue});
+  assert.equal(result.statusCode,303);
+  assert.equal(mock.calls[0].data.repository_id,1441020213);
   assert.equal(mock.calls[0].data.code_verifier,pending.verifier);
 });
 test('OAuth callback rejects a non-owner before issuing a session',async()=>{

@@ -27,14 +27,15 @@ export function createHandler({env=process.env, fetcher=fetch}={}) {
       if (path === '/auth/login' && req.method === 'GET') {
         const state=random(), verifier=random();
         res.setHeader('Set-Cookie',cookie(cfg,'oauth',seal({state,verifier},cfg,'oauth',600),600));
-        const query=new URLSearchParams({client_id:cfg.clientId,redirect_uri:cfg.origin+'/auth/callback',scope:'public_repo',state,code_challenge:challenge(verifier),code_challenge_method:'S256',allow_signup:'false',login:'OP22007'});
+        const query=new URLSearchParams({client_id:cfg.clientId,redirect_uri:cfg.origin+'/auth/callback',state,code_challenge:challenge(verifier),code_challenge_method:'S256',allow_signup:'false',login:'OP22007'});
+        if (cfg.authMode === 'oauth-app') query.set('scope','public_repo');
         return redirect(res,'https://github.com/login/oauth/authorize?'+query);
       }
       if (path === '/auth/callback' && req.method === 'GET') {
         const pending=unseal(readCookie(req,cfg,'oauth'),cfg,'oauth');
         res.setHeader('Set-Cookie',cookie(cfg,'oauth','',0));
         if (!pending || !equal(pending.state,url.searchParams.get('state')) || !url.searchParams.get('code')) throw new HttpError(403,'Sign-in expired or state did not match. Start sign-in again.');
-        const response=await fetcher('https://github.com/login/oauth/access_token',{method:'POST',headers:{Accept:'application/json','Content-Type':'application/json'},body:JSON.stringify({client_id:cfg.clientId,client_secret:cfg.clientSecret,code:url.searchParams.get('code'),redirect_uri:cfg.origin+'/auth/callback',code_verifier:pending.verifier}),signal:AbortSignal.timeout(20000)});
+        const response=await fetcher('https://github.com/login/oauth/access_token',{method:'POST',headers:{Accept:'application/json','Content-Type':'application/json'},body:JSON.stringify({client_id:cfg.clientId,client_secret:cfg.clientSecret,code:url.searchParams.get('code'),redirect_uri:cfg.origin+'/auth/callback',code_verifier:pending.verifier,...(cfg.authMode === 'github-app' ? {repository_id:cfg.repoId} : {})}),signal:AbortSignal.timeout(20000)});
         if(!response.ok) throw new HttpError(502,'GitHub sign-in failed. Please start again.');
         const auth=await response.json();
         if(typeof auth.access_token !== 'string' || auth.error) throw new HttpError(403,'GitHub did not authorize sign-in.');
