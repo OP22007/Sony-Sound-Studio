@@ -51,11 +51,11 @@ fn run_tool(program: &str, args: &[&str], timeout: Duration) -> Result<String, S
 }
 
 pub fn enumerate() -> Result<Vec<PairedDevice>, String> {
-    let output = run_tool(
-        "bluetoothctl",
-        &["devices", "Paired"],
-        Duration::from_secs(5),
-    )?;
+    // BlueZ 5.65+ accepts `devices Paired`; older releases only know `paired-devices`.
+    let output = match run_tool("bluetoothctl", &["devices", "Paired"], Duration::from_secs(5)) {
+        Ok(output) if output.lines().any(|line| line.starts_with("Device ")) => output,
+        _ => run_tool("bluetoothctl", &["paired-devices"], Duration::from_secs(5)).unwrap_or_default(),
+    };
     let mut devices = Vec::new();
     for line in output.lines().take(256) {
         let mut fields = line.splitn(3, ' ');
@@ -86,6 +86,26 @@ fn valid_address(address: &str) -> bool {
             .all(|part| part.len() == 2 && u8::from_str_radix(part, 16).is_ok())
 }
 
+const SOL_RFCOMM: libc::c_int = 18;
+const RFCOMM_LM: libc::c_int = 3;
+const RFCOMM_LM_AUTH: u32 = 0x0002;
+const RFCOMM_LM_ENCRYPT: u32 = 0x0004;
+
+/// Finds the RFCOMM channel of the record whose service class list contains `uuid`
+/// in `sdptool browse` output.
+fn rfcomm_channel_for_service(records: &str, uuid: &str) -> Option<u8> {
+    records
+        .split("Service RecHandle:")
+        .filter(|record| record.to_ascii_lowercase().contains(uuid))
+        .find_map(|record| {
+            record.lines().find_map(|line| {
+                line.trim()
+                    .strip_prefix("Channel:")
+                    .and_then(|x| x.trim().parse::<u8>().ok())
+            })
+        })
+}
+
 #[repr(C)]
 struct SockAddrRc {
     family: libc::sa_family_t,
@@ -110,21 +130,16 @@ pub fn connect(
     if !valid_address(&device.address) {
         return Err("Invalid cached Bluetooth address; discover again.".into());
     }
+    // `sdptool search` only understands 16-bit and named services, so 128-bit Sony UUIDs are
+    // looked up from one `sdptool browse` listing instead.
+    let records = run_tool("sdptool", &["browse", &device.address], Duration::from_secs(8)).map_err(|_| {
+        "Could not read the headphones' Bluetooth service records. Make sure the headphones are on and connected, and that BlueZ's sdptool is installed.".to_string()
+    })?;
     for service in SERVICES {
         if cancelled.load(Ordering::Acquire) {
             return Err("Connection was cancelled.".into());
         }
-        let output = run_tool(
-            "sdptool",
-            &["search", "--bdaddr", &device.address, service],
-            Duration::from_secs(4),
-        )?;
-        let channel = output.lines().find_map(|line| {
-            line.trim()
-                .strip_prefix("Channel:")
-                .and_then(|x| x.trim().parse::<u8>().ok())
-        });
-        let Some(channel) = channel.filter(|c| (1..=30).contains(c)) else {
+        let Some(channel) = rfcomm_channel_for_service(&records, service).filter(|c| (1..=30).contains(c)) else {
             continue;
         };
         let raw = unsafe {
@@ -138,6 +153,17 @@ pub fn connect(
             return Err("Cannot open a Linux RFCOMM socket; check Bluetooth permissions.".into());
         }
         let socket = BluetoothSocket(raw, service);
+        // Match the security level the headset expects (authenticated, encrypted link).
+        let link_mode: u32 = RFCOMM_LM_AUTH | RFCOMM_LM_ENCRYPT;
+        unsafe {
+            libc::setsockopt(
+                raw,
+                SOL_RFCOMM,
+                RFCOMM_LM,
+                &link_mode as *const u32 as *const libc::c_void,
+                size_of::<u32>() as libc::socklen_t,
+            );
+        }
         let mut address = [0; 6];
         for (index, part) in device.address.split(':').rev().enumerate() {
             address[index] = u8::from_str_radix(part, 16).unwrap_or(0);
@@ -260,5 +286,18 @@ impl Connection for BluetoothSocket {
             return Err(io::Error::last_os_error());
         }
         Ok(count as usize)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const BROWSE: &str = "Browsing 58:18:62:A1:FE:E9 ...\nService RecHandle: 0x10001\nService Class ID List:\n  \"Headset\" (0x1108)\nProtocol Descriptor List:\n  \"RFCOMM\" (0x0003)\n    Channel: 1\n\nService RecHandle: 0x20000000\nService Class ID List:\n  UUID 128: 956c7b26-d49a-4ba8-b03f-b17d393cb6e2\nProtocol Descriptor List:\n  \"L2CAP\" (0x0100)\n  \"RFCOMM\" (0x0003)\n    Channel: 9\n";
+
+    #[test]
+    fn finds_the_channel_of_the_matching_128_bit_service_only() {
+        assert_eq!(rfcomm_channel_for_service(BROWSE, SERVICES[1]), Some(9));
+        assert_eq!(rfcomm_channel_for_service(BROWSE, SERVICES[0]), None);
     }
 }
