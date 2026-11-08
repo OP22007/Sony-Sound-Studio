@@ -2,12 +2,13 @@
 //! V1/V2 request [00,00], strict response layouts, initial TX0 and inverted empty ACKs
 //! are recorded in the private protocol request / ACK evidence exports.
 
-use crate::protocol::{encode, Decoder, Frame};
-use crate::transport::Connection;
 use crate::device_controls::{
-    ConfirmedControl, ControlDescriptor, ControlKind, ControlOption, ControlValue,
-    DeviceControlChange, DeviceControlConfirmation, validate_change,
+    validate_change, ConfirmedControl, ControlDescriptor, ControlKind, ControlOption, ControlValue,
+    DeviceControlChange, DeviceControlConfirmation,
 };
+use crate::protocol::{encode, Decoder, Frame};
+use crate::sony_listening::{self, UpmixMode};
+use crate::transport::Connection;
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
@@ -124,6 +125,7 @@ pub enum SettingChange {
     NoiseMode(String),
     Equalizer(Vec<u8>),
     DeviceControl(DeviceControlChange),
+    OnePlusEqProfile(crate::oneplus_eq::EqProfileChange),
     ProbeNoiseSchema,
 }
 
@@ -138,6 +140,7 @@ pub enum SettingConfirmation {
     },
     Equalizer(EqualizerInfo),
     DeviceControl(DeviceControlConfirmation),
+    OnePlusEqProfiles(Vec<crate::oneplus_eq::EqProfile>),
     NoiseSchemaProbe {
         capability: Vec<u8>,
         status: Vec<u8>,
@@ -222,7 +225,9 @@ pub fn read_basics(
                                 descriptor: ControlDescriptor {
                                     key: "autoPowerOff".into(),
                                     label: "Automatic power off".into(),
-                                    description: "Choose the power-off behavior reported by the headphone.".into(),
+                                    description:
+                                        "Choose the power-off behavior reported by the headphone."
+                                            .into(),
                                     kind: ControlKind::Select,
                                     options: Some(options.clone()),
                                     min: None,
@@ -236,7 +241,10 @@ pub fn read_basics(
                                 .filter(|option| matches!(&option.value, ControlValue::Integer(value) if (0..=4).contains(value)))
                                 .collect::<Vec<_>>();
                             if timer_options.len() >= 2
-                                && timer_options.iter().any(|option| option.value == ControlValue::Integer(i64::from(info.selected_time)))
+                                && timer_options.iter().any(|option| {
+                                    option.value
+                                        == ControlValue::Integer(i64::from(info.selected_time))
+                                })
                             {
                                 result.controls.capabilities.push("autoPowerOffTime".into());
                                 result.controls.device_controls.push(ConfirmedControl {
@@ -264,7 +272,12 @@ pub fn read_basics(
                 if functions.contains(&0x25) && !functions.contains(&0x24) {
                     match session.power_off_read_only(connection, cancelled, 0x05) {
                         Ok((capability, value, active, selected_time)) => {
-                            if !result.controls.capabilities.iter().any(|key| key == "autoPowerOff") {
+                            if !result
+                                .controls
+                                .capabilities
+                                .iter()
+                                .any(|key| key == "autoPowerOff")
+                            {
                                 result.controls.capabilities.push("autoPowerOff".into());
                                 result.controls.capabilities.push("autoPowerOffTime".into());
                             }
@@ -297,8 +310,8 @@ pub fn read_basics(
                                     description: "Choose whether the headphone applies DSEE upscaling automatically.".into(),
                                     kind: ControlKind::Select,
                                     options: Some(vec![
-                                        ControlOption { value: ControlValue::Text("off".into()), label: "Off".into() },
-                                        ControlOption { value: ControlValue::Text("auto".into()), label: "Auto".into() },
+                                        ControlOption { value: ControlValue::Text("off".into()), label: "Off".into(), enabled: None },
+                                        ControlOption { value: ControlValue::Text("auto".into()), label: "Auto".into(), enabled: None },
                                     ]),
                                     min: None,
                                     max: None,
@@ -347,12 +360,25 @@ pub fn read_basics(
                         descriptor: ControlDescriptor {
                             key: "bgmRoomSize".into(),
                             label: "Background Music distance".into(),
-                            description: "Choose the room ambience used by Background Music Effect.".into(),
+                            description:
+                                "Choose the room ambience used by Background Music Effect.".into(),
                             kind: ControlKind::Select,
                             options: Some(vec![
-                                ControlOption { value: ControlValue::Integer(0), label: "My room".into() },
-                                ControlOption { value: ControlValue::Integer(1), label: "Living room".into() },
-                                ControlOption { value: ControlValue::Integer(2), label: "Cafe".into() },
+                                ControlOption {
+                                    value: ControlValue::Integer(0),
+                                    label: "My room".into(),
+                                    enabled: None,
+                                },
+                                ControlOption {
+                                    value: ControlValue::Integer(1),
+                                    label: "Living room".into(),
+                                    enabled: None,
+                                },
+                                ControlOption {
+                                    value: ControlValue::Integer(2),
+                                    label: "Cafe".into(),
+                                    enabled: None,
+                                },
                             ]),
                             min: None,
                             max: None,
@@ -361,7 +387,16 @@ pub fn read_basics(
                         value: ControlValue::Integer(i64::from(info.room_size)),
                     });
                 }
-                if !series_supported && !bgm_ambiguous && (bgm_inquiry.is_some() || cinema_supported) {
+                if series_supported && !bgm_ambiguous {
+                    match session.discover_series_control(connection, cancelled, bgm) {
+                        Ok(control) => result.controls.device_controls.push(control),
+                        Err(error) => result.warnings.push(error),
+                    }
+                }
+                if !series_supported
+                    && !bgm_ambiguous
+                    && (bgm_inquiry.is_some() || cinema_supported)
+                {
                     let cinema = if cinema_supported {
                         match session.cinema_setting(connection, cancelled) {
                             Ok(value) => Some(value == "cinema"),
@@ -386,17 +421,20 @@ pub fn read_basics(
                         let mut options = vec![ControlOption {
                             value: ControlValue::Text("standard".into()),
                             label: "Standard".into(),
+                            enabled: None,
                         }];
                         if bgm_inquiry.is_some() {
                             options.push(ControlOption {
                                 value: ControlValue::Text("backgroundMusic".into()),
                                 label: "Background Music".into(),
+                                enabled: None,
                             });
                         }
                         if cinema_supported {
                             options.push(ControlOption {
                                 value: ControlValue::Text("cinema".into()),
                                 label: "Cinema".into(),
+                                enabled: None,
                             });
                         }
                         result.controls.device_controls.push(ConfirmedControl {
@@ -472,7 +510,8 @@ pub fn read_basics(
                                     descriptor: ControlDescriptor {
                                         key: "focusOnVoice".into(),
                                         label: "Focus on voice".into(),
-                                        description: "Prioritize voices in ambient sound mode.".into(),
+                                        description: "Prioritize voices in ambient sound mode."
+                                            .into(),
                                         kind: ControlKind::Toggle,
                                         options: None,
                                         min: None,
@@ -485,7 +524,6 @@ pub fn read_basics(
                                     result.controls.capabilities.push("focusOnVoice".into());
                                     result.controls.device_controls.push(focus);
                                 }
-
                             }
                             result.controls.noise = Some(noise);
                         }
@@ -563,7 +601,10 @@ fn parse_power_off_options(payload: &[u8], inquiry: u8) -> Option<Vec<u8>> {
     };
     let options = payload[3..].to_vec();
     if options.iter().any(|value| !supported(*value))
-        || options.iter().enumerate().any(|(index, value)| options[..index].contains(value))
+        || options
+            .iter()
+            .enumerate()
+            .any(|(index, value)| options[..index].contains(value))
     {
         return None;
     }
@@ -588,26 +629,34 @@ fn parse_power_off_value(
 }
 
 fn power_off_options(values: &[u8]) -> Vec<ControlOption> {
-    values.iter().filter_map(|value| {
-        let label = match value {
-            0 => "5 minutes",
-            1 => "30 minutes",
-            2 => "60 minutes",
-            3 => "180 minutes",
-            4 => "15 minutes",
-            16 => "When removed from ears",
-            17 => "Disabled",
-            _ => return None,
-        };
-        Some(ControlOption {
-            value: ControlValue::Integer(i64::from(*value)),
-            label: label.into(),
+    values
+        .iter()
+        .filter_map(|value| {
+            let label = match value {
+                0 => "5 minutes",
+                1 => "30 minutes",
+                2 => "60 minutes",
+                3 => "180 minutes",
+                4 => "15 minutes",
+                16 => "When removed from ears",
+                17 => "Disabled",
+                _ => return None,
+            };
+            Some(ControlOption {
+                value: ControlValue::Integer(i64::from(*value)),
+                label: label.into(),
+                enabled: None,
+            })
         })
-    }).collect()
+        .collect()
 }
 
 fn to_hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|byte| format!("{byte:02x}")).collect::<Vec<_>>().join(" ")
+    bytes
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn parse_cinema_value(payload: &[u8], command: u8) -> Option<&'static str> {
@@ -638,8 +687,11 @@ fn parse_bgm_value(payload: &[u8], command: u8, inquiry: u8) -> Option<BgmInfo> 
 }
 
 fn parse_speak_to_chat_value(payload: &[u8], command: u8) -> Option<(bool, u8)> {
-    if payload.len() != 4 || payload[0] != command || payload[1] != 0x0c
-        || payload[2] > 1 || payload[3] > 1
+    if payload.len() != 4
+        || payload[0] != command
+        || payload[1] != 0x0c
+        || payload[2] > 1
+        || payload[3] > 1
     {
         return None;
     }
@@ -733,6 +785,8 @@ pub struct ReadSession {
     listening_bgm_inquiry: Option<u8>,
     listening_cinema_supported: bool,
     listening_series_supported: bool,
+    listening_series_options: Vec<UpmixMode>,
+    listening_series_mode: Option<UpmixMode>,
     listening_bgm_enabled: Option<bool>,
     listening_bgm_room_size: Option<u8>,
     listening_cinema_enabled: Option<bool>,
@@ -756,6 +810,8 @@ impl ReadSession {
             listening_bgm_inquiry: None,
             listening_cinema_supported: false,
             listening_series_supported: false,
+            listening_series_options: Vec::new(),
+            listening_series_mode: None,
             listening_bgm_enabled: None,
             listening_bgm_room_size: None,
             listening_cinema_enabled: None,
@@ -791,8 +847,10 @@ impl ReadSession {
         for control in controls {
             if control.validate().is_ok() {
                 let key = control.descriptor.key.clone();
-                self.device_control_descriptors.insert(key.clone(), control.descriptor.clone());
-                self.device_control_values.insert(key, control.value.clone());
+                self.device_control_descriptors
+                    .insert(key.clone(), control.descriptor.clone());
+                self.device_control_values
+                    .insert(key, control.value.clone());
             }
         }
     }
@@ -886,7 +944,11 @@ impl ReadSession {
             .ok_or_else(|| "Automatic power-off parameter fields are invalid.".to_string())?;
         self.power_off_inquiry = Some(inquiry);
         self.power_off_options = options.clone();
-        Ok(PowerOffInfo { active, selected_time, options })
+        Ok(PowerOffInfo {
+            active,
+            selected_time,
+            options,
+        })
     }
 
     fn power_off_value(
@@ -894,7 +956,8 @@ impl ReadSession {
         connection: &mut dyn Connection,
         cancelled: &AtomicBool,
     ) -> Result<(u8, u8), String> {
-        let inquiry = self.power_off_inquiry
+        let inquiry = self
+            .power_off_inquiry
             .ok_or_else(|| "Automatic power-off control has no confirmed inquiry.".to_string())?;
         let options = self.power_off_options.clone();
         let payload = self.exchange(connection, cancelled, vec![0x26, inquiry], |payload| {
@@ -950,7 +1013,11 @@ impl ReadSession {
             SettingChange::DeviceControl(change) => {
                 self.apply_device_control(connection, cancelled, change)
             }
+            SettingChange::OnePlusEqProfile(_) => {
+                Err("OnePlus EQ profile actions cannot be sent through the Sony adapter.".into())
+            }
             SettingChange::Equalizer(bands) => {
+                self.require_standard_processing(connection, cancelled)?;
                 if bands.len() != 10 || bands.iter().any(|value| *value > 12) {
                     return Err(
                         "XM6 custom EQ requires ten verified values in the range 0–12.".into(),
@@ -991,10 +1058,13 @@ impl ReadSession {
         cancelled: &AtomicBool,
         change: DeviceControlChange,
     ) -> Result<SettingConfirmation, String> {
-        let descriptor = self.device_control_descriptors.get(&change.key)
+        let descriptor = self
+            .device_control_descriptors
+            .get(&change.key)
             .ok_or_else(|| format!("The device did not confirm the {} control.", change.key))?;
         validate_change(descriptor, change.value.clone())?;
         if change.key == "dsee" {
+            self.require_standard_processing(connection, cancelled)?;
             return self.apply_upscaling_setting(connection, cancelled, change.value);
         }
         if change.key == "listeningMode" {
@@ -1022,11 +1092,21 @@ impl ReadSession {
                 requested.ambient_mode = u8::from(*value);
                 requested.focus_on_voice = *value;
             }
-            _ => return Err("The device setting value does not match its confirmed control type.".into()),
+            _ => {
+                return Err(
+                    "The device setting value does not match its confirmed control type.".into(),
+                )
+            }
         }
         let payload = [
-            0x68, 0x19, 1, u8::from(requested.mode != "off"), requested.nc_asm_mode,
-            requested.ambient_mode, requested.ambient_level, u8::from(requested.secondary_enabled),
+            0x68,
+            0x19,
+            1,
+            u8::from(requested.mode != "off"),
+            requested.nc_asm_mode,
+            requested.ambient_mode,
+            requested.ambient_level,
+            u8::from(requested.secondary_enabled),
             requested.adaptive_sensitivity,
         ];
         self.write_acknowledged(connection, cancelled, &payload)?;
@@ -1038,13 +1118,20 @@ impl ReadSession {
                 _ => false,
             };
             if matched && current.value_change_status == 1 {
-                let before_value = self.device_control_values.get(&change.key).cloned().unwrap_or_else(|| change.value.clone());
-                self.device_control_values.insert(change.key.clone(), change.value.clone());
-                return Ok(SettingConfirmation::DeviceControl(DeviceControlConfirmation {
-                    key: change.key,
-                    before: before_value,
-                    confirmed: change.value,
-                }));
+                let before_value = self
+                    .device_control_values
+                    .get(&change.key)
+                    .cloned()
+                    .unwrap_or_else(|| change.value.clone());
+                self.device_control_values
+                    .insert(change.key.clone(), change.value.clone());
+                return Ok(SettingConfirmation::DeviceControl(
+                    DeviceControlConfirmation {
+                        key: change.key,
+                        before: before_value,
+                        confirmed: change.value,
+                    },
+                ));
             }
             if Instant::now() >= deadline {
                 return Err("The headphone did not confirm the requested control state.".into());
@@ -1063,7 +1150,9 @@ impl ReadSession {
         change: DeviceControlChange,
     ) -> Result<SettingConfirmation, String> {
         if self.power_off_inquiry != Some(0x04) {
-            return Err("This writable power-off control requires the validated inquiry 0x04 path.".into());
+            return Err(
+                "This writable power-off control requires the validated inquiry 0x04 path.".into(),
+            );
         }
         let ControlValue::Integer(value) = change.value else {
             return Err("Automatic power-off options must be integer values from the device capability response.".into());
@@ -1071,7 +1160,9 @@ impl ReadSession {
         let selected = u8::try_from(value)
             .map_err(|_| "Automatic power-off option is outside the protocol range.")?;
         if !self.power_off_options.contains(&selected) {
-            return Err("The requested power-off option was not advertised by the headphone.".into());
+            return Err(
+                "The requested power-off option was not advertised by the headphone.".into(),
+            );
         }
         let before = self.power_off_value(connection, cancelled)?;
         let mut requested = before;
@@ -1081,25 +1172,41 @@ impl ReadSession {
             _ => return Err("Unknown automatic power-off setting.".into()),
         }
         if requested == before {
-            return Ok(SettingConfirmation::DeviceControl(DeviceControlConfirmation {
-                key: change.key,
-                before: ControlValue::Integer(i64::from(selected)),
-                confirmed: ControlValue::Integer(i64::from(selected)),
-            }));
+            return Ok(SettingConfirmation::DeviceControl(
+                DeviceControlConfirmation {
+                    key: change.key,
+                    before: ControlValue::Integer(i64::from(selected)),
+                    confirmed: ControlValue::Integer(i64::from(selected)),
+                },
+            ));
         }
         if let Err(error) = self.write_power_off_and_confirm(connection, cancelled, requested) {
-            if self.write_power_off_and_confirm(connection, cancelled, before).is_ok() {
-                return Err(format!("{error} The previous automatic power-off settings were restored and verified."));
+            if self
+                .write_power_off_and_confirm(connection, cancelled, before)
+                .is_ok()
+            {
+                return Err(format!(
+                    "{error} The previous automatic power-off settings were restored and verified."
+                ));
             }
             return Err(format!("{error} The previous automatic power-off settings could not be verified after restoration; reconnect and inspect the headphone before retrying."));
         }
-        let previous = if change.key == "autoPowerOff" { before.0 } else { before.1 };
-        self.device_control_values.insert(change.key.clone(), ControlValue::Integer(i64::from(selected)));
-        Ok(SettingConfirmation::DeviceControl(DeviceControlConfirmation {
-            key: change.key,
-            before: ControlValue::Integer(i64::from(previous)),
-            confirmed: ControlValue::Integer(i64::from(selected)),
-        }))
+        let previous = if change.key == "autoPowerOff" {
+            before.0
+        } else {
+            before.1
+        };
+        self.device_control_values.insert(
+            change.key.clone(),
+            ControlValue::Integer(i64::from(selected)),
+        );
+        Ok(SettingConfirmation::DeviceControl(
+            DeviceControlConfirmation {
+                key: change.key,
+                before: ControlValue::Integer(i64::from(previous)),
+                confirmed: ControlValue::Integer(i64::from(selected)),
+            },
+        ))
     }
 
     fn write_power_off_and_confirm(
@@ -1108,12 +1215,17 @@ impl ReadSession {
         cancelled: &AtomicBool,
         requested: (u8, u8),
     ) -> Result<(), String> {
-        let inquiry = self.power_off_inquiry
+        let inquiry = self
+            .power_off_inquiry
             .ok_or_else(|| "Automatic power-off inquiry is no longer available.".to_string())?;
         if inquiry != 0x04 || requested.0 > 17 || requested.1 > 17 {
             return Err("Automatic power-off SET values do not match the verified schema.".into());
         }
-        self.write_acknowledged(connection, cancelled, &[0x28, inquiry, requested.0, requested.1])?;
+        self.write_acknowledged(
+            connection,
+            cancelled,
+            &[0x28, inquiry, requested.0, requested.1],
+        )?;
         let deadline = Instant::now() + Duration::from_secs(6);
         loop {
             match self.power_off_value(connection, cancelled) {
@@ -1123,7 +1235,10 @@ impl ReadSession {
                 Err(_) => {}
             }
             if Instant::now() >= deadline {
-                return Err("The headphone did not confirm the requested automatic power-off settings.".into());
+                return Err(
+                    "The headphone did not confirm the requested automatic power-off settings."
+                        .into(),
+                );
             }
             if cancelled.load(Ordering::Acquire) {
                 return Err("Automatic power-off readback was cancelled.".into());
@@ -1166,31 +1281,47 @@ impl ReadSession {
         value: ControlValue,
     ) -> Result<SettingConfirmation, String> {
         if !self.speak_to_chat_supported {
-            return Err("Speak-to-Chat Type 2 was not advertised by the connected headphone.".into());
+            return Err(
+                "Speak-to-Chat Type 2 was not advertised by the connected headphone.".into(),
+            );
         }
         let ControlValue::Boolean(enabled) = value else {
             return Err("Speak-to-Chat requires a confirmed on/off value.".into());
         };
         let (before_enabled, aux) = self.speak_to_chat_setting(connection, cancelled)?;
         if before_enabled == enabled {
-            return Ok(SettingConfirmation::DeviceControl(DeviceControlConfirmation {
-                key: "speakToChat".into(),
-                before: ControlValue::Boolean(before_enabled),
-                confirmed: ControlValue::Boolean(enabled),
-            }));
+            return Ok(SettingConfirmation::DeviceControl(
+                DeviceControlConfirmation {
+                    key: "speakToChat".into(),
+                    before: ControlValue::Boolean(before_enabled),
+                    confirmed: ControlValue::Boolean(enabled),
+                },
+            ));
         }
-        if let Err(error) = self.write_speak_to_chat_and_confirm(connection, cancelled, enabled, aux) {
-            if self.write_speak_to_chat_and_confirm(connection, cancelled, before_enabled, aux).is_ok() {
-                return Err(format!("{error} The previous Speak-to-Chat setting was restored and verified."));
+        if let Err(error) =
+            self.write_speak_to_chat_and_confirm(connection, cancelled, enabled, aux)
+        {
+            if self
+                .write_speak_to_chat_and_confirm(connection, cancelled, before_enabled, aux)
+                .is_ok()
+            {
+                return Err(format!(
+                    "{error} The previous Speak-to-Chat setting was restored and verified."
+                ));
             }
             return Err(format!("{error} The previous Speak-to-Chat setting could not be verified after restoration; reconnect and inspect the headphone before retrying."));
         }
         let before = ControlValue::Boolean(before_enabled);
         let confirmed = ControlValue::Boolean(enabled);
-        self.device_control_values.insert("speakToChat".into(), confirmed.clone());
-        Ok(SettingConfirmation::DeviceControl(DeviceControlConfirmation {
-            key: "speakToChat".into(), before, confirmed,
-        }))
+        self.device_control_values
+            .insert("speakToChat".into(), confirmed.clone());
+        Ok(SettingConfirmation::DeviceControl(
+            DeviceControlConfirmation {
+                key: "speakToChat".into(),
+                before,
+                confirmed,
+            },
+        ))
     }
 
     fn write_speak_to_chat_and_confirm(
@@ -1200,7 +1331,11 @@ impl ReadSession {
         enabled: bool,
         aux: u8,
     ) -> Result<(), String> {
-        self.write_acknowledged(connection, cancelled, &[0xf8, 0x0c, if enabled { 0 } else { 1 }, aux])?;
+        self.write_acknowledged(
+            connection,
+            cancelled,
+            &[0xf8, 0x0c, if enabled { 0 } else { 1 }, aux],
+        )?;
         let deadline = Instant::now() + Duration::from_secs(8);
         loop {
             match self.speak_to_chat_setting(connection, cancelled) {
@@ -1212,13 +1347,200 @@ impl ReadSession {
                 Err(_) => {}
             }
             if Instant::now() >= deadline {
-                return Err("The headphone did not confirm its requested Speak-to-Chat setting.".into());
+                return Err(
+                    "The headphone did not confirm its requested Speak-to-Chat setting.".into(),
+                );
             }
             if cancelled.load(Ordering::Acquire) {
                 return Err("The Speak-to-Chat readback was cancelled.".into());
             }
             std::thread::sleep(Duration::from_millis(200));
         }
+    }
+
+    fn require_standard_processing(
+        &mut self,
+        connection: &mut dyn Connection,
+        cancelled: &AtomicBool,
+    ) -> Result<(), String> {
+        if self.listening_series_supported
+            && self.series_setting(connection, cancelled)? != UpmixMode::Standard
+        {
+            return Err("Switch to Standard listening mode before changing EQ or DSEE. Music, Cinema and Game suspend those controls.".into());
+        }
+        Ok(())
+    }
+
+    fn discover_series_control(
+        &mut self,
+        connection: &mut dyn Connection,
+        cancelled: &AtomicBool,
+        bgm: Option<BgmInfo>,
+    ) -> Result<ConfirmedControl, String> {
+        if self.listening_bgm_inquiry.is_some() && bgm.is_none() {
+            return Err("Listening modes require a readable Background Music state.".into());
+        }
+        let payload = self.exchange(connection, cancelled, vec![0xe0, 0x0a], |p| {
+            sony_listening::parse_capability(p).is_some()
+        })?;
+        self.listening_series_options = sony_listening::parse_capability(&payload)
+            .ok_or("Unknown upmix-series capability layout.")?;
+        let mode = self.series_setting(connection, cancelled)?;
+        let value = self.series_mode_key(mode, bgm)?;
+        let mut options = vec![ControlOption {
+            value: ControlValue::Text("standard".into()),
+            label: "Standard".into(),
+            enabled: None,
+        }];
+        for mode in [UpmixMode::Music, UpmixMode::Cinema, UpmixMode::Game] {
+            if self.listening_series_options.contains(&mode) {
+                options.push(ControlOption {
+                    value: ControlValue::Text(mode.key().into()),
+                    label: mode.label().into(),
+                    enabled: None,
+                });
+            }
+        }
+        if self.listening_bgm_inquiry.is_some() {
+            options.push(ControlOption {
+                value: ControlValue::Text("backgroundMusic".into()),
+                label: "Background Music".into(),
+                enabled: None,
+            });
+        }
+        Ok(ConfirmedControl {
+            descriptor: ControlDescriptor {
+                key: "listeningMode".into(),
+                label: "Listening mode".into(),
+                description:
+                    "Device-reported listening modes. Music, Cinema and Game suspend EQ and DSEE."
+                        .into(),
+                kind: ControlKind::Select,
+                options: Some(options),
+                min: None,
+                max: None,
+                step: None,
+            },
+            value: ControlValue::Text(value.into()),
+        })
+    }
+
+    fn series_mode_key(
+        &self,
+        mode: UpmixMode,
+        bgm: Option<BgmInfo>,
+    ) -> Result<&'static str, String> {
+        if bgm.is_some_and(|v| v.enabled) {
+            if mode != UpmixMode::Standard {
+                return Err("The headphone is transitioning between Background Music and upmix. Readback is not yet consistent.".into());
+            }
+            return Ok("backgroundMusic");
+        }
+        Ok(mode.key())
+    }
+
+    fn series_setting(
+        &mut self,
+        connection: &mut dyn Connection,
+        cancelled: &AtomicBool,
+    ) -> Result<UpmixMode, String> {
+        if !self.listening_series_supported || self.listening_series_options.is_empty() {
+            return Err("Upmix-series capabilities have not been confirmed.".into());
+        }
+        let payload = self.exchange(connection, cancelled, vec![0xe6, 0x0a], |p| {
+            sony_listening::parse_state(p, 0xe7).is_some()
+        })?;
+        let mode =
+            sony_listening::parse_state(&payload, 0xe7).ok_or("Invalid upmix-series state.")?;
+        if mode != UpmixMode::Standard && !self.listening_series_options.contains(&mode) {
+            return Err("Current upmix mode was not advertised by this headphone.".into());
+        }
+        self.listening_series_mode = Some(mode);
+        Ok(mode)
+    }
+
+    fn set_series_mode(
+        &mut self,
+        connection: &mut dyn Connection,
+        cancelled: &AtomicBool,
+        mode: UpmixMode,
+    ) -> Result<(), String> {
+        if mode != UpmixMode::Standard && !self.listening_series_options.contains(&mode) {
+            return Err("This upmix mode was not advertised by the headphone.".into());
+        }
+        self.write_acknowledged(connection, cancelled, &sony_listening::set_payload(mode))?;
+        let deadline = Instant::now() + Duration::from_secs(8);
+        loop {
+            if self.series_setting(connection, cancelled)? == mode {
+                return Ok(());
+            }
+            if cancelled.load(Ordering::Acquire) {
+                return Err("Listening-mode confirmation was cancelled.".into());
+            }
+            if Instant::now() >= deadline {
+                return Err("The headphone did not confirm the requested upmix mode. No restoration command was sent.".into());
+            }
+            std::thread::sleep(Duration::from_millis(200));
+        }
+    }
+
+    fn apply_series_mode(
+        &mut self,
+        connection: &mut dyn Connection,
+        cancelled: &AtomicBool,
+        value: ControlValue,
+    ) -> Result<SettingConfirmation, String> {
+        let ControlValue::Text(requested) = value else {
+            return Err("Listening mode requires a supported menu option.".into());
+        };
+        let target = if requested == "backgroundMusic" {
+            UpmixMode::Standard
+        } else {
+            UpmixMode::from_key(&requested).ok_or("Unknown listening mode.")?
+        };
+        let before_mode = self.series_setting(connection, cancelled)?;
+        let mut bgm = if let Some(inquiry) = self.listening_bgm_inquiry {
+            Some(self.bgm_setting(connection, cancelled, inquiry)?)
+        } else {
+            None
+        };
+        let before = self.series_mode_key(before_mode, bgm)?.to_string();
+        if requested == "backgroundMusic" {
+            let room = bgm
+                .ok_or("Background Music was not advertised by this headphone.")?
+                .room_size;
+            if before_mode != UpmixMode::Standard {
+                self.set_series_mode(connection, cancelled, UpmixMode::Standard)?;
+            }
+            if !bgm.is_some_and(|v| v.enabled) {
+                self.set_bgm_enabled(connection, cancelled, true, room)?;
+            }
+        } else {
+            if let Some(active) = bgm.filter(|v| v.enabled) {
+                self.set_bgm_enabled(connection, cancelled, false, active.room_size)?;
+            }
+            if before_mode != target {
+                self.set_series_mode(connection, cancelled, target)?;
+            }
+        }
+        let confirmed_mode = self.series_setting(connection, cancelled)?;
+        if let Some(inquiry) = self.listening_bgm_inquiry {
+            bgm = Some(self.bgm_setting(connection, cancelled, inquiry)?);
+        }
+        let confirmed = self.series_mode_key(confirmed_mode, bgm)?;
+        if confirmed != requested {
+            return Err("The final listening-mode readback did not match the request. No restoration command was sent.".into());
+        }
+        let confirmed = ControlValue::Text(confirmed.into());
+        self.device_control_values
+            .insert("listeningMode".into(), confirmed.clone());
+        Ok(SettingConfirmation::DeviceControl(
+            DeviceControlConfirmation {
+                key: "listeningMode".into(),
+                before: ControlValue::Text(before),
+                confirmed,
+            },
+        ))
     }
 
     fn cinema_setting(
@@ -1279,14 +1601,17 @@ impl ReadSession {
         enabled: bool,
         room_size: u8,
     ) -> Result<BgmInfo, String> {
-        let inquiry = self.listening_bgm_inquiry
+        let inquiry = self
+            .listening_bgm_inquiry
             .ok_or_else(|| "BGM mode was not advertised by the connected headphone.".to_string())?;
         if room_size > 2 {
             return Err("The headphone returned an unknown BGM room size.".into());
         }
-        self.write_acknowledged(connection, cancelled, &[
-            0xe8, inquiry, if enabled { 0 } else { 1 }, room_size,
-        ])?;
+        self.write_acknowledged(
+            connection,
+            cancelled,
+            &[0xe8, inquiry, if enabled { 0 } else { 1 }, room_size],
+        )?;
         let deadline = Instant::now() + Duration::from_secs(8);
         loop {
             let current = self.bgm_setting(connection, cancelled, inquiry)?;
@@ -1316,25 +1641,33 @@ impl ReadSession {
             .ok()
             .filter(|value| *value <= 2)
             .ok_or_else(|| "Background Music distance option is invalid.".to_string())?;
-        let inquiry = self.listening_bgm_inquiry
-            .ok_or_else(|| "Background Music was not advertised by the connected headphone.".to_string())?;
+        let inquiry = self.listening_bgm_inquiry.ok_or_else(|| {
+            "Background Music was not advertised by the connected headphone.".to_string()
+        })?;
         let before = self.bgm_setting(connection, cancelled, inquiry)?;
         if before.room_size == requested {
-            return Ok(SettingConfirmation::DeviceControl(DeviceControlConfirmation {
-                key: "bgmRoomSize".into(),
-                before: ControlValue::Integer(i64::from(before.room_size)),
-                confirmed: ControlValue::Integer(i64::from(before.room_size)),
-            }));
+            return Ok(SettingConfirmation::DeviceControl(
+                DeviceControlConfirmation {
+                    key: "bgmRoomSize".into(),
+                    before: ControlValue::Integer(i64::from(before.room_size)),
+                    confirmed: ControlValue::Integer(i64::from(before.room_size)),
+                },
+            ));
         }
         match self.set_bgm_enabled(connection, cancelled, before.enabled, requested) {
-            Ok(confirmed) => Ok(SettingConfirmation::DeviceControl(DeviceControlConfirmation {
-                key: "bgmRoomSize".into(),
-                before: ControlValue::Integer(i64::from(before.room_size)),
-                confirmed: ControlValue::Integer(i64::from(confirmed.room_size)),
-            })),
+            Ok(confirmed) => Ok(SettingConfirmation::DeviceControl(
+                DeviceControlConfirmation {
+                    key: "bgmRoomSize".into(),
+                    before: ControlValue::Integer(i64::from(before.room_size)),
+                    confirmed: ControlValue::Integer(i64::from(confirmed.room_size)),
+                },
+            )),
             Err(error) => {
-                let restored = self.set_bgm_enabled(connection, cancelled, before.enabled, before.room_size)
-                    .is_ok_and(|current| current.enabled == before.enabled && current.room_size == before.room_size);
+                let restored = self
+                    .set_bgm_enabled(connection, cancelled, before.enabled, before.room_size)
+                    .is_ok_and(|current| {
+                        current.enabled == before.enabled && current.room_size == before.room_size
+                    });
                 if restored {
                     Err(format!("{error} The previous Background Music environment was restored and verified."))
                 } else {
@@ -1353,7 +1686,11 @@ impl ReadSession {
         if !self.listening_cinema_supported {
             return Err("Cinema mode was not advertised by the connected headphone.".into());
         }
-        self.write_acknowledged(connection, cancelled, &[0xe8, 0x04, if enabled { 0 } else { 1 }])?;
+        self.write_acknowledged(
+            connection,
+            cancelled,
+            &[0xe8, 0x04, if enabled { 0 } else { 1 }],
+        )?;
         let deadline = Instant::now() + Duration::from_secs(8);
         loop {
             let current = self.cinema_setting(connection, cancelled)? == "cinema";
@@ -1390,7 +1727,8 @@ impl ReadSession {
         } else if cinema.is_some() && target_cinema && !target_bgm {
             if bgm.is_some_and(|current| current.enabled) {
                 let current = bgm.expect("BGM support checked above");
-                bgm = Some(self.set_bgm_enabled(connection, cancelled, false, current.room_size)?);
+                bgm =
+                    Some(self.set_bgm_enabled(connection, cancelled, false, current.room_size)?);
             }
             if cinema != Some(true) {
                 self.set_cinema_enabled(connection, cancelled, true)?;
@@ -1399,7 +1737,8 @@ impl ReadSession {
         } else if target_bgm && target_cinema {
             // Restore a previously observed dual-active pair only during rollback.
             if let Some(current) = bgm.filter(|current| current.enabled) {
-                bgm = Some(self.set_bgm_enabled(connection, cancelled, false, current.room_size)?);
+                bgm =
+                    Some(self.set_bgm_enabled(connection, cancelled, false, current.room_size)?);
             }
             if cinema != Some(true) {
                 self.set_cinema_enabled(connection, cancelled, true)?;
@@ -1409,7 +1748,8 @@ impl ReadSession {
             bgm = Some(self.set_bgm_enabled(connection, cancelled, true, current.room_size)?);
         } else {
             if let Some(current) = bgm.filter(|current| current.enabled) {
-                bgm = Some(self.set_bgm_enabled(connection, cancelled, false, current.room_size)?);
+                bgm =
+                    Some(self.set_bgm_enabled(connection, cancelled, false, current.room_size)?);
             }
             if cinema == Some(true) {
                 self.set_cinema_enabled(connection, cancelled, false)?;
@@ -1422,7 +1762,9 @@ impl ReadSession {
             || confirmed.0.map(|value| value.room_size) != bgm.map(|value| value.room_size)
             || confirmed.1 != cinema.map(|_| target_cinema)
         {
-            return Err("The headphone readback did not match the requested listening-mode pair.".into());
+            return Err(
+                "The headphone readback did not match the requested listening-mode pair.".into(),
+            );
         }
         Ok(confirmed)
     }
@@ -1434,7 +1776,7 @@ impl ReadSession {
         value: ControlValue,
     ) -> Result<SettingConfirmation, String> {
         if self.listening_series_supported {
-            return Err("Listening mode cannot be changed until the headphone's series-mode state is fully read.".into());
+            return self.apply_series_mode(connection, cancelled, value);
         }
         let ControlValue::Text(value) = value else {
             return Err("Listening mode requires a supported menu option.".into());
@@ -1469,23 +1811,31 @@ impl ReadSession {
                 };
                 let before = ControlValue::Text(before_mode.into());
                 let confirmed = ControlValue::Text(confirmed_mode.into());
-                self.device_control_values.insert("listeningMode".into(), confirmed.clone());
-                Ok(SettingConfirmation::DeviceControl(DeviceControlConfirmation {
-                    key: "listeningMode".into(), before, confirmed,
-                }))
+                self.device_control_values
+                    .insert("listeningMode".into(), confirmed.clone());
+                Ok(SettingConfirmation::DeviceControl(
+                    DeviceControlConfirmation {
+                        key: "listeningMode".into(),
+                        before,
+                        confirmed,
+                    },
+                ))
             }
             Err(error) => {
                 let restore_bgm = before_bgm.is_some_and(|state| state.enabled);
                 let restore_cinema = before_cinema == Some(true);
-                let restored = self.transition_listening_pair(
-                    connection, cancelled, restore_bgm, restore_cinema,
-                ).is_ok_and(|(bgm, cinema)| {
-                    bgm.map(|state| state.enabled) == before_bgm.map(|state| state.enabled)
-                        && bgm.map(|state| state.room_size) == before_bgm.map(|state| state.room_size)
-                        && cinema == before_cinema
-                });
+                let restored = self
+                    .transition_listening_pair(connection, cancelled, restore_bgm, restore_cinema)
+                    .is_ok_and(|(bgm, cinema)| {
+                        bgm.map(|state| state.enabled) == before_bgm.map(|state| state.enabled)
+                            && bgm.map(|state| state.room_size)
+                                == before_bgm.map(|state| state.room_size)
+                            && cinema == before_cinema
+                    });
                 if restored {
-                    Err(format!("{error} The previous listening-mode state was restored and verified."))
+                    Err(format!(
+                        "{error} The previous listening-mode state was restored and verified."
+                    ))
                 } else {
                     Err(format!("{error} The previous listening-mode state could not be verified after restoration; reconnect and inspect the headphone before retrying."))
                 }
@@ -1518,13 +1868,20 @@ impl ReadSession {
                 let key = "dsee".to_string();
                 let before = ControlValue::Text(before.into());
                 let confirmed = ControlValue::Text(current.into());
-                self.device_control_values.insert(key.clone(), confirmed.clone());
-                return Ok(SettingConfirmation::DeviceControl(DeviceControlConfirmation {
-                    key, before, confirmed,
-                }));
+                self.device_control_values
+                    .insert(key.clone(), confirmed.clone());
+                return Ok(SettingConfirmation::DeviceControl(
+                    DeviceControlConfirmation {
+                        key,
+                        before,
+                        confirmed,
+                    },
+                ));
             }
             if Instant::now() >= deadline {
-                return Err("The headphone did not confirm its DSEE mode after the setting request.".into());
+                return Err(
+                    "The headphone did not confirm its DSEE mode after the setting request.".into(),
+                );
             }
             if cancelled.load(Ordering::Acquire) {
                 return Err("The DSEE readback was cancelled.".into());
@@ -1892,10 +2249,24 @@ impl ReadSession {
     }
 
     fn update_listening_mode_notification(&mut self) {
-        if !self.device_control_descriptors.contains_key("listeningMode") {
+        if !self
+            .device_control_descriptors
+            .contains_key("listeningMode")
+        {
             return;
         }
-        let Some(value) = (if self.listening_bgm_enabled == Some(true) {
+        let Some(value) = (if self.listening_series_supported {
+            self.listening_series_mode.and_then(|mode| {
+                if self.listening_bgm_inquiry.is_some() && self.listening_bgm_enabled.is_none() {
+                    return None;
+                }
+                if self.listening_bgm_enabled == Some(true) {
+                    (mode == UpmixMode::Standard).then_some("backgroundMusic")
+                } else {
+                    Some(mode.key())
+                }
+            })
+        } else if self.listening_bgm_enabled == Some(true) {
             Some("backgroundMusic")
         } else if self.listening_cinema_enabled == Some(true) {
             Some("cinema")
@@ -1907,10 +2278,14 @@ impl ReadSession {
             return;
         };
         let value = ControlValue::Text(value.into());
-        let before = self.device_control_values.insert("listeningMode".into(), value.clone());
+        let before = self
+            .device_control_values
+            .insert("listeningMode".into(), value.clone());
         if let Some(before) = before.filter(|before| *before != value) {
             self.device_updates.push(DeviceControlConfirmation {
-                key: "listeningMode".into(), before, confirmed: value,
+                key: "listeningMode".into(),
+                before,
+                confirmed: value,
             });
         }
     }
@@ -1927,14 +2302,27 @@ impl ReadSession {
             self.noise_observations.push(frame.payload.clone());
         }
         if frame.data_type == 0x0c {
+            if self.listening_series_supported {
+                if let Some(mode) = sony_listening::parse_state(&frame.payload, 0xe9) {
+                    if mode == UpmixMode::Standard || self.listening_series_options.contains(&mode)
+                    {
+                        self.listening_series_mode = Some(mode);
+                        self.update_listening_mode_notification();
+                    }
+                }
+            }
             if let Some((enabled, aux)) = parse_speak_to_chat_value(&frame.payload, 0xf9) {
                 self.speak_to_chat_aux = Some(aux);
                 if self.device_control_descriptors.contains_key("speakToChat") {
                     let value = ControlValue::Boolean(enabled);
-                    let before = self.device_control_values.insert("speakToChat".into(), value.clone());
+                    let before = self
+                        .device_control_values
+                        .insert("speakToChat".into(), value.clone());
                     if let Some(before) = before.filter(|before| *before != value) {
                         self.device_updates.push(DeviceControlConfirmation {
-                            key: "speakToChat".into(), before, confirmed: value,
+                            key: "speakToChat".into(),
+                            before,
+                            confirmed: value,
                         });
                     }
                 }
@@ -1942,31 +2330,35 @@ impl ReadSession {
             if let Some(value) = parse_upscaling_value(&frame.payload, 0xe9) {
                 if self.device_control_descriptors.contains_key("dsee") {
                     let value = ControlValue::Text(value.into());
-                    let before = self.device_control_values.insert("dsee".into(), value.clone());
+                    let before = self
+                        .device_control_values
+                        .insert("dsee".into(), value.clone());
                     if let Some(before) = before.filter(|before| *before != value) {
                         self.device_updates.push(DeviceControlConfirmation {
-                            key: "dsee".into(), before, confirmed: value,
+                            key: "dsee".into(),
+                            before,
+                            confirmed: value,
                         });
                     }
                 }
             }
             if let Some(inquiry) = self.power_off_inquiry {
-                if let Some((active, selected_time)) = parse_power_off_value(
-                    &frame.payload,
-                    0x29,
-                    inquiry,
-                    &self.power_off_options,
-                ) {
+                if let Some((active, selected_time)) =
+                    parse_power_off_value(&frame.payload, 0x29, inquiry, &self.power_off_options)
+                {
                     for (key, value) in [
                         ("autoPowerOff", active),
                         ("autoPowerOffTime", selected_time),
                     ] {
                         if self.device_control_descriptors.contains_key(key) {
                             let value = ControlValue::Integer(i64::from(value));
-                            let before = self.device_control_values.insert(key.into(), value.clone());
+                            let before =
+                                self.device_control_values.insert(key.into(), value.clone());
                             if let Some(before) = before.filter(|before| *before != value) {
                                 self.device_updates.push(DeviceControlConfirmation {
-                                    key: key.into(), before, confirmed: value,
+                                    key: key.into(),
+                                    before,
+                                    confirmed: value,
                                 });
                             }
                         }
@@ -1979,10 +2371,14 @@ impl ReadSession {
                     self.listening_bgm_room_size = Some(value.room_size);
                     if self.device_control_descriptors.contains_key("bgmRoomSize") {
                         let value = ControlValue::Integer(i64::from(value.room_size));
-                        let before = self.device_control_values.insert("bgmRoomSize".into(), value.clone());
+                        let before = self
+                            .device_control_values
+                            .insert("bgmRoomSize".into(), value.clone());
                         if let Some(before) = before.filter(|before| *before != value) {
                             self.device_updates.push(DeviceControlConfirmation {
-                                key: "bgmRoomSize".into(), before, confirmed: value,
+                                key: "bgmRoomSize".into(),
+                                before,
+                                confirmed: value,
                             });
                         }
                     }
@@ -1997,14 +2393,20 @@ impl ReadSession {
                 if noise.value_change_status == 1 {
                     let observed = [
                         ("focusOnVoice", ControlValue::Boolean(noise.focus_on_voice)),
-                        ("ambient", ControlValue::Integer(i64::from(noise.ambient_level))),
+                        (
+                            "ambient",
+                            ControlValue::Integer(i64::from(noise.ambient_level)),
+                        ),
                     ];
                     for (key, value) in observed {
                         if self.device_control_descriptors.contains_key(key) {
-                            let before = self.device_control_values.insert(key.into(), value.clone());
+                            let before =
+                                self.device_control_values.insert(key.into(), value.clone());
                             if let Some(before) = before.filter(|before| *before != value) {
                                 self.device_updates.push(DeviceControlConfirmation {
-                                    key: key.into(), before, confirmed: value,
+                                    key: key.into(),
+                                    before,
+                                    confirmed: value,
                                 });
                             }
                         }
@@ -2074,8 +2476,16 @@ mod tests {
 
     fn audio_exchange(ack_sequence: u8, mode: u8) -> Vec<u8> {
         wire_frames(&[
-            Frame { data_type: 1, sequence: ack_sequence, payload: vec![] },
-            Frame { data_type: 0x0c, sequence: 0, payload: vec![0xe7, 0x01, mode] },
+            Frame {
+                data_type: 1,
+                sequence: ack_sequence,
+                payload: vec![],
+            },
+            Frame {
+                data_type: 0x0c,
+                sequence: 0,
+                payload: vec![0xe7, 0x01, mode],
+            },
         ])
     }
 
@@ -2087,8 +2497,16 @@ mod tests {
                 description: "Automatic DSEE upscaling".into(),
                 kind: ControlKind::Select,
                 options: Some(vec![
-                    ControlOption { value: ControlValue::Text("off".into()), label: "Off".into() },
-                    ControlOption { value: ControlValue::Text("auto".into()), label: "Auto".into() },
+                    ControlOption {
+                        value: ControlValue::Text("off".into()),
+                        label: "Off".into(),
+                        enabled: None,
+                    },
+                    ControlOption {
+                        value: ControlValue::Text("auto".into()),
+                        label: "Auto".into(),
+                        enabled: None,
+                    },
                 ]),
                 min: None,
                 max: None,
@@ -2129,6 +2547,259 @@ mod tests {
         reads: VecDeque<Vec<u8>>,
         writes: Vec<Vec<u8>>,
         service: &'static str,
+    }
+
+    /// Stateful wire-level replay; never opens a real Bluetooth connection.
+    struct SeriesFixture {
+        reads: VecDeque<Vec<u8>>,
+        commands: Vec<Vec<u8>>,
+        upmix: u8,
+        bgm: bool,
+        room: u8,
+        options: Vec<u8>,
+        ack_only_after_set: bool,
+        wrote_setting: bool,
+    }
+    impl Default for SeriesFixture {
+        fn default() -> Self {
+            Self {
+                reads: VecDeque::new(),
+                commands: vec![],
+                upmix: 0,
+                bgm: false,
+                room: 2,
+                options: vec![1, 2, 3],
+                ack_only_after_set: false,
+                wrote_setting: false,
+            }
+        }
+    }
+    impl Connection for SeriesFixture {
+        fn service_uuid(&self) -> &'static str {
+            "96cc203e-5068-46ad-b32d-e316f5e069ba"
+        }
+        fn read(&mut self, buffer: &mut [u8], _timeout: Duration) -> std::io::Result<usize> {
+            let Some(bytes) = self.reads.pop_front() else {
+                return Ok(0);
+            };
+            buffer[..bytes.len()].copy_from_slice(&bytes);
+            Ok(bytes.len())
+        }
+        fn write_all(&mut self, bytes: &[u8], _timeout: Duration) -> std::io::Result<()> {
+            for frame in Decoder::default().feed(bytes) {
+                let frame = frame.unwrap();
+                if frame.data_type != 0x0c {
+                    continue;
+                }
+                self.commands.push(frame.payload.clone());
+                let mut frames = vec![Frame {
+                    data_type: 1,
+                    sequence: 1 - frame.sequence,
+                    payload: vec![],
+                }];
+                let reply = match frame.payload.as_slice() {
+                    [0xe0, 0x0a] => {
+                        let mut p = vec![0xe1, 0x0a, self.options.len() as u8];
+                        p.extend(&self.options);
+                        p.push(0);
+                        Some(p)
+                    }
+                    [0xe6, 0x0a] if !(self.ack_only_after_set && self.wrote_setting) => {
+                        Some(vec![0xe7, 0x0a, self.upmix])
+                    }
+                    [0xe6, 0x09] => Some(vec![0xe7, 0x09, if self.bgm { 0 } else { 1 }, self.room]),
+                    [0xe8, 0x0a, mode] => {
+                        self.upmix = *mode;
+                        self.wrote_setting = true;
+                        None
+                    }
+                    [0xe8, 0x09, enabled, room] => {
+                        self.bgm = *enabled == 0;
+                        self.room = *room;
+                        self.wrote_setting = true;
+                        None
+                    }
+                    _ => None,
+                };
+                if let Some(payload) = reply {
+                    frames.push(Frame {
+                        data_type: 0x0c,
+                        sequence: 0,
+                        payload,
+                    });
+                }
+                self.reads.push_back(wire_frames(&frames));
+            }
+            Ok(())
+        }
+    }
+    fn series_session(connection: &mut SeriesFixture) -> ReadSession {
+        let cancelled = AtomicBool::new(false);
+        let mut session = ReadSession::new();
+        session.configure_listening_modes(Some(0x09), false, true);
+        let bgm = session.bgm_setting(connection, &cancelled, 0x09).unwrap();
+        let control = session
+            .discover_series_control(connection, &cancelled, Some(bgm))
+            .unwrap();
+        session.install_device_controls(&[control]);
+        session
+    }
+    #[test]
+    fn series_modes_discover_apply_and_confirm_all_five_options() {
+        let mut connection = SeriesFixture::default();
+        let mut session = series_session(&mut connection);
+        let descriptor = &session.device_control_descriptors["listeningMode"];
+        assert_eq!(descriptor.options.as_ref().unwrap().len(), 5);
+        for target in [
+            "music",
+            "cinema",
+            "game",
+            "backgroundMusic",
+            "music",
+            "standard",
+        ] {
+            let confirmation = session
+                .apply_device_control(
+                    &mut connection,
+                    &AtomicBool::new(false),
+                    DeviceControlChange {
+                        key: "listeningMode".into(),
+                        value: ControlValue::Text(target.into()),
+                    },
+                )
+                .unwrap();
+            let SettingConfirmation::DeviceControl(value) = confirmation else {
+                panic!("wrong confirmation");
+            };
+            assert_eq!(value.confirmed, ControlValue::Text(target.into()));
+        }
+        let writes: Vec<_> = connection
+            .commands
+            .iter()
+            .filter(|p| p.first() == Some(&0xe8))
+            .cloned()
+            .collect();
+        assert_eq!(
+            writes,
+            vec![
+                vec![0xe8, 0x0a, 3],
+                vec![0xe8, 0x0a, 1],
+                vec![0xe8, 0x0a, 2],
+                vec![0xe8, 0x0a, 0],
+                vec![0xe8, 0x09, 0, 2],
+                vec![0xe8, 0x09, 1, 2],
+                vec![0xe8, 0x0a, 3],
+                vec![0xe8, 0x0a, 0]
+            ]
+        );
+        assert_eq!(connection.room, 2);
+    }
+    #[test]
+    fn series_ack_only_never_confirms_or_sends_automatic_restoration() {
+        let mut connection = SeriesFixture::default();
+        let mut session = series_session(&mut connection);
+        connection.ack_only_after_set = true;
+        assert!(session
+            .apply_device_control(
+                &mut connection,
+                &AtomicBool::new(false),
+                DeviceControlChange {
+                    key: "listeningMode".into(),
+                    value: ControlValue::Text("music".into())
+                }
+            )
+            .is_err());
+        assert_eq!(
+            session.device_control_values["listeningMode"],
+            ControlValue::Text("standard".into())
+        );
+        assert_eq!(
+            connection
+                .commands
+                .iter()
+                .filter(|p| p.first() == Some(&0xe8))
+                .count(),
+            1
+        );
+    }
+    #[test]
+    fn series_capabilities_restrict_options_and_unadvertised_modes_send_no_commands() {
+        let mut connection = SeriesFixture {
+            options: vec![1],
+            ..Default::default()
+        };
+        let mut session = series_session(&mut connection);
+        assert_eq!(
+            session.device_control_descriptors["listeningMode"]
+                .options
+                .as_ref()
+                .unwrap()
+                .len(),
+            3
+        );
+        let before = connection.commands.len();
+        assert!(session
+            .apply_device_control(
+                &mut connection,
+                &AtomicBool::new(false),
+                DeviceControlChange {
+                    key: "listeningMode".into(),
+                    value: ControlValue::Text("game".into())
+                }
+            )
+            .is_err());
+        assert_eq!(connection.commands.len(), before);
+    }
+    #[test]
+    fn series_notifications_follow_the_hardware_button_and_ignore_unknown_modes() {
+        let mut connection = SeriesFixture::default();
+        let mut session = series_session(&mut connection);
+        session.record_noise_observation(&Frame {
+            data_type: 0x0c,
+            sequence: 0,
+            payload: vec![0xe9, 0x0a, 3],
+        });
+        let updates = session.drain_device_updates();
+        assert_eq!(
+            updates.last().unwrap().confirmed,
+            ControlValue::Text("music".into())
+        );
+        session.record_noise_observation(&Frame {
+            data_type: 0x0c,
+            sequence: 0,
+            payload: vec![0xe9, 0x0a, 99],
+        });
+        assert!(session.drain_device_updates().is_empty());
+    }
+    #[test]
+    fn series_upmix_blocks_eq_and_dsee_before_any_setting_write() {
+        let mut connection = SeriesFixture {
+            upmix: 3,
+            ..Default::default()
+        };
+        let mut session = series_session(&mut connection);
+        session.install_device_controls(&[dsee_control("auto")]);
+        assert!(session
+            .apply_setting(
+                &mut connection,
+                &AtomicBool::new(false),
+                SettingChange::Equalizer(vec![6; 10])
+            )
+            .is_err());
+        assert!(session
+            .apply_device_control(
+                &mut connection,
+                &AtomicBool::new(false),
+                DeviceControlChange {
+                    key: "dsee".into(),
+                    value: ControlValue::Text("off".into())
+                }
+            )
+            .is_err());
+        assert!(!connection
+            .commands
+            .iter()
+            .any(|p| matches!(p.first(), Some(0xe8 | 0x58))));
     }
     impl Connection for FixtureConnection {
         fn service_uuid(&self) -> &'static str {
@@ -2209,7 +2880,11 @@ mod tests {
         let mut connection = FixtureConnection {
             reads: VecDeque::from([
                 audio_exchange(1, 0),
-                wire_frames(&[Frame { data_type: 1, sequence: 0, payload: vec![] }]),
+                wire_frames(&[Frame {
+                    data_type: 1,
+                    sequence: 0,
+                    payload: vec![],
+                }]),
                 audio_exchange(1, 1),
             ]),
             writes: vec![],
@@ -2217,21 +2892,25 @@ mod tests {
         };
         let mut session = ReadSession::new();
         session.install_device_controls(&[dsee_control("off")]);
-        let confirmation = session.apply_setting(
-            &mut connection,
-            &AtomicBool::new(false),
-            SettingChange::DeviceControl(DeviceControlChange {
-                key: "dsee".into(),
-                value: ControlValue::Text("auto".into()),
-            }),
-        ).unwrap();
+        let confirmation = session
+            .apply_setting(
+                &mut connection,
+                &AtomicBool::new(false),
+                SettingChange::DeviceControl(DeviceControlChange {
+                    key: "dsee".into(),
+                    value: ControlValue::Text("auto".into()),
+                }),
+            )
+            .unwrap();
         let SettingConfirmation::DeviceControl(confirmation) = confirmation else {
             panic!("expected a typed DSEE confirmation");
         };
         assert_eq!(confirmation.before, ControlValue::Text("off".into()));
         assert_eq!(confirmation.confirmed, ControlValue::Text("auto".into()));
         let mut decoder = Decoder::default();
-        let commands: Vec<_> = connection.writes.iter()
+        let commands: Vec<_> = connection
+            .writes
+            .iter()
             .flat_map(|wire| decoder.feed(wire))
             .map(Result::unwrap)
             .filter(|frame| frame.data_type == 0x0c)
@@ -2242,21 +2921,27 @@ mod tests {
         let mut no_readback = FixtureConnection {
             reads: VecDeque::from([
                 audio_exchange(1, 0),
-                wire_frames(&[Frame { data_type: 1, sequence: 0, payload: vec![] }]),
+                wire_frames(&[Frame {
+                    data_type: 1,
+                    sequence: 0,
+                    payload: vec![],
+                }]),
             ]),
             writes: vec![],
             service: "956c7b26-d49a-4ba8-b03f-b17d393cb6e2",
         };
         let mut session = ReadSession::new();
         session.install_device_controls(&[dsee_control("off")]);
-        assert!(session.apply_setting(
-            &mut no_readback,
-            &AtomicBool::new(false),
-            SettingChange::DeviceControl(DeviceControlChange {
-                key: "dsee".into(),
-                value: ControlValue::Text("auto".into()),
-            }),
-        ).is_err());
+        assert!(session
+            .apply_setting(
+                &mut no_readback,
+                &AtomicBool::new(false),
+                SettingChange::DeviceControl(DeviceControlChange {
+                    key: "dsee".into(),
+                    value: ControlValue::Text("auto".into()),
+                }),
+            )
+            .is_err());
         assert_eq!(setting_requests(&no_readback, 0xe8), 1);
     }
 
@@ -2269,11 +2954,14 @@ mod tests {
             sequence: 0,
             payload: vec![0xe9, 1, 1],
         }]));
-        assert_eq!(session.drain_device_updates(), [DeviceControlConfirmation {
-            key: "dsee".into(),
-            before: ControlValue::Text("off".into()),
-            confirmed: ControlValue::Text("auto".into()),
-        }]);
+        assert_eq!(
+            session.drain_device_updates(),
+            [DeviceControlConfirmation {
+                key: "dsee".into(),
+                before: ControlValue::Text("off".into()),
+                confirmed: ControlValue::Text("auto".into()),
+            }]
+        );
         assert!(session.drain_device_updates().is_empty());
     }
 
@@ -2293,46 +2981,68 @@ mod tests {
             sequence: 1,
             payload: vec![0x69, 0x19, 1, 1, 0, 1, 9, 1, 2],
         }]));
-        assert_eq!(session.drain_device_updates(), [DeviceControlConfirmation {
-            key: "focusOnVoice".into(),
-            before: ControlValue::Boolean(false),
-            confirmed: ControlValue::Boolean(true),
-        }]);
+        assert_eq!(
+            session.drain_device_updates(),
+            [DeviceControlConfirmation {
+                key: "focusOnVoice".into(),
+                before: ControlValue::Boolean(false),
+                confirmed: ControlValue::Boolean(true),
+            }]
+        );
     }
 
     #[test]
     fn focus_mode_read_modify_write_requires_final_baseline_and_preserves_other_fields() {
         let mut changing = FixtureConnection {
-            reads: VecDeque::from([noise19_exchange(1, Frame {
-                data_type: 0x0c, sequence: 0,
-                payload: vec![0x67, 0x19, 0, 1, 0, 0, 9, 1, 2],
-            })]),
+            reads: VecDeque::from([noise19_exchange(
+                1,
+                Frame {
+                    data_type: 0x0c,
+                    sequence: 0,
+                    payload: vec![0x67, 0x19, 0, 1, 0, 0, 9, 1, 2],
+                },
+            )]),
             writes: vec![],
             service: "956c7b26-d49a-4ba8-b03f-b17d393cb6e2",
         };
         let mut session = ReadSession::new();
         session.noise_inquiry = Some(0x19);
         session.install_device_controls(&[focus_control(false)]);
-        assert!(session.apply_setting(
-            &mut changing,
-            &AtomicBool::new(false),
-            SettingChange::DeviceControl(DeviceControlChange {
-                key: "focusOnVoice".into(), value: ControlValue::Boolean(true),
-            }),
-        ).is_err());
+        assert!(session
+            .apply_setting(
+                &mut changing,
+                &AtomicBool::new(false),
+                SettingChange::DeviceControl(DeviceControlChange {
+                    key: "focusOnVoice".into(),
+                    value: ControlValue::Boolean(true),
+                }),
+            )
+            .is_err());
         assert_eq!(setting_requests(&changing, 0x68), 0);
 
         let mut connection = FixtureConnection {
             reads: VecDeque::from([
-                noise19_exchange(1, Frame {
-                    data_type: 0x0c, sequence: 0,
-                    payload: vec![0x67, 0x19, 1, 1, 0, 0, 9, 1, 2],
-                }),
-                wire_frames(&[Frame { data_type: 1, sequence: 0, payload: vec![] }]),
-                noise19_exchange(1, Frame {
-                    data_type: 0x0c, sequence: 0,
-                    payload: vec![0x67, 0x19, 1, 1, 0, 1, 9, 1, 2],
-                }),
+                noise19_exchange(
+                    1,
+                    Frame {
+                        data_type: 0x0c,
+                        sequence: 0,
+                        payload: vec![0x67, 0x19, 1, 1, 0, 0, 9, 1, 2],
+                    },
+                ),
+                wire_frames(&[Frame {
+                    data_type: 1,
+                    sequence: 0,
+                    payload: vec![],
+                }]),
+                noise19_exchange(
+                    1,
+                    Frame {
+                        data_type: 0x0c,
+                        sequence: 0,
+                        payload: vec![0x67, 0x19, 1, 1, 0, 1, 9, 1, 2],
+                    },
+                ),
             ]),
             writes: vec![],
             service: "956c7b26-d49a-4ba8-b03f-b17d393cb6e2",
@@ -2340,20 +3050,26 @@ mod tests {
         let mut session = ReadSession::new();
         session.noise_inquiry = Some(0x19);
         session.install_device_controls(&[focus_control(false)]);
-        let confirmation = session.apply_setting(
-            &mut connection,
-            &AtomicBool::new(false),
-            SettingChange::DeviceControl(DeviceControlChange {
-                key: "focusOnVoice".into(), value: ControlValue::Boolean(true),
-            }),
-        ).unwrap();
+        let confirmation = session
+            .apply_setting(
+                &mut connection,
+                &AtomicBool::new(false),
+                SettingChange::DeviceControl(DeviceControlChange {
+                    key: "focusOnVoice".into(),
+                    value: ControlValue::Boolean(true),
+                }),
+            )
+            .unwrap();
         let SettingConfirmation::DeviceControl(confirmation) = confirmation else {
             panic!("expected focus-on-voice confirmation");
         };
         assert_eq!(confirmation.before, ControlValue::Boolean(false));
         assert_eq!(confirmation.confirmed, ControlValue::Boolean(true));
         let mut decoder = Decoder::default();
-        let request = connection.writes.iter().flat_map(|wire| decoder.feed(wire))
+        let request = connection
+            .writes
+            .iter()
+            .flat_map(|wire| decoder.feed(wire))
             .map(Result::unwrap)
             .find(|frame| frame.data_type == 0x0c && frame.payload.first() == Some(&0x68))
             .unwrap();
