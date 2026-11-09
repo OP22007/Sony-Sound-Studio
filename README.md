@@ -2,6 +2,9 @@
 
 A local desktop companion for Sony headphones, with experimental OnePlus support. Shape your sound, switch listening modes and manage your headphones from a dedicated desktop workspace.
 
+[Browse device compatibility, feature status and test evidence](docs/compatibility/README.md) · [Search the device directory](https://op22007.github.io/Sony-Sound-Studio/devices/)
+
+A local desktop companion for Sony headphones. Shape your sound, switch listening modes and manage your headphones from a dedicated desktop workspace.
 
 ## Features
 
