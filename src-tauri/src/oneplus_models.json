@@ -1,0 +1,1656 @@
+[
+  {
+    "product_id": "067414",
+    "name": "OnePlus Flow Buds",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [
+      "OnePlus Nord Buds Laplace 4"
+    ],
+    "noise_profiles": [
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Noise cancelling"
+      },
+      {
+        "index": 7,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Smart noise cancelling"
+      },
+      {
+        "index": 4,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Max noise cancelling"
+      },
+      {
+        "index": 6,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Mild noise cancelling"
+      },
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 3,
+        "parent_index": 0,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      },
+      {
+        "index": 8,
+        "parent_index": 2,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 2,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": true,
+    "game_feature": 40
+  },
+  {
+    "product_id": "067814",
+    "name": "OnePlus Buds Pro 4",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [
+      "OnePlus Buds Bohr"
+    ],
+    "noise_profiles": [
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Noise cancelling"
+      },
+      {
+        "index": 7,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Smart noise cancelling"
+      },
+      {
+        "index": 4,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Max noise cancelling"
+      },
+      {
+        "index": 5,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Moderate noise cancelling"
+      },
+      {
+        "index": 6,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Mild noise cancelling"
+      },
+      {
+        "index": 11,
+        "parent_index": null,
+        "mode": "adaptive",
+        "label": "Adaptive"
+      },
+      {
+        "index": 12,
+        "parent_index": 11,
+        "mode": "unknown",
+        "label": "Noise-control profile 12"
+      },
+      {
+        "index": 13,
+        "parent_index": 11,
+        "mode": "unknown",
+        "label": "Noise-control profile 13"
+      },
+      {
+        "index": 14,
+        "parent_index": 11,
+        "mode": "unknown",
+        "label": "Noise-control profile 14"
+      },
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 3,
+        "parent_index": 0,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      },
+      {
+        "index": 8,
+        "parent_index": 2,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 1,
+        "label": "Bold"
+      },
+      {
+        "index": 2,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 3,
+        "label": "Bass Plus"
+      },
+      {
+        "index": 7,
+        "label": "Dynaudio featured"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": true,
+    "game_feature": 40
+  },
+  {
+    "product_id": "064014",
+    "name": "OnePlus Buds Pro 3",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Noise cancelling"
+      },
+      {
+        "index": 7,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Smart noise cancelling"
+      },
+      {
+        "index": 4,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Max noise cancelling"
+      },
+      {
+        "index": 5,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Moderate noise cancelling"
+      },
+      {
+        "index": 6,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Mild noise cancelling"
+      },
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 3,
+        "parent_index": 0,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      },
+      {
+        "index": 8,
+        "parent_index": 2,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 1,
+        "label": "Bold"
+      },
+      {
+        "index": 2,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 3,
+        "label": "Bass Plus"
+      },
+      {
+        "index": 7,
+        "label": "Dynaudio featured"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": true,
+    "game_feature": 6
+  },
+  {
+    "product_id": "06E410",
+    "name": "OnePlus Buds Clip",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [
+      "OnePlus Open Nobel"
+    ],
+    "noise_profiles": [],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 3,
+        "label": "Vibrant"
+      },
+      {
+        "index": 2,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 4,
+        "label": "Dynaudio featured"
+      }
+    ],
+    "conditional_eq_presets": [
+      {
+        "index": 1,
+        "label": "Clear & crisp"
+      }
+    ],
+    "wear_detection": true,
+    "game_feature": 6
+  },
+  {
+    "product_id": "062014",
+    "name": "OnePlus Buds Pro 2",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Noise cancelling"
+      },
+      {
+        "index": 7,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Smart noise cancelling"
+      },
+      {
+        "index": 4,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Max noise cancelling"
+      },
+      {
+        "index": 5,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Moderate noise cancelling"
+      },
+      {
+        "index": 6,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Mild noise cancelling"
+      },
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 3,
+        "parent_index": 0,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      },
+      {
+        "index": 8,
+        "parent_index": 2,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 3,
+        "label": "Bold"
+      },
+      {
+        "index": 2,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [
+      {
+        "index": 7,
+        "label": "Hans Zimmer Soundscape Tuning"
+      }
+    ],
+    "wear_detection": true,
+    "game_feature": 6
+  },
+  {
+    "product_id": "063414",
+    "name": "OnePlus Buds Pro 2R",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Noise cancelling"
+      },
+      {
+        "index": 7,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Smart noise cancelling"
+      },
+      {
+        "index": 4,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Max noise cancelling"
+      },
+      {
+        "index": 5,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Moderate noise cancelling"
+      },
+      {
+        "index": 6,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Mild noise cancelling"
+      },
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 3,
+        "parent_index": 0,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      },
+      {
+        "index": 8,
+        "parent_index": 2,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 3,
+        "label": "Bold"
+      },
+      {
+        "index": 2,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [
+      {
+        "index": 7,
+        "label": "Hans Zimmer Soundscape Tuning"
+      }
+    ],
+    "wear_detection": true,
+    "game_feature": 6
+  },
+  {
+    "product_id": "063014",
+    "name": "OnePlus Buds Pro 2（轻享版）",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Noise cancelling"
+      },
+      {
+        "index": 7,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Smart noise cancelling"
+      },
+      {
+        "index": 4,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Max noise cancelling"
+      },
+      {
+        "index": 5,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Moderate noise cancelling"
+      },
+      {
+        "index": 6,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Mild noise cancelling"
+      },
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 3,
+        "parent_index": 0,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      },
+      {
+        "index": 8,
+        "parent_index": 2,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 3,
+        "label": "Bold"
+      },
+      {
+        "index": 2,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [
+      {
+        "index": 7,
+        "label": "Hans Zimmer Soundscape Tuning"
+      }
+    ],
+    "wear_detection": true,
+    "game_feature": 6
+  },
+  {
+    "product_id": "060C14",
+    "name": "OnePlus Buds Pro",
+    "service_uuid": "00001107-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [
+      {
+        "index": 4,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Smart noise cancelling"
+      },
+      {
+        "index": 3,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Max noise cancelling"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Mild noise cancelling"
+      },
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 3,
+        "label": "Bold"
+      },
+      {
+        "index": 2,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": true,
+    "game_feature": null
+  },
+  {
+    "product_id": "065414",
+    "name": "OnePlus Buds 4",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Noise cancelling"
+      },
+      {
+        "index": 4,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Max noise cancelling"
+      },
+      {
+        "index": 5,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Moderate noise cancelling"
+      },
+      {
+        "index": 6,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Mild noise cancelling"
+      },
+      {
+        "index": 7,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Smart noise cancelling"
+      },
+      {
+        "index": 11,
+        "parent_index": null,
+        "mode": "adaptive",
+        "label": "Adaptive"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      },
+      {
+        "index": 8,
+        "parent_index": 2,
+        "mode": "ambient",
+        "label": "Transparency"
+      },
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 3,
+        "parent_index": 0,
+        "mode": "off",
+        "label": "Off"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 1,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 2,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": true,
+    "game_feature": 6
+  },
+  {
+    "product_id": "063C14",
+    "name": "OnePlus Buds 3",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Noise cancelling"
+      },
+      {
+        "index": 7,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Smart noise cancelling"
+      },
+      {
+        "index": 4,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Max noise cancelling"
+      },
+      {
+        "index": 5,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Moderate noise cancelling"
+      },
+      {
+        "index": 6,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Mild noise cancelling"
+      },
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 3,
+        "parent_index": 0,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      },
+      {
+        "index": 8,
+        "parent_index": 2,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 2,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [
+      {
+        "index": 3,
+        "label": "Bold"
+      }
+    ],
+    "wear_detection": true,
+    "game_feature": 6
+  },
+  {
+    "product_id": "066414",
+    "name": "OnePlus Buds Ace 3",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [
+      "OnePlus Nord Buds Einstein 1"
+    ],
+    "noise_profiles": [
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Noise cancelling"
+      },
+      {
+        "index": 7,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Smart noise cancelling"
+      },
+      {
+        "index": 4,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Max noise cancelling"
+      },
+      {
+        "index": 5,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Moderate noise cancelling"
+      },
+      {
+        "index": 6,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Mild noise cancelling"
+      },
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 3,
+        "parent_index": 0,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      },
+      {
+        "index": 8,
+        "parent_index": 2,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 2,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": true,
+    "game_feature": 40
+  },
+  {
+    "product_id": "064C14",
+    "name": "OnePlus Buds Ace 2",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Noise cancelling"
+      },
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 3,
+        "label": "Balanced"
+      },
+      {
+        "index": 4,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 5,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": false,
+    "game_feature": 6
+  },
+  {
+    "product_id": "061014",
+    "name": "OnePlus Buds Z2",
+    "service_uuid": "00001107-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [
+      {
+        "index": 3,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Max noise cancelling"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Mild noise cancelling"
+      },
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 3,
+        "label": "Bold"
+      },
+      {
+        "index": 2,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": true,
+    "game_feature": null
+  },
+  {
+    "product_id": "060814",
+    "name": "OnePlus Buds Z",
+    "service_uuid": "00001107-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [],
+    "eq_presets": [],
+    "conditional_eq_presets": [],
+    "wear_detection": false,
+    "game_feature": null
+  },
+  {
+    "product_id": "068814",
+    "name": "OnePlus Buds Z",
+    "service_uuid": "00001107-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [],
+    "eq_presets": [],
+    "conditional_eq_presets": [],
+    "wear_detection": false,
+    "game_feature": null
+  },
+  {
+    "product_id": "062814",
+    "name": "OnePlus Buds Ace",
+    "service_uuid": "00001107-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Noise cancelling"
+      },
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 2,
+        "label": "Bold"
+      },
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": false,
+    "game_feature": 6
+  },
+  {
+    "product_id": "066814",
+    "name": "OnePlus Nord Buds 4 Pro",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [
+      "OnePlus Nord Buds Einstein 2"
+    ],
+    "noise_profiles": [
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Noise cancelling"
+      },
+      {
+        "index": 7,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Smart noise cancelling"
+      },
+      {
+        "index": 4,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Max noise cancelling"
+      },
+      {
+        "index": 5,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Moderate noise cancelling"
+      },
+      {
+        "index": 6,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Mild noise cancelling"
+      },
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 3,
+        "parent_index": 0,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      },
+      {
+        "index": 8,
+        "parent_index": 2,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 2,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": true,
+    "game_feature": 40
+  },
+  {
+    "product_id": "067014",
+    "name": "OnePlus Nord Buds 4",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [
+      "OnePlus Nord Buds ohm EX"
+    ],
+    "noise_profiles": [
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Noise cancelling"
+      },
+      {
+        "index": 7,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Smart noise cancelling"
+      },
+      {
+        "index": 4,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Max noise cancelling"
+      },
+      {
+        "index": 5,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Moderate noise cancelling"
+      },
+      {
+        "index": 6,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Mild noise cancelling"
+      },
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 3,
+        "parent_index": 0,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      },
+      {
+        "index": 8,
+        "parent_index": 2,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 1,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 2,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": true,
+    "game_feature": 40
+  },
+  {
+    "product_id": "064414",
+    "name": "OnePlus Nord Buds 3 Pro",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Noise cancelling"
+      },
+      {
+        "index": 7,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Smart noise cancelling"
+      },
+      {
+        "index": 4,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Max noise cancelling"
+      },
+      {
+        "index": 5,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Moderate noise cancelling"
+      },
+      {
+        "index": 6,
+        "parent_index": 1,
+        "mode": "cancelling",
+        "label": "Mild noise cancelling"
+      },
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 3,
+        "parent_index": 0,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      },
+      {
+        "index": 8,
+        "parent_index": 2,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 3,
+        "label": "Balanced"
+      },
+      {
+        "index": 4,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 5,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": true,
+    "game_feature": 6
+  },
+  {
+    "product_id": "065014",
+    "name": "OnePlus Nord Buds 3",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Noise cancelling"
+      },
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 3,
+        "label": "Balanced"
+      },
+      {
+        "index": 4,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 5,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": false,
+    "game_feature": 6
+  },
+  {
+    "product_id": "062414",
+    "name": "OnePlus Nord Buds 2",
+    "service_uuid": "00001107-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Noise cancelling"
+      },
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 2,
+        "label": "Bold"
+      },
+      {
+        "index": 3,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": false,
+    "game_feature": 6
+  },
+  {
+    "product_id": "066054",
+    "name": "OnePlus Buds 3V",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [
+      "OnePlus Nord Curie DO"
+    ],
+    "noise_profiles": [],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 2,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": false,
+    "game_feature": 6
+  },
+  {
+    "product_id": "064814",
+    "name": "OnePlus Buds V",
+    "service_uuid": "00001107-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 2,
+        "label": "Bass Plus"
+      },
+      {
+        "index": 1,
+        "label": "Bold"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": false,
+    "game_feature": 6
+  },
+  {
+    "product_id": "061814",
+    "name": "OnePlus Buds N",
+    "service_uuid": "00001107-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 3,
+        "label": "Bold"
+      },
+      {
+        "index": 2,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": false,
+    "game_feature": 6
+  },
+  {
+    "product_id": "061414",
+    "name": "OnePlus Nord Buds",
+    "service_uuid": "00001107-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 3,
+        "label": "Bold"
+      },
+      {
+        "index": 2,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": false,
+    "game_feature": 6
+  },
+  {
+    "product_id": "065854",
+    "name": "OnePlus Nord Buds 3r",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 2,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": false,
+    "game_feature": 6
+  },
+  {
+    "product_id": "062C14",
+    "name": "OnePlus Nord Buds 2r",
+    "service_uuid": "00001107-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 2,
+        "label": "Bass Plus"
+      },
+      {
+        "index": 1,
+        "label": "Bold"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": false,
+    "game_feature": 6
+  },
+  {
+    "product_id": "061C14",
+    "name": "OnePlus Nord Buds CE",
+    "service_uuid": "0000079a-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [],
+    "eq_presets": [
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      },
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 2,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 3,
+        "label": "Gentle"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": false,
+    "game_feature": 6
+  },
+  {
+    "product_id": "060414",
+    "name": "OnePlus Buds",
+    "service_uuid": "00001107-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [],
+    "eq_presets": [],
+    "conditional_eq_presets": [],
+    "wear_detection": false,
+    "game_feature": null
+  },
+  {
+    "product_id": "068414",
+    "name": "OnePlus Buds",
+    "service_uuid": "00001107-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [],
+    "eq_presets": [],
+    "conditional_eq_presets": [],
+    "wear_detection": false,
+    "game_feature": null
+  },
+  {
+    "product_id": "051014",
+    "name": "OnePlus Bullets Wireless Z3",
+    "service_uuid": "00001107-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 3,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      },
+      {
+        "index": 2,
+        "label": "Bold"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": false,
+    "game_feature": null
+  },
+  {
+    "product_id": "050C14",
+    "name": "OnePlus BulletsWireless Z2 ANC",
+    "service_uuid": "00001107-d102-11e1-9b23-00025b00a5a5",
+    "aliases": [],
+    "noise_profiles": [
+      {
+        "index": 0,
+        "parent_index": null,
+        "mode": "cancelling",
+        "label": "Noise cancelling"
+      },
+      {
+        "index": 1,
+        "parent_index": null,
+        "mode": "off",
+        "label": "Off"
+      },
+      {
+        "index": 2,
+        "parent_index": null,
+        "mode": "ambient",
+        "label": "Transparency"
+      }
+    ],
+    "eq_presets": [
+      {
+        "index": 0,
+        "label": "Balanced"
+      },
+      {
+        "index": 2,
+        "label": "Bold"
+      },
+      {
+        "index": 3,
+        "label": "Pure Voice"
+      },
+      {
+        "index": 1,
+        "label": "Bass Plus"
+      }
+    ],
+    "conditional_eq_presets": [],
+    "wear_detection": false,
+    "game_feature": null
+  }
+]

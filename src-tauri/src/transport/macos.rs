@@ -5,9 +5,48 @@
 //! write can block until transmission, and its async write API documents a
 //! completion callback but no cancellation guarantee for an accepted write.
 
-use super::{is_sony_headphone, model_from_name, PairedDevice};
+use super::{
+    is_supported_headphone, model_from_name, ActiveAudioDevice, AudioTransport,
+    DeviceActivitySnapshot, PairedDevice,
+};
 use objc2::rc::autoreleasepool;
 use objc2_io_bluetooth::IOBluetoothDevice;
+
+pub fn activity_snapshot() -> Result<super::DeviceActivitySnapshot, String> {
+    autoreleasepool(|_| {
+        let Some(paired) = (unsafe { IOBluetoothDevice::pairedDevices() }) else {
+            return Ok(DeviceActivitySnapshot::default());
+        };
+        let mut snapshot = DeviceActivitySnapshot::default();
+        for index in 0..paired.count().min(256) {
+            let item = paired.objectAtIndex(index);
+            let Some(device) = item.downcast_ref::<IOBluetoothDevice>() else {
+                continue;
+            };
+            if !unsafe { device.isConnected() } {
+                continue;
+            }
+            let name = unsafe { device.name() }.to_string();
+            if !is_supported_headphone(&name) {
+                continue;
+            }
+            if let Some(address) = unsafe { device.addressString() } {
+                snapshot.bluetooth_connected.push(ActiveAudioDevice {
+                    identity: address.to_string(),
+                    name: name.chars().filter(|c| !c.is_control()).take(128).collect(),
+                    transport: AudioTransport::Bluetooth,
+                });
+            }
+        }
+        snapshot
+            .bluetooth_connected
+            .sort_by(|a, b| a.identity.cmp(&b.identity));
+        snapshot
+            .bluetooth_connected
+            .dedup_by(|a, b| a.identity == b.identity);
+        Ok(snapshot)
+    })
+}
 
 pub fn enumerate() -> Result<Vec<PairedDevice>, String> {
     autoreleasepool(|_| {
@@ -21,7 +60,7 @@ pub fn enumerate() -> Result<Vec<PairedDevice>, String> {
                 continue;
             };
             let name = unsafe { device.name() }.to_string();
-            if !is_sony_headphone(&name) {
+            if !is_supported_headphone(&name) {
                 continue;
             }
             if let Some(address) = unsafe { device.addressString() } {

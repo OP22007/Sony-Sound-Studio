@@ -80,13 +80,15 @@ test('noise, listening modes, environments and EQ produce distinct running motio
   await expect.poll(choreography).toBe('off/cinema/2');
   const before = await page.locator('.visual-profile .surface-front').getAttribute('d');
   await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
-  await page.getByRole('slider', { name: '63 Hz', exact: true }).fill('6');
+  await page.getByRole('slider', { name: '63 Hz', exact: true }).focus();
+  await page.keyboard.press('End');
   await page.getByRole('button', { name: 'Sound studio', exact: true }).click();
   await expect(visual).toHaveAttribute('data-eq', 'bass');
   await expect.poll(() => page.locator('.visual-profile .surface-front').getAttribute('d')).not.toBe(before);
   const treble = await page.locator('.visual-profile .surface-front').getAttribute('d');
   await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
-  await page.getByRole('slider', { name: '16 kHz', exact: true }).fill('6');
+  await page.getByRole('slider', { name: '16 kHz', exact: true }).focus();
+  await page.keyboard.press('End');
   await page.getByRole('button', { name: 'Sound studio', exact: true }).click();
   await expect(visual).toHaveAttribute('data-eq', 'treble');
   await expect.poll(() => page.locator('.visual-profile .surface-front').getAttribute('d')).not.toBe(treble);

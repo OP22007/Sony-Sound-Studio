@@ -1,15 +1,24 @@
-mod discovery;
-mod device_controls;
-mod preferences;
 mod app_updates;
+mod control_session;
+mod device_controls;
+mod device_monitor;
+mod device_observer;
+mod discovery;
 mod media_automation;
 mod media_vlc;
-mod vlc_connection;
 #[cfg(windows)]
 mod media_windows;
+mod oneplus;
+mod oneplus_eq;
+mod oneplus_models;
+mod output_levels;
+mod preferences;
 pub mod protocol;
+mod sony_listening;
 mod transport;
+mod vlc_connection;
 
+use preferences::{AppPreferences, PreferencesStore};
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -21,7 +30,6 @@ use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, State, WebviewWindowBuilder};
 use tauri_plugin_autostart::ManagerExt as AutostartManagerExt;
-use preferences::{AppPreferences, PreferencesStore};
 
 const MAX_DIAGNOSTICS: usize = 64;
 const MAX_SESSIONS: usize = 8;
@@ -37,6 +45,19 @@ pub struct Device {
     firmware: Option<String>,
     capabilities: Vec<String>,
     settings: BTreeMap<String, Value>,
+}
+
+fn apply_battery_level(device: &mut Device, level: u8) {
+    device.battery = Some(level);
+    // Receipt time of a real device reply, never an unrelated UI refresh.
+    if let Ok(elapsed) = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        device.settings.insert(
+            "batteryReadAtMs".into(),
+            Value::from(elapsed.as_millis() as u64),
+        );
+    } else {
+        device.settings.remove("batteryReadAtMs");
+    }
 }
 
 fn apply_noise_readout(device: &mut Device, noise: &discovery::NoiseInfo) {
@@ -74,6 +95,8 @@ pub struct AppState {
     platform: String,
     transport_status: String,
     devices: Vec<Device>,
+    active_output_device_id: Option<String>,
+    audio_output_observed: bool,
     diagnostics: Vec<String>,
 }
 
@@ -92,6 +115,8 @@ struct ControlCommand {
 struct Inner {
     revision: u64,
     devices: BTreeMap<String, Device>,
+    active_output_device_id: Option<String>,
+    audio_output_observed: bool,
     catalogue: BTreeMap<String, transport::PairedDevice>,
     sessions: BTreeMap<String, Session>,
     diagnostics: VecDeque<String>,
@@ -117,6 +142,8 @@ impl Runtime {
         let mut inner = Inner {
             revision: 0,
             devices: BTreeMap::new(),
+            active_output_device_id: None,
+            audio_output_observed: false,
             catalogue: BTreeMap::new(),
             sessions: BTreeMap::new(),
             diagnostics: VecDeque::new(),
@@ -186,10 +213,14 @@ impl Runtime {
             || inner.reconnect_suppressed.contains(device_id)
             || inner.sessions.contains_key(device_id)
             || inner.reconnect_jobs.contains_key(device_id)
-        { return None; }
+        {
+            return None;
+        }
         let cancelled = Arc::new(AtomicBool::new(false));
-        inner.reconnect_jobs.insert(device_id.to_owned(), Arc::clone(&cancelled));
-        inner.log("The control connection was lost. Automatic reconnect will retry with increasing delays.");
+        inner
+            .reconnect_jobs
+            .insert(device_id.to_owned(), Arc::clone(&cancelled));
+        inner.log("Automatic control connection scheduled with bounded retries.");
         Some(cancelled)
     }
 }
@@ -201,6 +232,8 @@ impl Inner {
             platform: std::env::consts::OS.into(),
             transport_status: transport::status().into(),
             devices: self.devices.values().cloned().collect(),
+            active_output_device_id: self.active_output_device_id.clone(),
+            audio_output_observed: self.audio_output_observed,
             diagnostics: self.diagnostics.iter().cloned().collect(),
         }
     }
@@ -240,36 +273,121 @@ fn get_app_state(runtime: State<'_, Arc<Runtime>>) -> Result<AppState, String> {
 }
 
 #[tauri::command]
+async fn get_output_levels(
+    device_id: String,
+    runtime: State<'_, Arc<Runtime>>,
+) -> Result<Option<output_levels::OutputLevels>, String> {
+    let runtime = runtime.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let expected_name = {
+            let inner = runtime
+                .inner
+                .lock()
+                .map_err(|_| "Device state unavailable.")?;
+            if inner.active_output_device_id.as_deref() != Some(device_id.as_str())
+                || !inner.audio_output_observed
+            {
+                return Ok(None);
+            }
+            let Some(device) = inner
+                .devices
+                .get(&device_id)
+                .filter(|d| d.connection == ConnectionState::Connected)
+            else {
+                return Ok(None);
+            };
+            // Same-name devices cannot safely be distinguished by the meter endpoint name.
+            let name = transport::normalize_endpoint_name(&device.name);
+            if inner
+                .devices
+                .values()
+                .filter(|d| transport::normalize_endpoint_name(&d.name) == name)
+                .count()
+                != 1
+            {
+                return Ok(None);
+            }
+            device.name.clone()
+        };
+        let levels = output_levels::read(&expected_name);
+        let inner = runtime
+            .inner
+            .lock()
+            .map_err(|_| "Device state unavailable.")?;
+        if inner.active_output_device_id.as_deref() != Some(device_id.as_str())
+            || !inner.audio_output_observed
+            || !inner
+                .devices
+                .get(&device_id)
+                .is_some_and(|d| d.connection == ConnectionState::Connected)
+        {
+            return Ok(None);
+        }
+        Ok(levels)
+    })
+    .await
+    .map_err(|_| "Output meter unavailable.".to_string())?
+}
+
+#[tauri::command]
 fn get_app_preferences(app: AppHandle) -> Result<AppPreferences, String> {
     let state = app.state::<PreferencesState>();
-    let mut preferences = state.current.lock().map_err(|_| "Preferences are unavailable.")?.clone();
-    preferences.launch_at_login = app.autolaunch().is_enabled().map_err(|_| "Could not read the system launch-at-login setting.")?;
+    let mut preferences = state
+        .current
+        .lock()
+        .map_err(|_| "Preferences are unavailable.")?
+        .clone();
+    preferences.launch_at_login = app
+        .autolaunch()
+        .is_enabled()
+        .map_err(|_| "Could not read the system launch-at-login setting.")?;
     Ok(preferences)
 }
 
 #[tauri::command]
-async fn update_app_preferences(app: AppHandle, preferences: AppPreferences) -> Result<AppPreferences, String> {
+async fn update_app_preferences(
+    app: AppHandle,
+    preferences: AppPreferences,
+) -> Result<AppPreferences, String> {
     let worker_app = app.clone();
     let saved = tauri::async_runtime::spawn_blocking(move || {
         let state = worker_app.state::<PreferencesState>();
-        let mut current = state.current.lock().map_err(|_| "Preferences are unavailable.")?;
+        let mut current = state
+            .current
+            .lock()
+            .map_err(|_| "Preferences are unavailable.")?;
         let launcher = worker_app.autolaunch();
-        let previous_autostart = launcher.is_enabled().map_err(|_| "Could not read the system launch-at-login setting.")?;
-        preferences::save_with_autostart(&state.store, &preferences, previous_autostart, |enabled| {
-            if enabled { launcher.enable() } else { launcher.disable() }
+        let previous_autostart = launcher
+            .is_enabled()
+            .map_err(|_| "Could not read the system launch-at-login setting.")?;
+        preferences::save_with_autostart(
+            &state.store,
+            &preferences,
+            previous_autostart,
+            |enabled| {
+                if enabled {
+                    launcher.enable()
+                } else {
+                    launcher.disable()
+                }
                 .map_err(|_| "The operating system could not change launch at login.".to_string())
-        })?;
+            },
+        )?;
         *current = preferences.clone();
         drop(current);
         if !preferences.auto_reconnect {
             let runtime = worker_app.state::<Arc<Runtime>>();
             if let Ok(mut inner) = runtime.inner.lock() {
-                for cancelled in inner.reconnect_jobs.values() { cancelled.store(true, Ordering::Release); }
+                for cancelled in inner.reconnect_jobs.values() {
+                    cancelled.store(true, Ordering::Release);
+                }
                 inner.reconnect_jobs.clear();
             };
         }
         Ok::<_, String>(preferences)
-    }).await.map_err(|_| "The preference save worker stopped unexpectedly.")??;
+    })
+    .await
+    .map_err(|_| "The preference save worker stopped unexpectedly.")??;
     let _ = app.emit("app-preferences", &saved);
     Ok(saved)
 }
@@ -282,7 +400,10 @@ async fn discover_devices(
     discover_devices_internal(app, Arc::clone(runtime.inner())).await
 }
 
-async fn discover_devices_internal(app: AppHandle, runtime: Arc<Runtime>) -> Result<AppState, String> {
+async fn discover_devices_internal(
+    app: AppHandle,
+    runtime: Arc<Runtime>,
+) -> Result<AppState, String> {
     {
         let mut inner = runtime
             .inner
@@ -321,7 +442,12 @@ async fn discover_devices_internal(app: AppHandle, runtime: Arc<Runtime>) -> Res
             .find(|(_, old)| old.address == paired.address)
             .map(|(id, _)| id.clone())
             .unwrap_or_else(|| {
-                let id = format!("sony-{:04}", inner.next_device_id);
+                let prefix = if oneplus_models::is_oneplus_name(&paired.model) {
+                    "oneplus"
+                } else {
+                    "sony"
+                };
+                let id = format!("{prefix}-{:04}", inner.next_device_id);
                 inner.next_device_id += 1;
                 id
             });
@@ -355,7 +481,7 @@ async fn discover_devices_internal(app: AppHandle, runtime: Arc<Runtime>) -> Res
     inner.devices = refreshed;
     inner.catalogue = catalogue;
     let count = inner.devices.len();
-    inner.log(&format!("Discovery completed: {count} paired Sony headphone entries. Pairing does not imply a live control connection."));
+    inner.log(&format!("Discovery completed: {count} paired supported headphone entries. Pairing does not imply a live control connection."));
     let snapshot = inner.snapshot();
     drop(inner);
     let _ = app.emit("app-state", &snapshot);
@@ -372,10 +498,19 @@ async fn connect_device(
     connect_device_internal(app, Arc::clone(runtime.inner()), device_id, false).await
 }
 
-async fn connect_device_internal(app: AppHandle, runtime: Arc<Runtime>, device_id: String, automatic: bool) -> Result<AppState, String> {
+async fn connect_device_internal(
+    app: AppHandle,
+    runtime: Arc<Runtime>,
+    device_id: String,
+    automatic: bool,
+) -> Result<AppState, String> {
     validate_id(&device_id)?;
-    if runtime.stopping.load(Ordering::Acquire) { return Err("The application is shutting down.".into()); }
-    if automatic && !automatic_reconnect_enabled(&app) { return Err("Automatic reconnect is disabled.".into()); }
+    if runtime.stopping.load(Ordering::Acquire) {
+        return Err("The application is shutting down.".into());
+    }
+    if automatic && !automatic_reconnect_enabled(&app) {
+        return Err("Automatic reconnect is disabled.".into());
+    }
     let (paired, generation, cancelled, command_receiver) = {
         let mut inner = runtime
             .inner
@@ -389,7 +524,9 @@ async fn connect_device_internal(app: AppHandle, runtime: Arc<Runtime>, device_i
         if automatic && inner.reconnect_suppressed.contains(&device_id) {
             return Err("Automatic reconnect was cancelled by an explicit disconnect.".into());
         }
-        if !automatic { inner.reconnect_suppressed.remove(&device_id); }
+        if !automatic {
+            inner.reconnect_suppressed.remove(&device_id);
+        }
         if inner.sessions.contains_key(&device_id) {
             return Err("This device is already connected or connecting.".into());
         }
@@ -414,7 +551,9 @@ async fn connect_device_internal(app: AppHandle, runtime: Arc<Runtime>, device_i
             device.capabilities.clear();
             device.settings.clear();
         }
-        inner.log("Connecting to a Sony control service. No device setting command will be sent.");
+        inner.log(
+            "Connecting to the device's control service. No device setting command will be sent.",
+        );
         (paired, generation, cancelled, command_receiver)
     };
     emit_state(&app, &runtime);
@@ -422,7 +561,7 @@ async fn connect_device_internal(app: AppHandle, runtime: Arc<Runtime>, device_i
     let connect_cancel = Arc::clone(&cancelled);
     let result = tauri::async_runtime::spawn_blocking(move || {
         let mut connection = transport::connect(&paired, Arc::clone(&connect_cancel))?;
-        let (basics, read_session) = discovery::read_basics(&mut *connection, &connect_cancel);
+        let (basics, read_session) = control_session::read_basics(&paired, &mut *connection, &connect_cancel)?;
         if !read_session.is_synchronized() {
             return Err("Device capability discovery lost protocol synchronization; reconnect before retrying.".into());
         }
@@ -442,7 +581,9 @@ async fn connect_device_internal(app: AppHandle, runtime: Arc<Runtime>, device_i
     if automatic && !automatic_reconnect_enabled(&app) {
         cancelled.store(true, Ordering::Release);
         inner.sessions.remove(&device_id);
-        if let Some(device) = inner.devices.get_mut(&device_id) { device.connection = ConnectionState::Disconnected; }
+        if let Some(device) = inner.devices.get_mut(&device_id) {
+            device.connection = ConnectionState::Disconnected;
+        }
         inner.log("An automatic connection attempt was cancelled because automatic reconnect was disabled.");
         drop(inner);
         emit_state(&app, &runtime);
@@ -455,7 +596,14 @@ async fn connect_device_internal(app: AppHandle, runtime: Arc<Runtime>, device_i
             if let Some(device) = inner.devices.get_mut(&device_id) {
                 device.connection = ConnectionState::Disconnected;
             }
-            inner.log("Control-service connection failed. Device settings were not changed.");
+            let detail: String = error
+                .chars()
+                .filter(|character| !character.is_control())
+                .take(320)
+                .collect();
+            inner.log(&format!(
+                "Control-service connection failed: {detail}. No device setting command was sent."
+            ));
             drop(inner);
             emit_state(&app, &runtime);
             return Err(error);
@@ -463,6 +611,7 @@ async fn connect_device_internal(app: AppHandle, runtime: Arc<Runtime>, device_i
     };
     if let Some(device) = inner.devices.get_mut(&device_id) {
         device.connection = ConnectionState::Connected;
+        device.settings.extend(read_session.metadata());
         device
             .settings
             .insert("serviceUuid".into(), Value::from(connection.service_uuid()));
@@ -481,7 +630,9 @@ async fn connect_device_internal(app: AppHandle, runtime: Arc<Runtime>, device_i
             Err(_) => {
                 // A malformed descriptor must never expose a partially valid
                 // editable control. Keep independently verified NC/EQ intact.
-                device.settings.insert("controlDescriptors".into(), Value::Array(vec![]));
+                device
+                    .settings
+                    .insert("controlDescriptors".into(), Value::Array(vec![]));
             }
         }
         for (key, value) in &basics.controls.read_only_values {
@@ -501,6 +652,7 @@ async fn connect_device_internal(app: AppHandle, runtime: Arc<Runtime>, device_i
             );
         }
         if let Some(battery) = &basics.battery {
+            apply_battery_level(device, battery.level);
             device
                 .settings
                 .insert("batteryCharging".into(), Value::from(battery.charging));
@@ -510,12 +662,19 @@ async fn connect_device_internal(app: AppHandle, runtime: Arc<Runtime>, device_i
                 device
                     .settings
                     .insert("protocolFormat".into(), Value::from(info.format));
-                device
-                    .settings
-                    .insert("protocolVersionRaw".into(), Value::from(info.version));
+                if info.format != "heymelody-opo-v1" {
+                    device
+                        .settings
+                        .insert("protocolVersionRaw".into(), Value::from(info.version));
+                } else {
+                    // OPO v1 identifies our wrapper implementation, not a queried device version.
+                    device.settings.remove("protocolVersionRaw");
+                }
                 device.settings.insert(
                     "protocolStatus".into(),
-                    Value::from(if basics.controls.support_reply_confirmed {
+                    Value::from(if info.format == "heymelody-opo-v1" {
+                        "HeyMelody product ID and capability replies confirmed; controls require matching device readback"
+                    } else if basics.controls.support_reply_confirmed {
                         "Protocol and MDR V2 function support replies confirmed; active settings came from matched device GET responses"
                     } else {
                         "Read-only protocol reply confirmed; MDR V2 function support was unavailable"
@@ -531,6 +690,7 @@ async fn connect_device_internal(app: AppHandle, runtime: Arc<Runtime>, device_i
         }
     }
     match basics.protocol {
+        Ok(info) if info.format == "heymelody-opo-v1" => inner.log("HeyMelody OPO v1 adapter selected. Product ID and live capability replies confirmed; this does not establish hardware validation."),
         Ok(info) => inner.log(&format!("Read-only protocol-info confirmed: format {}, raw version {}, transport ACK observed {}. Feature capabilities remain unvalidated.", info.format, info.version, info.ack_observed)),
         Err(error) => inner.log(&error),
     }
@@ -540,16 +700,22 @@ async fn connect_device_internal(app: AppHandle, runtime: Arc<Runtime>, device_i
     let snapshot = inner.snapshot();
     drop(inner);
     if let Some(preferences) = app.try_state::<PreferencesState>() {
-        if preferences.store.save_last_connected_device(&reconnect_identity).is_err() {
+        if preferences
+            .store
+            .save_last_connected_device(&reconnect_identity)
+            .is_err()
+        {
             if let Ok(mut inner) = runtime.inner.lock() {
-                inner.log("Connected, but the last device could not be saved for automatic reconnect.");
+                inner.log(
+                    "Connected, but the last device could not be saved for automatic reconnect.",
+                );
             }
         }
     }
     let reader_runtime = Arc::clone(&runtime);
     let reader_app = app.clone();
     std::thread::Builder::new()
-        .name("sony-control-reader".into())
+        .name("headphone-control-reader".into())
         .spawn(move || {
             let reconnect_id = device_id.clone();
             let unexpected_disconnect = observe_connection(
@@ -564,7 +730,9 @@ async fn connect_device_internal(app: AppHandle, runtime: Arc<Runtime>, device_i
                     let _ = reader_app.emit("app-state", snapshot);
                 },
             );
-            if unexpected_disconnect { schedule_reconnect(reader_app, reconnect_id); }
+            if unexpected_disconnect {
+                schedule_reconnect(reader_app, reconnect_id);
+            }
         })
         .map_err(|_| {
             runtime.stop_all();
@@ -580,18 +748,25 @@ fn observe_connection(
     generation: u64,
     cancelled: Arc<AtomicBool>,
     mut connection: Box<dyn transport::Connection>,
-    mut read_session: discovery::ReadSession,
+    read_session: impl Into<control_session::Session>,
     command_receiver: Receiver<ControlCommand>,
     publish: impl Fn(AppState),
 ) -> bool {
+    let mut read_session = read_session.into();
     let mut buffer = [0u8; 4096];
     let mut counts = (0usize, 0usize);
     let mut last_summary = Instant::now();
     while !cancelled.load(Ordering::Acquire) {
         match command_receiver.try_recv() {
             Ok(command) => {
-                if command.automation.as_ref().is_some_and(|(automation, epoch)| !automation.authorizes(*epoch)) {
-                    let _ = command.reply.send(Err("Queued automatic mode request was cancelled before device I/O.".into()));
+                if command
+                    .automation
+                    .as_ref()
+                    .is_some_and(|(automation, epoch)| !automation.authorizes(*epoch))
+                {
+                    let _ = command.reply.send(Err(
+                        "Queued automatic mode request was cancelled before device I/O.".into(),
+                    ));
                     continue;
                 }
                 let result =
@@ -662,16 +837,43 @@ fn observe_connection(
         let updates = read_session.drain_device_updates();
         if !updates.is_empty() {
             if let Ok(mut inner) = runtime.inner.lock() {
-                if !inner.is_current(&device_id, generation) { break; }
+                if !inner.is_current(&device_id, generation) {
+                    break;
+                }
                 if let Some(device) = inner.devices.get_mut(&device_id) {
                     for update in updates {
                         if device.capabilities.contains(&update.key) {
-                            device.settings.insert(update.key, update.confirmed.as_json());
+                            device
+                                .settings
+                                .insert(update.key, update.confirmed.as_json());
                         }
                     }
                 }
             }
-            if let Ok(snapshot) = runtime.snapshot() { publish(snapshot); }
+            if let Ok(snapshot) = runtime.snapshot() {
+                publish(snapshot);
+            }
+        }
+        let metadata = read_session.drain_metadata_updates();
+        if !metadata.is_empty() {
+            if let Ok(mut inner) = runtime.inner.lock() {
+                if !inner.is_current(&device_id, generation) {
+                    break;
+                }
+                if let Some(device) = inner.devices.get_mut(&device_id) {
+                    if let Some(level) = metadata
+                        .get("oneplusBatteryLevel")
+                        .and_then(Value::as_u64)
+                        .filter(|level| *level <= 100)
+                    {
+                        apply_battery_level(device, level as u8);
+                    }
+                    device.settings.extend(metadata);
+                }
+            }
+            if let Ok(snapshot) = runtime.snapshot() {
+                publish(snapshot);
+            }
         }
         if last_summary.elapsed() >= Duration::from_secs(5) && counts != (0, 0) {
             if let Ok(mut inner) = runtime.inner.lock() {
@@ -714,14 +916,24 @@ fn observe_connection(
 
 fn automatic_reconnect_enabled(app: &AppHandle) -> bool {
     app.try_state::<PreferencesState>()
-        .and_then(|state| state.current.lock().ok().map(|preferences| preferences.auto_reconnect))
+        .and_then(|state| {
+            state
+                .current
+                .lock()
+                .ok()
+                .map(|preferences| preferences.auto_reconnect)
+        })
         .unwrap_or(false)
 }
 
 fn schedule_reconnect(app: AppHandle, device_id: String) {
-    if !automatic_reconnect_enabled(&app) { return; }
+    if !automatic_reconnect_enabled(&app) {
+        return;
+    }
     let runtime = Arc::clone(app.state::<Arc<Runtime>>().inner());
-    let Some(cancelled) = runtime.claim_reconnect(&device_id) else { return; };
+    let Some(cancelled) = runtime.claim_reconnect(&device_id) else {
+        return;
+    };
     emit_state(&app, &runtime);
     let worker_runtime = Arc::clone(&runtime);
     let worker_id = device_id.clone();
@@ -752,51 +964,11 @@ fn schedule_reconnect(app: AppHandle, device_id: String) {
     });
     if spawned.is_err() {
         runtime.cancel_reconnect(&device_id);
-        if let Ok(mut inner) = runtime.inner.lock() { inner.log("Could not start the reconnect worker. Connect manually from the studio."); }
+        if let Ok(mut inner) = runtime.inner.lock() {
+            inner.log("Could not start the reconnect worker. Connect manually from the studio.");
+        }
         emit_state(&app, &runtime);
     }
-}
-
-fn reconnect_last_device(app: AppHandle) {
-    if !automatic_reconnect_enabled(&app) { return; }
-    let identity = app.state::<PreferencesState>().store.load_last_connected_device();
-    let identity = match identity {
-        Ok(Some(identity)) => identity,
-        Ok(None) => return,
-        Err(_) => {
-            let runtime = app.state::<Arc<Runtime>>();
-            if let Ok(mut inner) = runtime.inner.lock() {
-                inner.log("The saved reconnect target could not be read. Connect manually to remember the headphone again.");
-            }
-            return;
-        }
-    };
-    let runtime = Arc::clone(app.state::<Arc<Runtime>>().inner());
-    let _ = std::thread::Builder::new().name("sony-startup-reconnect".into()).spawn(move || {
-        // Bluetooth may still be starting after login. Discovery failure or an
-        // initially absent paired entry must not silently disable reconnect.
-        for delay in [0, 2, 5, 15, 30] {
-            for _ in 0..delay {
-                if !automatic_reconnect_enabled(&app) || runtime.stopping.load(Ordering::Acquire) { return; }
-                std::thread::sleep(Duration::from_secs(1));
-            }
-            if !automatic_reconnect_enabled(&app) || runtime.stopping.load(Ordering::Acquire) { return; }
-            if tauri::async_runtime::block_on(discover_devices_internal(app.clone(), Arc::clone(&runtime))).is_err() { continue; }
-            let device_id = runtime.inner.lock().ok().and_then(|inner| inner.catalogue.iter().find(|(_, device)| device.address == identity).map(|(id, _)| id.clone()));
-            if let Some(device_id) = device_id {
-                let already_handled = runtime.inner.lock().map(|inner| inner.sessions.contains_key(&device_id) || inner.reconnect_suppressed.contains(&device_id)).unwrap_or(true);
-                if already_handled { return; }
-                if tauri::async_runtime::block_on(connect_device_internal(app.clone(), Arc::clone(&runtime), device_id.clone(), true)).is_err() {
-                    schedule_reconnect(app, device_id);
-                }
-                return;
-            }
-        }
-        if let Ok(mut inner) = runtime.inner.lock() {
-            inner.log("Startup reconnect could not find the remembered headphone after bounded discovery retries. Check Bluetooth and scan manually.");
-        }
-        emit_state(&app, &runtime);
-    });
 }
 
 #[tauri::command]
@@ -840,16 +1012,39 @@ async fn apply_setting(
     setting: String,
     value: Value,
 ) -> Result<AppState, String> {
-    apply_setting_internal(app, Arc::clone(runtime.inner()), device_id, setting, value, None).await
+    apply_setting_internal(
+        app,
+        Arc::clone(runtime.inner()),
+        device_id,
+        setting,
+        value,
+        None,
+    )
+    .await
 }
 
 fn supports_listening_mode(device: &Device, mode: &str) -> bool {
-    device.capabilities.iter().any(|capability| capability == "listeningMode")
-        && device.settings.get("controlDescriptors").and_then(Value::as_array)
-            .is_some_and(|descriptors| descriptors.iter().any(|descriptor|
-                descriptor.get("key").and_then(Value::as_str) == Some("listeningMode")
-                && descriptor.get("options").and_then(Value::as_array).is_some_and(|options|
-                    options.iter().any(|option| option.get("value").and_then(Value::as_str) == Some(mode)))))
+    device
+        .capabilities
+        .iter()
+        .any(|capability| capability == "listeningMode")
+        && device
+            .settings
+            .get("controlDescriptors")
+            .and_then(Value::as_array)
+            .is_some_and(|descriptors| {
+                descriptors.iter().any(|descriptor| {
+                    descriptor.get("key").and_then(Value::as_str) == Some("listeningMode")
+                        && descriptor
+                            .get("options")
+                            .and_then(Value::as_array)
+                            .is_some_and(|options| {
+                                options.iter().any(|option| {
+                                    option.get("value").and_then(Value::as_str) == Some(mode)
+                                })
+                            })
+                })
+            })
 }
 
 async fn apply_setting_internal(
@@ -869,6 +1064,17 @@ async fn apply_setting_internal(
     {
         return Err("Invalid setting name.".into());
     }
+    // Re-selecting the confirmed mode is not a manual override.
+    let manual_mode_change = automation_epoch.is_none()
+        && setting == "listeningMode"
+        && runtime
+            .inner
+            .lock()
+            .map_err(|_| "Native state unavailable.")?
+            .devices
+            .get(&device_id)
+            .and_then(|device| device.settings.get("listeningMode"))
+            != Some(&value);
     let change = match setting.as_str() {
         "probe-noise-schema" => discovery::SettingChange::ProbeNoiseSchema,
         "noise" => {
@@ -897,21 +1103,77 @@ async fn apply_setting_internal(
                 .collect::<Result<Vec<_>, _>>()?;
             discovery::SettingChange::Equalizer(bands)
         }
+        "oneplusEqProfile" => {
+            if serde_json::to_vec(&value)
+                .map_err(|_| "OnePlus EQ profile action could not be serialized.")?
+                .len()
+                > 1024
+            {
+                return Err("OnePlus EQ profile action exceeds the size limit.".into());
+            }
+            let change: oneplus_eq::EqProfileChange = serde_json::from_value(value)
+                .map_err(|_| "OnePlus EQ profile action has an invalid shape.")?;
+            change.validate()?;
+            {
+                let inner = runtime
+                    .inner
+                    .lock()
+                    .map_err(|_| "Native state unavailable.")?;
+                let device = inner
+                    .devices
+                    .get(&device_id)
+                    .ok_or("Unknown device; scan again.")?;
+                if device
+                    .settings
+                    .get("oneplusEqProfile")
+                    .and_then(Value::as_bool)
+                    != Some(true)
+                {
+                    return Err("This device has no confirmed writable OnePlus EQ profile.".into());
+                }
+            }
+            discovery::SettingChange::OnePlusEqProfile(change)
+        }
         _ => {
-            let inner = runtime.inner.lock().map_err(|_| "Native state unavailable.")?;
-            let device = inner.devices.get(&device_id).ok_or("Unknown device; scan again.")?;
-            let descriptor = device.settings.get("controlDescriptors")
+            let inner = runtime
+                .inner
+                .lock()
+                .map_err(|_| "Native state unavailable.")?;
+            let device = inner
+                .devices
+                .get(&device_id)
+                .ok_or("Unknown device; scan again.")?;
+            let descriptor = device
+                .settings
+                .get("controlDescriptors")
                 .and_then(Value::as_array)
-                .and_then(|descriptors| descriptors.iter().find(|descriptor| descriptor.get("key").and_then(Value::as_str) == Some(setting.as_str())))
-                .ok_or_else(|| format!("The {setting} setting has no validated desktop command."))?;
+                .and_then(|descriptors| {
+                    descriptors.iter().find(|descriptor| {
+                        descriptor.get("key").and_then(Value::as_str) == Some(setting.as_str())
+                    })
+                })
+                .ok_or_else(|| {
+                    format!("The {setting} setting has no validated desktop command.")
+                })?;
             let descriptor = device_controls::descriptor_from_json(descriptor)?;
             let value = match value {
                 Value::Bool(value) => device_controls::ControlValue::Boolean(value),
-                Value::String(value) if value.len() <= 128 => device_controls::ControlValue::Text(value),
-                Value::Number(value) => device_controls::ControlValue::Integer(value.as_i64().ok_or("Device setting must be an integer.")?),
-                _ => return Err("Device setting requires a boolean, integer, or short text value.".into()),
+                Value::String(value) if value.len() <= 128 => {
+                    device_controls::ControlValue::Text(value)
+                }
+                Value::Number(value) => device_controls::ControlValue::Integer(
+                    value.as_i64().ok_or("Device setting must be an integer.")?,
+                ),
+                _ => {
+                    return Err(
+                        "Device setting requires a boolean, integer, or short text value.".into(),
+                    )
+                }
             };
-            discovery::SettingChange::DeviceControl(device_controls::validate_change(&descriptor, value)?)
+            discovery::SettingChange::DeviceControl(device_controls::validate_change(
+                &descriptor,
+                value,
+            )?)
         }
     };
     let (sender, generation) = {
@@ -931,6 +1193,7 @@ async fn apply_setting_internal(
             discovery::SettingChange::NoiseMode(_) => "noise",
             discovery::SettingChange::Equalizer(_) => "equalizer",
             discovery::SettingChange::DeviceControl(change) => &change.key,
+            discovery::SettingChange::OnePlusEqProfile(_) => "oneplusEqProfile",
         };
         if !device
             .capabilities
@@ -953,22 +1216,29 @@ async fn apply_setting_internal(
             .ok_or("The device control session is no longer active.")?
     };
     let (reply_sender, reply_receiver) = mpsc::sync_channel(1);
-    let automation = app.state::<Arc<media_automation::Automation>>();
-    let guard = automation.enqueue_guard(automation_epoch, setting == "listeningMode" || setting == "bgmRoomSize")?;
-    sender
-        .try_send(ControlCommand {
-            change,
-            reply: reply_sender,
-            automation: automation_epoch.map(|epoch| (Arc::clone(automation.inner()), epoch)),
-        })
-        .map_err(|_| {
-            "The device control queue is busy or closed; try again shortly.".to_string()
-        })?;
-    drop(guard);
-    if automation_epoch.is_none() {
-        if let Ok(snapshot) = automation.snapshot() { let _ = app.emit("media-automation", &snapshot); }
+    {
+        let automation = app.state::<Arc<media_automation::Automation>>();
+        // A room-distance adjustment, NC change or repeated selection does not opt
+        // out of following playback. Only a deliberately different listening mode does.
+        let mut guard = automation.enqueue_guard(automation_epoch, false)?;
+        sender
+            .try_send(ControlCommand {
+                change,
+                reply: reply_sender,
+                automation: automation_epoch.map(|epoch| (Arc::clone(automation.inner()), epoch)),
+            })
+            .map_err(|_| {
+                "The device control queue is busy or closed; try again shortly.".to_string()
+            })?;
+        if manual_mode_change {
+            automation.mark_manual_hold(&mut guard);
+        }
     }
-    drop(automation);
+    if automation_epoch.is_none() {
+        if let Ok(snapshot) = app.state::<Arc<media_automation::Automation>>().snapshot() {
+            let _ = app.emit("media-automation", &snapshot);
+        }
+    }
     let confirmation = tauri::async_runtime::spawn_blocking(move || {
         reply_receiver.recv_timeout(Duration::from_secs(30))
     })
@@ -980,7 +1250,9 @@ async fn apply_setting_internal(
     // Keep authorization through the state commit, so a newer manual command
     // cannot be published before this older automatic confirmation.
     let confirmation_authority = app.state::<Arc<media_automation::Automation>>();
-    let confirmation_guard = automation_epoch.map(|epoch| confirmation_authority.enqueue_guard(Some(epoch), false)).transpose()?;
+    let confirmation_guard = automation_epoch
+        .map(|epoch| confirmation_authority.enqueue_guard(Some(epoch), false))
+        .transpose()?;
     let mut inner = runtime
         .inner
         .lock()
@@ -1002,7 +1274,15 @@ async fn apply_setting_internal(
         .ok_or("Unknown device; scan again.")?;
     match confirmation {
         discovery::SettingConfirmation::DeviceControl(confirmation) => {
-            device.settings.insert(confirmation.key, confirmation.confirmed.as_json());
+            device
+                .settings
+                .insert(confirmation.key, confirmation.confirmed.as_json());
+        }
+        discovery::SettingConfirmation::OnePlusEqProfiles(profiles) => {
+            device.settings.insert(
+                "oneplusEqualizerProfiles".into(),
+                serde_json::json!(profiles),
+            );
         }
         discovery::SettingConfirmation::Noise {
             before: baseline,
@@ -1112,7 +1392,7 @@ fn get_diagnostics(runtime: State<'_, Arc<Runtime>>) -> Result<Vec<String>, Stri
 
 fn validate_id(id: &str) -> Result<(), String> {
     if id.len() > 64
-        || !id.starts_with("sony-")
+        || !(id.starts_with("sony-") || id.starts_with("oneplus-"))
         || !id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
     {
         return Err("Invalid device identifier.".into());
@@ -1155,12 +1435,17 @@ pub fn run() {
     let runtime = Arc::new(Runtime::new());
     let shutdown_runtime = Arc::clone(&runtime);
     let app = tauri::Builder::default()
-        .plugin(tauri_plugin_autostart::Builder::new().args(["--autostart"]).build())
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .args(["--autostart"])
+                .build(),
+        )
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(app_updates::AppUpdates::new())
         .manage(runtime)
         .invoke_handler(tauri::generate_handler![
             get_app_state,
+            get_output_levels,
             app_updates::get_app_update,
             app_updates::check_app_update,
             app_updates::install_app_update,
@@ -1177,22 +1462,34 @@ pub fn run() {
             media_automation::prepare_media_companion,
             vlc_connection::get_vlc_connection,
             vlc_connection::configure_vlc_connection,
+            vlc_connection::configure_vlc_startup,
             vlc_connection::test_vlc_connection
         ])
         .setup(|app| {
-            app.manage(Arc::new(vlc_connection::VlcConnection::new(app.path().app_config_dir()?)));
-            let (automation, receiver) = media_automation::Automation::new(app.path().app_config_dir()?).map_err(std::io::Error::other)?;
+            app.manage(Arc::new(vlc_connection::VlcConnection::new(
+                app.path().app_config_dir()?,
+            )));
+            let (automation, receiver) =
+                media_automation::Automation::new(app.path().app_config_dir()?)
+                    .map_err(std::io::Error::other)?;
             let automation = Arc::new(automation);
             app.manage(automation.clone());
             media_automation::start(app.handle().clone(), automation, receiver);
             let store = PreferencesStore::new(app.path().app_config_dir()?);
             let loaded = store.load().map_err(std::io::Error::other)?;
             if let Some(diagnostic) = loaded.diagnostic {
-                if let Ok(mut inner) = app.state::<Arc<Runtime>>().inner.lock() { inner.log(diagnostic); }
+                if let Ok(mut inner) = app.state::<Arc<Runtime>>().inner.lock() {
+                    inner.log(diagnostic);
+                }
             }
             let explicitly_minimized = std::env::args().any(|arg| arg == "--start-minimized");
-            let start_minimized = loaded.preferences.should_start_minimized(explicitly_minimized);
-            app.manage(PreferencesState { store, current: Mutex::new(loaded.preferences) });
+            let start_minimized = loaded
+                .preferences
+                .should_start_minimized(explicitly_minimized);
+            app.manage(PreferencesState {
+                store,
+                current: Mutex::new(loaded.preferences),
+            });
             let open = MenuItem::with_id(app, "open", "Open Sound Connect", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit and disconnect", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open, &quit])?;
@@ -1227,15 +1524,23 @@ pub fn run() {
             if !start_minimized {
                 open_main(app.handle())?;
             }
-            reconnect_last_device(app.handle().clone());
+            device_observer::start(app.handle().clone());
             Ok(())
         })
         .on_window_event(|window, event| {
             if window.label() == "main" {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
-                    let close_to_tray = window.app_handle().try_state::<PreferencesState>()
-                        .and_then(|state| state.current.lock().ok().map(|preferences| preferences.close_to_tray))
+                    let close_to_tray = window
+                        .app_handle()
+                        .try_state::<PreferencesState>()
+                        .and_then(|state| {
+                            state
+                                .current
+                                .lock()
+                                .ok()
+                                .map(|preferences| preferences.close_to_tray)
+                        })
                         .unwrap_or(true);
                     if close_to_tray {
                         // Destroy releases the webview; tray sessions belong to the application state.
@@ -1279,11 +1584,19 @@ mod tests {
     #[test]
     fn concurrent_disconnect_observers_cannot_create_duplicate_retry_jobs() {
         let runtime = Arc::new(Runtime::new());
-        let workers: Vec<_> = (0..4).map(|_| {
-            let runtime = Arc::clone(&runtime);
-            std::thread::spawn(move || runtime.claim_reconnect("sony-0001").is_some())
-        }).collect();
-        assert_eq!(workers.into_iter().map(|worker| usize::from(worker.join().unwrap())).sum::<usize>(), 1);
+        let workers: Vec<_> = (0..4)
+            .map(|_| {
+                let runtime = Arc::clone(&runtime);
+                std::thread::spawn(move || runtime.claim_reconnect("sony-0001").is_some())
+            })
+            .collect();
+        assert_eq!(
+            workers
+                .into_iter()
+                .map(|worker| usize::from(worker.join().unwrap()))
+                .sum::<usize>(),
+            1
+        );
         let active = runtime.inner.lock().unwrap().reconnect_jobs["sony-0001"].clone();
         runtime.stop_all();
         assert!(active.load(Ordering::Acquire));
@@ -1334,6 +1647,7 @@ mod tests {
     #[test]
     fn untrusted_device_identifiers_are_rejected() {
         assert!(validate_id("sony-0001").is_ok());
+        assert!(validate_id("oneplus-0001").is_ok());
         for id in [
             "",
             "../../file",
@@ -1434,14 +1748,23 @@ mod tests {
     fn disabled_automatic_command_is_rejected_from_the_queue_before_device_io() {
         struct NoWrites(Arc<std::sync::atomic::AtomicUsize>);
         impl transport::Connection for NoWrites {
-            fn service_uuid(&self) -> &'static str { "956c7b26-d49a-4ba8-b03f-b17d393cb6e2" }
-            fn read(&mut self, _: &mut [u8], _: Duration) -> std::io::Result<usize> { Ok(0) }
+            fn service_uuid(&self) -> &'static str {
+                "956c7b26-d49a-4ba8-b03f-b17d393cb6e2"
+            }
+            fn read(&mut self, _: &mut [u8], _: Duration) -> std::io::Result<usize> {
+                Ok(0)
+            }
             fn write_all(&mut self, _: &[u8], _: Duration) -> std::io::Result<()> {
-                self.0.fetch_add(1, Ordering::SeqCst); Ok(())
+                self.0.fetch_add(1, Ordering::SeqCst);
+                Ok(())
             }
         }
-        let mut nonce = [0u8; 8]; getrandom::fill(&mut nonce).unwrap();
-        let path = std::env::temp_dir().join(format!("sound-connect-queue-test-{}", u64::from_le_bytes(nonce)));
+        let mut nonce = [0u8; 8];
+        getrandom::fill(&mut nonce).unwrap();
+        let path = std::env::temp_dir().join(format!(
+            "sound-connect-queue-test-{}",
+            u64::from_le_bytes(nonce)
+        ));
         let (automation, _) = media_automation::Automation::new(path.clone()).unwrap();
         let automation = Arc::new(automation);
         let writes = Arc::new(std::sync::atomic::AtomicUsize::new(0));
@@ -1451,9 +1774,28 @@ mod tests {
         let baseline = writes.load(Ordering::SeqCst);
         let (commands, receiver) = mpsc::sync_channel(1);
         let (reply, response) = mpsc::sync_channel(1);
-        commands.send(ControlCommand { change: discovery::SettingChange::NoiseMode("cancelling".into()), reply, automation: Some((automation, 0)) }).unwrap();
-        observe_connection(Arc::new(Runtime::new()), "sony-fixture".into(), 1, cancel, connection, read_session, receiver, |_| {});
-        assert!(response.recv().unwrap().unwrap_err().contains("cancelled before device I/O"));
+        commands
+            .send(ControlCommand {
+                change: discovery::SettingChange::NoiseMode("cancelling".into()),
+                reply,
+                automation: Some((automation, 0)),
+            })
+            .unwrap();
+        observe_connection(
+            Arc::new(Runtime::new()),
+            "sony-fixture".into(),
+            1,
+            cancel,
+            connection,
+            read_session,
+            receiver,
+            |_| {},
+        );
+        assert!(response
+            .recv()
+            .unwrap()
+            .unwrap_err()
+            .contains("cancelled before device I/O"));
         assert_eq!(writes.load(Ordering::SeqCst), baseline);
         std::fs::remove_dir_all(path).unwrap();
     }

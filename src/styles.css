@@ -2,25 +2,36 @@
   font-family: 'Segoe UI Variable', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   color: #ecece5; background: #151613; font-synthesis: none; text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
-  --bg: #151613; --sidebar: #10110f; --surface: #1b1d18; --surface-raised: #22251e;
-  --surface-hover: #292d24; --text: #ecece5; --text-secondary: #adb0a3; --muted: #888e7f;
-  --accent: #efb66a; --accent-text: #171a13; --accent-wash: #efb66a12;
-  --line: #ffffff12; --line-strong: #ffffff20; --green: #b2bf8f;
+  --bg: #111214; --sidebar: #0b0c0e; --surface: #191b1e; --surface-raised: #202226;
+  --surface-hover: #292b30; --text: #f1f0eb; --text-secondary: #b7b7b1; --muted: #85868a;
+  --accent: #e7aa54; --accent-text: #16120b; --accent-wash: #e7aa5418;
+  --line: #ffffff12; --line-strong: #ffffff25; --green: #b4c39c;
   --danger: #f3a79c; --danger-wash: #b65d4b15;
-  --heading-font: 'Bahnschrift', 'Arial Narrow', 'Helvetica Neue', sans-serif;
+  --heading-font: 'Segoe UI Variable', 'Segoe UI', 'Helvetica Neue', sans-serif;
   --mono: 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
   --ease: cubic-bezier(.22, 1, .36, 1); --radius: 13px;
 }
 :root[data-theme='light'] {
-  color-scheme: light; --bg: #f3f1e9; --sidebar: #eae8df; --surface: #faf8f1;
-  --surface-raised: #e9e8de; --surface-hover: #e0dfd3; --text: #282c23;
-  --text-secondary: #62695a; --muted: #6d7366; --accent: #94591b; --accent-text: #fff8eb;
-  --accent-wash: #ab742310; --line: #262c1c16; --line-strong: #262c1c30; --green: #5b6d3b;
+  color-scheme: light; --bg: #f4f1e9; --sidebar: #ebe7dd; --surface: #faf8f1;
+  --surface-raised: #efede4; --surface-hover: #e6e2d7; --text: #252729;
+  --text-secondary: #5e6262; --muted: #737776; --accent: #955d17; --accent-text: #fffaf0;
+  --accent-wash: #ab742316; --line: #2527291a; --line-strong: #25272930; --green: #566e3d;
   --danger: #a24032; --danger-wash: #c45b4210;
   background: var(--bg); color: var(--text);
 }
 :root[data-theme='dark'] { color-scheme: dark; }
 * { box-sizing: border-box; }
+/* Keep native scrolling, with the same quiet surfaces as the studio. */
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 55%, var(--surface)) var(--bg); }
+@supports selector(::-webkit-scrollbar) {
+  * { scrollbar-width: auto; scrollbar-color: auto; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 55%, var(--surface)); border: 2px solid var(--bg); border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--accent) 55%, var(--muted)); }
+  ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+  ::-webkit-scrollbar-corner { background: var(--bg); }
+}
 body { margin: 0; min-width: 360px; }
 button, input, select { font: inherit; }
 button, a, input, select { -webkit-tap-highlight-color: transparent; }
@@ -149,7 +160,7 @@ h1, h2, h3, p { margin-top: 0; }
 .text-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 7px 2px; font-size: 10px; color: var(--text-secondary); }
 .text-button:hover:not(:disabled) { color: var(--accent); }
 .eq-actions .text-button { font-size: 9px; }
-.equalizer { margin-top: 4px; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.equalizer { margin-top: 4px; overflow: auto; }
 .eq-scroll { min-width: 410px; }
 .eq-curve { width: 100%; height: auto; max-height: 148px; display: block; overflow: visible; }
 .eq-grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 5; }

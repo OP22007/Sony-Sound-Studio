@@ -16,7 +16,7 @@ export const defaultAppPreferences: AppPreferences = {
   launchAtLogin: false, autoReconnect: true, startMinimized: false,
 };
 export type SettingPrimitive = string | number | boolean;
-export interface DeviceControlOption { value: SettingPrimitive; label: string }
+export interface DeviceControlOption { value: SettingPrimitive; label: string; enabled?: boolean }
 export interface DeviceControlDescriptor {
   key: string;
   label: string;
@@ -45,6 +45,8 @@ export function isAppPreferences(value: unknown): value is AppPreferences {
 }
 export interface AppState {
   revision: number; platform: string; transportStatus: string; devices: Device[]; diagnostics: string[];
+  activeOutputDeviceId?: string | null;
+  audioOutputObserved?: boolean;
 }
 export interface AppUpdateSnapshot {
   currentVersion: string;

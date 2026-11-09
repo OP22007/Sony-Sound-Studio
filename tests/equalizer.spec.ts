@@ -21,7 +21,7 @@ test('XM6 factory presets match the supplied Sony curves and leave preview isola
   for (const [name, bands] of Object.entries(curves)) {
     await group.getByRole('button', { name: new RegExp(`^${name} `) }).click();
     for (const [index, frequency] of frequencies.entries()) {
-      await expect(page.getByRole('slider', { name: frequency, exact: true })).toHaveValue(String(bands[index]));
+      await expect(page.getByRole('slider', { name: frequency, exact: true })).toHaveAttribute('aria-valuenow', String(bands[index]));
     }
   }
   await page.getByRole('button', { name: 'Select WH-1000XM5', exact: true }).click();
@@ -36,19 +36,20 @@ test('custom preset can be updated, renamed, reloaded and deleted without changi
   await page.getByLabel('Preset name', { exact: true }).fill('Night bass');
   await page.getByRole('form', { name: 'Save preset', exact: true }).getByRole('button', { name: 'Save preset', exact: true }).click();
   const bass = page.getByRole('slider', { name: '31 Hz', exact: true });
-  await bass.fill('5');
+  await bass.focus();
+  await bass.press('ArrowRight');
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await page.getByRole('button', { name: 'Rename “Night bass”', exact: true }).click();
   await page.getByLabel('New preset name').fill('Late night');
   await page.getByRole('button', { name: 'Rename preset', exact: true }).click();
-  await expect(bass).toHaveValue('5');
+  await expect(bass).toHaveAttribute('aria-valuenow', '5');
   await page.reload();
   await page.getByRole('button', { name: 'Explore studio preview', exact: true }).click();
   await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
   await page.getByRole('button', { name: 'Apply “Late night”', exact: true }).click();
-  await expect(bass).toHaveValue('5');
+  await expect(bass).toHaveAttribute('aria-valuenow', '5');
   await page.getByLabel('Equalizer preset', { exact: true }).selectOption({ label: 'Heavy' });
-  await expect(bass).toHaveValue('4');
+  await expect(bass).toHaveAttribute('aria-valuenow', '4');
   await page.getByRole('button', { name: 'Delete “Late night”', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Apply “Late night”', exact: true })).toHaveCount(0);
 });
@@ -61,17 +62,17 @@ test('legacy preset names remain distinct from factory presets and Manual keeps 
   const selector = page.getByLabel('Equalizer preset', { exact: true });
   const low = page.getByRole('slider', { name: '31 Hz', exact: true });
   await selector.selectOption('local:Heavy');
-  await expect(low).toHaveValue('1');
+  await expect(low).toHaveAttribute('aria-valuenow', '1');
   await selector.selectOption('sony:Heavy');
-  await expect(low).toHaveValue('4');
+  await expect(low).toHaveAttribute('aria-valuenow', '4');
   await selector.selectOption('Custom');
   await expect(selector).toHaveValue('Custom');
-  await expect(low).toHaveValue('4');
+  await expect(low).toHaveAttribute('aria-valuenow', '4');
   await page.getByRole('button', { name: 'Rename “Heavy”', exact: true }).click();
   await page.getByLabel('New preset name').fill('Old favorite');
   await page.getByRole('button', { name: 'Rename preset', exact: true }).click();
   await page.getByRole('button', { name: 'Apply “Old favorite”', exact: true }).click();
-  await expect(low).toHaveValue('1');
+  await expect(low).toHaveAttribute('aria-valuenow', '1');
 });
 
 test('reserved names and storage failures leave the saved preset library intact', async ({ page }) => {
@@ -92,4 +93,28 @@ test('reserved names and storage failures leave the saved preset library intact'
   await form.getByRole('button', { name: 'Save preset', exact: true }).click();
   await expect(form.getByRole('alert')).toContainText('could not be saved');
   await expect(page.getByRole('button', { name: 'Apply “My profile”', exact: true })).toHaveCount(0);
+});
+
+test('graph handles drag with the pointer and expose bounded keyboard sliders', async ({ page }) => {
+  await preview(page);
+  const graph = page.getByRole('slider', { name: '31 Hz', exact: true });
+  const svg = page.locator('.eq-curve');
+  const box = await svg.boundingBox();
+  if (!box) throw new Error('Equalizer graph is not visible');
+  const point = await graph.boundingBox();
+  if (!point) throw new Error('Bass graph handle is not visible');
+  await page.mouse.move(point.x + point.width / 2, point.y + point.height / 2);
+  await page.mouse.down();
+  const targetY = box.y + (140 - (3 + 6) * 100 / 12) / 175 * box.height;
+  await page.mouse.move(point.x + point.width / 2, targetY, { steps: 4 });
+  await page.mouse.up();
+  await expect(graph).toHaveAttribute('aria-valuenow', '3');
+  await expect(graph).toHaveAttribute('aria-valuetext', '3 decibels');
+  await graph.focus();
+  await page.keyboard.press('End');
+  await expect(graph).toHaveAttribute('aria-valuenow', '6');
+  await page.keyboard.press('ArrowUp');
+  await expect(graph).toHaveAttribute('aria-valuenow', '6');
+  await page.keyboard.press('Home');
+  await expect(graph).toHaveAttribute('aria-valuenow', '-6');
 });

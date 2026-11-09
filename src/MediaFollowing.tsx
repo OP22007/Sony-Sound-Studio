@@ -29,11 +29,11 @@ function errorMessage(error: unknown): string {
 function statusLabel(snapshot: MediaAutomationSnapshot): string {
   if (snapshot.status === 'device-unavailable') return 'Listening mode unavailable';
   if (snapshot.status === 'unsupported') return 'Unavailable on this system';
+  if (!snapshot.enabled || snapshot.status === 'disabled') return 'Off';
   if (snapshot.manualOverride || snapshot.status === 'manual') return 'Paused for your manual choice';
   if (snapshot.status === 'following') return 'Following media';
   if (snapshot.status === 'error') return 'Could not confirm mode';
   if (snapshot.status === 'retrying') return 'Waiting to retry';
-  if (!snapshot.enabled || snapshot.status === 'disabled') return 'Off';
   return 'Waiting for playback';
 }
 

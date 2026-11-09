@@ -34,11 +34,17 @@ guess based on video metadata. Install and pair the companion using
 - Playback must remain in the same category for three seconds before a switch.
 - Brief pauses and stopped playback keep the current mode; they do not force a reset.
 - When multiple browser tabs are playing, switching waits until only one remains.
-- When multiple headphones are connected, automatic commands wait until only one remains.
-- Manual listening-mode or Background Music room changes in the app pause automation.
-- A different mode subsequently reported by the headphone also pauses automation.
+- When multiple headphones are connected, automatic commands target the matched active
+  Windows audio output. If output identity cannot be determined, exactly one connected
+  headphone is required. A known speaker/non-headphone output never falls back to another headphone.
+- A user-initiated listening-mode change pauses automation for the current app session.
+- Discovery, connection checks, equalizer/noise-control changes, and readbacks do not
+  create a manual hold. Commands rejected before entering the device queue do not
+  create one either. An explicitly queued listening-mode choice pauses automation
+  even if its device confirmation subsequently fails, preserving the user's intent.
 - Use **Resume Follow media** to release the manual hold.
-- Manual holds are saved across restarts. A failed hold save is reported in the status.
+- Manual holds end when the app exits. Enabling Follow media or resuming also clears
+  any hold immediately.
 - Disabling automation leaves the current headphone mode unchanged.
 - Queued automatic requests are invalidated before device I/O. A command already
   sent to the headphone may still finish; no speculative rollback command is sent.
@@ -57,6 +63,14 @@ Interface → Main interfaces → Web, and set a dedicated password under Main i
 View → Add Interface → Web can start the interface in the current session after
 configuring the password. Enter that password in the app's VLC connection panel,
 test it, then choose **Connect and save**. Testing alone does not enable monitoring.
+
+To have the interface start each time VLC opens, close VLC and choose **Enable VLC
+startup** in the app. This Windows-only opt-in action updates VLC's per-user `vlcrc` settings to
+enable the HTTP interface on loopback at port 8080, using the saved dedicated password.
+It preserves other preferences and interface modules and writes a uniquely named
+backup beside the file. VLC must be closed so it cannot overwrite the update when it
+exits. Start VLC again after setup. The password is stored in VLC's own preferences as
+well as Sound Connect's local connection settings.
 
 The connector requests only `GET /requests/status.json` with no VLC commands.
 It polls every two seconds only when Follow media and the VLC connection are enabled.
