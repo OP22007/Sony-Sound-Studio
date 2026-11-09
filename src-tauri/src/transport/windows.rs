@@ -1,4 +1,4 @@
-use super::{is_sony_headphone, model_from_name, Connection, PairedDevice};
+use super::{is_supported_headphone, model_from_name, Connection, PairedDevice};
 use std::io;
 use std::mem::{size_of, zeroed};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -9,10 +9,149 @@ use windows_sys::Win32::Devices::Bluetooth::*;
 use windows_sys::Win32::Foundation::{GetLastError, ERROR_NO_MORE_ITEMS};
 use windows_sys::Win32::Networking::WinSock::*;
 
-const SERVICES: [GUID; 2] = [
-    GUID::from_u128(0x96cc203e_5068_46ad_b32d_e316f5e069ba),
-    GUID::from_u128(0x956c7b26_d49a_4ba8_b03f_b17d393cb6e2),
-];
+pub fn activity_snapshot() -> Result<super::DeviceActivitySnapshot, String> {
+    use super::{ActiveAudioDevice, AudioTransport, DeviceActivitySnapshot};
+    let mut snapshot = DeviceActivitySnapshot::default();
+    let search = BLUETOOTH_DEVICE_SEARCH_PARAMS {
+        dwSize: size_of::<BLUETOOTH_DEVICE_SEARCH_PARAMS>() as u32,
+        fReturnAuthenticated: 1,
+        fReturnRemembered: 1,
+        fReturnConnected: 1,
+        fIssueInquiry: 0,
+        ..Default::default()
+    };
+    let mut info = BLUETOOTH_DEVICE_INFO {
+        dwSize: size_of::<BLUETOOTH_DEVICE_INFO>() as u32,
+        ..Default::default()
+    };
+    let handle = unsafe { BluetoothFindFirstDevice(&search, &mut info) };
+    if !handle.is_null() {
+        struct Guard(HBLUETOOTH_DEVICE_FIND);
+        impl Drop for Guard {
+            fn drop(&mut self) {
+                unsafe {
+                    BluetoothFindDeviceClose(self.0);
+                }
+            }
+        }
+        let _guard = Guard(handle);
+        loop {
+            let end = info
+                .szName
+                .iter()
+                .position(|&c| c == 0)
+                .unwrap_or(info.szName.len());
+            let name = String::from_utf16_lossy(&info.szName[..end]);
+            if info.fConnected != 0 && is_supported_headphone(&name) {
+                let address = unsafe { info.Address.Anonymous.ullLong };
+                snapshot.bluetooth_connected.push(ActiveAudioDevice {
+                    identity: format!("{address:012X}"),
+                    name,
+                    transport: AudioTransport::Bluetooth,
+                });
+            }
+            if snapshot.bluetooth_connected.len() >= 128
+                || unsafe { BluetoothFindNextDevice(handle, &mut info) } == 0
+            {
+                break;
+            }
+        }
+    }
+    snapshot.active_output = default_output_endpoint();
+    Ok(snapshot)
+}
+
+fn default_output_endpoint() -> Option<super::ActiveAudioDevice> {
+    use super::{ActiveAudioDevice, AudioTransport};
+    use windows::Win32::Devices::FunctionDiscovery::{
+        PKEY_Device_FriendlyName, PKEY_Device_InstanceId,
+    };
+    use windows::Win32::Media::Audio::{
+        eMultimedia, eRender, IDeviceTopology, IMMDeviceEnumerator, MMDeviceEnumerator,
+    };
+    use windows::Win32::System::Com::StructuredStorage::{PropVariantClear, PROPVARIANT};
+    use windows::Win32::System::Com::{
+        CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize, CLSCTX_ALL,
+        COINIT_MULTITHREADED, STGM_READ,
+    };
+    use windows::Win32::System::Variant::VT_LPWSTR;
+    unsafe {
+        if CoInitializeEx(None, COINIT_MULTITHREADED).is_err() {
+            return None;
+        }
+        struct ComGuard;
+        impl Drop for ComGuard {
+            fn drop(&mut self) {
+                unsafe {
+                    CoUninitialize();
+                }
+            }
+        }
+        let _guard = ComGuard;
+        let enumerator: IMMDeviceEnumerator =
+            CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).ok()?;
+        let endpoint = enumerator
+            .GetDefaultAudioEndpoint(eRender, eMultimedia)
+            .ok()?;
+        let id_ptr = endpoint.GetId().ok()?;
+        let id_result = id_ptr.to_string();
+        CoTaskMemFree(Some(id_ptr.0 as *const _));
+        let id = id_result.ok()?;
+        let store = endpoint.OpenPropertyStore(STGM_READ).ok()?;
+        let read_string = |key: &windows::Win32::Foundation::PROPERTYKEY| -> Option<String> {
+            let mut value: PROPVARIANT = store.GetValue(key).ok()?;
+            let raw = &*value.Anonymous.Anonymous;
+            let result = if raw.vt == VT_LPWSTR {
+                raw.Anonymous.pwszVal.to_string().ok()
+            } else {
+                None
+            };
+            let _ = PropVariantClear(&mut value);
+            result
+        };
+        let name = read_string(&PKEY_Device_FriendlyName).unwrap_or_else(|| id.clone());
+        let instance = read_string(&PKEY_Device_InstanceId).unwrap_or_default();
+        let topology_device_id = endpoint
+            .Activate::<IDeviceTopology>(CLSCTX_ALL, None)
+            .ok()
+            .and_then(|topology| topology.GetConnector(0).ok())
+            .and_then(|connector| connector.GetDeviceIdConnectedTo().ok())
+            .and_then(|ptr| {
+                let value = ptr.to_string().ok();
+                CoTaskMemFree(Some(ptr.0 as *const _));
+                value
+            })
+            .unwrap_or_default();
+        let native_id = if topology_device_id.is_empty() {
+            instance.clone()
+        } else {
+            topology_device_id.clone()
+        };
+        let lower = format!("{id} {instance} {topology_device_id}").to_ascii_lowercase();
+        let bluetooth = lower.contains("bth") || lower.contains("bluetooth");
+        let has_physical_id =
+            !native_id.is_empty() && !native_id.to_ascii_lowercase().contains("swd\\mmdevapi");
+        let known_other = !bluetooth && has_physical_id;
+        let identity = native_id
+            .split("DEV_")
+            .nth(1)
+            .and_then(|v| v.get(..12))
+            .filter(|v| v.chars().all(|c| c.is_ascii_hexdigit()))
+            .unwrap_or(&id)
+            .to_string();
+        Some(ActiveAudioDevice {
+            identity,
+            name,
+            transport: if bluetooth {
+                AudioTransport::Bluetooth
+            } else if known_other {
+                AudioTransport::Other
+            } else {
+                AudioTransport::Unknown
+            },
+        })
+    }
+}
 
 pub fn enumerate() -> Result<Vec<PairedDevice>, String> {
     // The documented API initializes these POD structures with their explicit sizes.
@@ -54,7 +193,7 @@ pub fn enumerate() -> Result<Vec<PairedDevice>, String> {
             .position(|&c| c == 0)
             .unwrap_or(info.szName.len());
         let name = String::from_utf16_lossy(&info.szName[..end]);
-        if is_sony_headphone(&name) {
+        if is_supported_headphone(&name) {
             let address = unsafe { info.Address.Anonymous.ullLong };
             devices.push(PairedDevice {
                 address: format!("{address:012X}"),
@@ -99,6 +238,22 @@ impl Drop for BluetoothSocket {
     }
 }
 
+fn service_guid(uuid: &str) -> Result<GUID, String> {
+    match uuid {
+        crate::oneplus::CURRENT_SERVICE_UUID => {
+            Ok(GUID::from_u128(0x0000079a_d102_11e1_9b23_00025b00a5a5))
+        }
+        crate::oneplus::SERVICE_UUID => Ok(GUID::from_u128(0x00001107_d102_11e1_9b23_00025b00a5a5)),
+        "96cc203e-5068-46ad-b32d-e316f5e069ba" => {
+            Ok(GUID::from_u128(0x96cc203e_5068_46ad_b32d_e316f5e069ba))
+        }
+        "956c7b26-d49a-4ba8-b03f-b17d393cb6e2" => {
+            Ok(GUID::from_u128(0x956c7b26_d49a_4ba8_b03f_b17d393cb6e2))
+        }
+        _ => Err("Unrecognized control-service UUID.".into()),
+    }
+}
+
 pub fn connect(
     device: &PairedDevice,
     cancelled: Arc<AtomicBool>,
@@ -107,10 +262,9 @@ pub fn connect(
     let address = u64::from_str_radix(&device.address, 16)
         .map_err(|_| "Invalid cached Bluetooth address; discover devices again.".to_string())?;
     let mut last_code = 0;
-    for (service, service_uuid) in SERVICES.into_iter().zip([
-        "96cc203e-5068-46ad-b32d-e316f5e069ba",
-        "956c7b26-d49a-4ba8-b03f-b17d393cb6e2",
-    ]) {
+    let services = super::service_uuids(device);
+    for &service_uuid in services {
+        let service = service_guid(service_uuid)?;
         if cancelled.load(Ordering::Acquire) {
             return Err("Connection was cancelled.".into());
         }
@@ -146,6 +300,8 @@ pub fn connect(
         if ![WSAEWOULDBLOCK, WSAEINPROGRESS, WSAEALREADY].contains(&last_code) {
             continue;
         }
+        // A completed polling deadline is a timeout, not the initial "in progress" error.
+        last_code = WSAETIMEDOUT;
         let deadline = Instant::now() + Duration::from_secs(4);
         while Instant::now() < deadline {
             if cancelled.load(Ordering::Acquire) {
@@ -185,7 +341,14 @@ pub fn connect(
             }
         }
     }
-    Err(format!("Sony's control service did not connect (Windows code {last_code}). Wake the headphones, pair them in Windows Settings, and close other headphone-control apps before retrying."))
+    let reason = match last_code {
+        WSAEADDRNOTAVAIL => {
+            "Windows could not resolve or use the headphone settings-service address/channel"
+        }
+        WSAETIMEDOUT => "The headphone settings-service connection timed out",
+        _ => "The headphone settings service did not connect",
+    };
+    Err(format!("{reason} (Windows code {last_code}). Audio pairing can remain connected while this separate service is unavailable. Tried settings services: {}. No headphone setting command was sent.", services.join(", ")))
 }
 
 impl Connection for BluetoothSocket {
@@ -264,5 +427,50 @@ impl Connection for BluetoothSocket {
             };
         }
         Ok(read as usize)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn catalog_service_ids_become_the_matching_winsock_guid() {
+        for model in crate::oneplus_models::models() {
+            let device = PairedDevice {
+                address: "fixture".into(),
+                name: model.name.clone(),
+                model: model.name.clone(),
+            };
+            let uuids = super::super::service_uuids(&device);
+            assert_eq!(uuids, [model.service_uuid.as_str()]);
+            let guid = service_guid(uuids[0]).unwrap();
+            assert_eq!(
+                guid.data1,
+                if model.service_uuid == crate::oneplus::CURRENT_SERVICE_UUID {
+                    0x079a
+                } else {
+                    0x1107
+                }
+            );
+            assert_eq!(guid.data2, 0xd102);
+            assert_eq!(guid.data3, 0x11e1);
+            assert_eq!(guid.data4, [0x9b, 0x23, 0, 2, 0x5b, 0, 0xa5, 0xa5]);
+        }
+        assert!(service_guid("00000000-0000-0000-0000-000000000000").is_err());
+    }
+
+    #[test]
+    fn sony_settings_services_keep_their_original_guids() {
+        let device = PairedDevice {
+            address: "fixture".into(),
+            name: "WH-1000XM6".into(),
+            model: "WH-1000XM6".into(),
+        };
+        let guids: Vec<_> = super::super::service_uuids(&device)
+            .iter()
+            .map(|uuid| service_guid(uuid).unwrap().data1)
+            .collect();
+        assert_eq!(guids, [0x96cc203e, 0x956c7b26]);
     }
 }

@@ -10,6 +10,7 @@ interface VlcConnectionSnapshot {
   status: string;
   playing: boolean;
   kind: 'movie' | 'music' | 'other' | null;
+  startupConfigured?: boolean;
 }
 
 function errorMessage(error: unknown): string {
@@ -94,6 +95,17 @@ export default function VlcConnection() {
     }
   };
 
+  const configureStartup = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setSnapshot(await nativeCommand<VlcConnectionSnapshot>('configure_vlc_startup'));
+    } catch (reason) {
+      setError(errorMessage(reason));
+    } finally { setBusy(false); }
+  };
+
   const connected = snapshot?.enabled ?? false;
   const statusText = loading ? 'Checking connection…' : snapshot?.status ?? 'Status unavailable';
   const kindText = snapshot?.kind ? snapshot.kind[0].toUpperCase() + snapshot.kind.slice(1) : null;
@@ -140,6 +152,11 @@ export default function VlcConnection() {
     </div>
     <p className="vlc-test-note">Testing reads VLC’s status. It does not enable Follow media or change your headphone mode.</p>
 
+    <div className="vlc-startup">
+      <div><strong>{snapshot?.startupConfigured ? 'Ready for VLC restarts' : 'Keep VLC connected after restart'}</strong><p>{snapshot?.startupConfigured ? 'The Web interface is saved in VLC preferences. Open VLC normally; monitoring reconnects when it becomes available.' : 'Save your password above, close VLC, then enable startup once. This saves the local Web interface in VLC preferences and keeps a backup.'}</p></div>
+      <button className="vlc-action" type="button" disabled={busy || loading || !connected || !snapshot?.passwordConfigured} onClick={() => void configureStartup()}>{snapshot?.startupConfigured ? 'Reconfigure VLC startup' : 'Enable VLC startup'}</button>
+    </div>
+
     {error && <div className="vlc-error" role="alert"><Info size={14}/><span>{error}</span><button type="button" onClick={() => setError(null)} aria-label="Dismiss error">×</button></div>}
 
     <div className="vlc-setup">
@@ -153,7 +170,7 @@ export default function VlcConnection() {
           <li>Open <strong>Interface → Main interfaces → Lua</strong> and set a dedicated Lua HTTP password.</li>
           <li>Keep the HTTP host at <code>127.0.0.1</code> and port at <code>8080</code> in the advanced HTTP settings or startup options.</li>
         </ol>
-        <p>Save the preferences and restart VLC when you’re ready. If VLC is already running, use <strong>View → Add Interface → Web</strong> after configuring the password.</p>
+        <p>Save the preferences and restart VLC. <strong>View → Add Interface → Web</strong> only starts it for the current session. The Enable VLC startup button above saves it for future launches.</p>
       </div>}
     </div>
   </section>;

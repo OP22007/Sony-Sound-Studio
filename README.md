@@ -1,5 +1,9 @@
 # Sony Sound Studio
 
+A local desktop companion for Sony headphones, with experimental OnePlus support. Shape your sound, switch listening modes and manage your headphones from a dedicated desktop workspace.
+
+[Browse device compatibility, feature status and test evidence](docs/compatibility/README.md) · [Search the device directory](https://op22007.github.io/Sony-Sound-Studio/devices/)
+
 A local desktop companion for Sony headphones. Shape your sound, switch listening modes and manage your headphones from a dedicated desktop workspace.
 
 ## Features
@@ -10,6 +14,18 @@ A local desktop companion for Sony headphones. Shape your sound, switch listenin
 - **Dedicated Equalizer tab:** choose XM6 Off, Heavy, Clear, Hard, Soft or Game curves; create, update, rename and delete local custom presets, and adjust supported DSEE modes. Sound Studio keeps listening modes and noise controls together. The visualization responds to bass, mids and treble. [Preset behavior and evidence](docs/research/eq-presets.md).
 - **Listening modes:** Standard, Background Music and Cinema appear when supported by the connected device. Background Music includes model-supported room options such as My room, Living room and Cafe.
 - **Animated headphone scenes:** official model artwork, distinct listening-mode environments and transitions that respond to sound settings.
+
+### Experimental OnePlus support
+
+- **All 32 OnePlus product IDs in the supplied HeyMelody catalog:** 30 model names across Buds, Buds Pro, Buds Z, Buds Ace, Nord Buds, Flow Buds, Buds Clip and Bullets neckbands, plus seven bundled aliases. [Full model list](docs/research/oneplus-models.md).
+- Product-ID verification chooses each model's own noise-control indices and EQ preset labels. Firmware/battery reads, ANC/Transparency profiles, EQ presets, wear detection and game mode appear where the model mapping and live replies support them. Non-ANC models do not receive ANC controls.
+- Wear detection and game mode appear only after live capability and current-value replies. Changes require device readback; failed confirmation does not send a restoration command.
+- **Model-specific equalizers:** built-in sound profiles use each model’s own protocol indices. Custom curves use the earbuds’ reported frequencies and dB range; save edits, rename and apply profiles with matching device readback. Supported models can create a new profile from their original-app tuning layout.
+- **Spatial listening:** model-listed Off/fixed modes and head tracking appear only after compatible live capability and current-mode replies. Older firmware uses its spatial on/off path. [Protocol evidence and model coverage](docs/research/oneplus-spatial.md).
+- **BassWave:** a dedicated slider in the Equalizer tab uses the connected model’s reported range. Supported models also expose a separate enable switch. Both level changes and enablement require device readback.
+- All OnePlus entries are experimental and awaiting hardware testing; these controls are included in the 0.1.4 preview. Models outside the catalog can be discovered by their OnePlus headphone name, but unknown product IDs cannot enable settings. Custom profile deletion and multipoint management are unavailable. macOS control connections remain disabled.
+
+See the [HeyMelody evidence and testing guide](docs/research/oneplus-heymelody.md) for command layouts, original-app references and validation limits.
 
 ### Automatic listening · Windows
 
@@ -22,7 +38,7 @@ See [automatic listening setup](docs/media-following.md) for supported rules, br
 
 ### Device and desktop settings
 
-- Discover paired Sony headphones and read available model, firmware, battery and control capabilities.
+- Discover paired Sony and OnePlus headphones, and read available model, firmware, battery and control capabilities.
 - Device controls appear when their capabilities and current values have been established; changes stay pending until confirmation.
 - Dark, light and system appearance, reduced motion, launch at login, start minimized, close to tray and automatic reconnect preferences.
 - Closing to tray releases the studio webview while the native companion remains active. Quit from the tray to disconnect and exit.
@@ -32,7 +48,9 @@ See [automatic listening setup](docs/media-following.md) for supported rules, br
 
 ## Download
 
-Get the [latest preview release](https://github.com/OP22007/Sony-Sound-Studio/releases). Installers and SHA-256 checksums are available for:
+Get the [latest preview release](https://github.com/OP22007/Sony-Sound-Studio/releases). The 0.1.4 preview is a manual Windows x64 download; GitHub Actions is currently blocked by an account billing issue, so its macOS/Linux packages and stable updater publication are pending. Existing 0.1.3 packages remain available for those platforms. [0.1.4 changes and limitations](docs/releases/v0.1.4.md).
+
+Package formats and platform support:
 
 | Platform | Packages | Current support |
 | --- | --- | --- |
@@ -56,6 +74,12 @@ Review screenshots and diagnostics before posting; remove pairing keys, password
 
 ## Run from source
 
+### Product website
+
+The standalone animated product site lives in [`website/`](website/README.md). Run `npm ci` and `npm run dev` from that directory to preview it on port 4321. It builds to static files for GitHub Pages or Vercel; the desktop app keeps its own dependencies and build.
+
+### Desktop app
+
 Built with Tauri 2, Rust, React, TypeScript, Vite and Anime.js. Install Node.js 22+, Rust 1.90+ and the [Tauri platform prerequisites](https://v2.tauri.app/start/prerequisites/).
 
 ```sh
@@ -67,7 +91,7 @@ npm run tauri dev
 
 For the browser-only interface, use `npm run dev`, open `http://127.0.0.1:1420` and choose **Explore studio preview**. Native Bluetooth needs the desktop app. If port 1420 is in use, stop the existing development server before starting another.
 
-Pair and power on your headphones, then choose **Find headphones**. A paired entry does not guarantee an available Sony control connection; another control app or phone connection can affect it.
+Pair and power on your headphones, then choose **Find headphones**. A paired entry does not guarantee an available control connection; another control app or phone connection can affect it.
 
 ## Development checks
 

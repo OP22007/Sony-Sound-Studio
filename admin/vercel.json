@@ -1,0 +1,65 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "",
+  "outputDirectory": "public",
+  "functions": {
+    "api/index.mjs": {
+      "maxDuration": 60,
+      "includeFiles": "views/**"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api/index?route=home"
+    },
+    {
+      "source": "/auth/login",
+      "destination": "/api/index?route=login"
+    },
+    {
+      "source": "/auth/callback",
+      "destination": "/api/index?route=callback"
+    },
+    {
+      "source": "/auth/logout",
+      "destination": "/api/index?route=logout"
+    },
+    {
+      "source": "/api/state",
+      "destination": "/api/index?route=state"
+    },
+    {
+      "source": "/api/save",
+      "destination": "/api/index?route=save"
+    },
+    {
+      "source": "/api/publish",
+      "destination": "/api/index?route=publish"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    }
+  ]
+}

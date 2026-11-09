@@ -1,15 +1,10 @@
-use super::{is_sony_headphone, model_from_name, Connection, PairedDevice};
+use super::{is_supported_headphone, model_from_name, Connection, PairedDevice};
 use std::io::{self, Read};
 use std::mem::size_of;
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-
-const SERVICES: [&str; 2] = [
-    "96cc203e-5068-46ad-b32d-e316f5e069ba",
-    "956c7b26-d49a-4ba8-b03f-b17d393cb6e2",
-];
 
 fn run_tool(program: &str, args: &[&str], timeout: Duration) -> Result<String, String> {
     let mut child = Command::new(program).args(args).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null())
@@ -64,7 +59,7 @@ pub fn enumerate() -> Result<Vec<PairedDevice>, String> {
         }
         let address = fields.next().unwrap_or_default();
         let name = fields.next().unwrap_or_default();
-        if valid_address(address) && is_sony_headphone(name) {
+        if valid_address(address) && is_supported_headphone(name) {
             devices.push(PairedDevice {
                 address: address.into(),
                 name: name.chars().filter(|c| !c.is_control()).take(128).collect(),
@@ -76,6 +71,33 @@ pub fn enumerate() -> Result<Vec<PairedDevice>, String> {
     devices.dedup_by(|a, b| a.address == b.address);
     devices.truncate(128);
     Ok(devices)
+}
+
+pub fn activity_snapshot() -> Result<super::DeviceActivitySnapshot, String> {
+    use super::{ActiveAudioDevice, AudioTransport, DeviceActivitySnapshot};
+    let output = run_tool(
+        "bluetoothctl",
+        &["devices", "Connected"],
+        Duration::from_secs(5),
+    )?;
+    let mut snapshot = DeviceActivitySnapshot::default();
+    for line in output.lines().take(256) {
+        let mut fields = line.splitn(3, ' ');
+        if fields.next() != Some("Device") {
+            continue;
+        }
+        let address = fields.next().unwrap_or_default();
+        let name = fields.next().unwrap_or_default();
+        if valid_address(address) && is_supported_headphone(name) {
+            snapshot.bluetooth_connected.push(ActiveAudioDevice {
+                identity: address.into(),
+                name: name.into(),
+                transport: AudioTransport::Bluetooth,
+            });
+        }
+    }
+    // BlueZ does not reliably expose the system's active audio route through bluetoothctl.
+    Ok(snapshot)
 }
 
 fn valid_address(address: &str) -> bool {
@@ -135,7 +157,7 @@ pub fn connect(
     let records = run_tool("sdptool", &["browse", &device.address], Duration::from_secs(8)).map_err(|_| {
         "Could not read the headphones' Bluetooth service records. Make sure the headphones are on and connected, and that BlueZ's sdptool is installed.".to_string()
     })?;
-    for service in SERVICES {
+    for &service in super::service_uuids(device) {
         if cancelled.load(Ordering::Acquire) {
             return Err("Connection was cancelled.".into());
         }
@@ -297,7 +319,7 @@ mod tests {
 
     #[test]
     fn finds_the_channel_of_the_matching_128_bit_service_only() {
-        assert_eq!(rfcomm_channel_for_service(BROWSE, SERVICES[1]), Some(9));
-        assert_eq!(rfcomm_channel_for_service(BROWSE, SERVICES[0]), None);
+        assert_eq!(rfcomm_channel_for_service(BROWSE, "956c7b26-d49a-4ba8-b03f-b17d393cb6e2"), Some(9));
+        assert_eq!(rfcomm_channel_for_service(BROWSE, "96cc203e-5068-46ad-b32d-e316f5e069ba"), None);
     }
 }

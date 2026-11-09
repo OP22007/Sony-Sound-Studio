@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useId, useRef } from 'react';
 import { animate, createScope, createTimeline, cubicBezier } from 'animejs';
 import Headphones from './Headphones';
+import ListeningRoom from './ListeningRoom';
+import NoiseField from './NoiseField';
 import { buildSoundSurface } from './sound-scene';
+import { nativeAvailable, nativeCommand } from './bridge';
 
 interface Props {
+  deviceId: string;
+  audioReactive: boolean;
   model: string;
   noise: string;
   listening: string;
@@ -17,11 +22,11 @@ interface Props {
 interface Motion { pause: () => unknown; resume: () => unknown }
 const settle = cubicBezier(.22, 1, .36, 1);
 const breathe = cubicBezier(.37, 0, .63, 1);
-const sceneName = (value: string) => value === 'cinema' ? 'Cinema' : value === 'backgroundMusic' ? 'Background Music' : 'Standard';
-const noiseName = (value: string) => value === 'cancelling' ? 'Noise cancelling' : value === 'ambient' ? 'Ambient sound' : value === 'off' ? 'Noise control off' : 'Headphone studio';
+const sceneName = (value: string) => ({cinema:'Cinema',backgroundMusic:'Background Music',music:'Music',game:'Game',spatialAudioFixed:'Spatial audio',spatialAudioHeadTracked:'Head-tracked spatial audio'}[value] ?? 'Standard');
+const noiseName = (value: string) => value === 'cancelling' ? 'Noise cancelling' : value === 'ambient' ? 'Ambient sound' : value === 'off' ? 'Noise control off' : 'Noise control unconfirmed';
 const roomSpan = (room: unknown) => room === 2 ? 1.2 : room === 1 ? 1 : .82;
 
-export default function SoundVisualization({ model, noise, listening, room, bands, initialBands, preview, reducedMotion, pending }: Props) {
+export default function SoundVisualization({ deviceId, audioReactive, model, noise, listening, room, bands, initialBands, preview, reducedMotion, pending }: Props) {
   const stage = useRef<HTMLDivElement>(null);
   const surface = useRef<SVGSVGElement>(null);
   const motions = useRef(new Set<Motion>());
@@ -34,7 +39,56 @@ export default function SoundVisualization({ model, noise, listening, room, band
   const previousScene = useRef(listening);
   const previousRoom = useRef(roomSpan(room));
   const bandSignature = `${preview}/${bands.join(',')}`;
-  const scene = listening === 'backgroundMusic' || listening === 'cinema' ? listening : 'standard';
+  const spatialScene = listening === 'spatialAudioFixed' || listening === 'spatialAudioHeadTracked';
+  const scene = spatialScene ? 'music' : ['backgroundMusic','cinema','music','game'].includes(listening) ? listening : 'standard';
+
+  useEffect(() => {
+    const element = stage.current;
+    if (!element) return;
+    let disposed = false;
+    let inView = false;
+    let inFlight = false;
+    let failed = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const reset = () => {
+      element.style.setProperty('--audio-energy', '0');
+      element.style.setProperty('--audio-left', '0');
+      element.style.setProperty('--audio-right', '0');
+      element.dataset.audio = 'unavailable';
+    };
+    reset();
+    if (!nativeAvailable || !audioReactive || preview || reducedMotion) return;
+    const enabled = () => !disposed && !failed && inView && !document.hidden;
+    const sample = async () => {
+      if (!enabled() || inFlight) return;
+      inFlight = true;
+      try {
+        const levels = await nativeCommand<{ left: number; right: number } | null>('get_output_levels', { deviceId });
+        if (!enabled()) return;
+        if (!levels || ![levels.left, levels.right].every(v => Number.isFinite(v) && v >= 0 && v <= 1)) reset();
+        else {
+          const energy = Math.max(levels.left, levels.right);
+          element.style.setProperty('--audio-energy', String(energy));
+          element.style.setProperty('--audio-left', String(levels.left));
+          element.style.setProperty('--audio-right', String(levels.right));
+          element.dataset.audio = energy > .001 ? 'live' : 'silent';
+        }
+      } catch { failed = true; reset(); }
+      finally {
+        inFlight = false;
+        if (enabled()) timer = setTimeout(() => void sample(), 250);
+      }
+    };
+    const sync = () => {
+      clearTimeout(timer);
+      if (enabled()) void sample();
+      else reset();
+    };
+    const observer = new IntersectionObserver(([entry]) => { inView = entry.isIntersecting; sync(); });
+    observer.observe(element);
+    document.addEventListener('visibilitychange', sync);
+    return () => { disposed = true; clearTimeout(timer); observer.disconnect(); document.removeEventListener('visibilitychange', sync); reset(); };
+  }, [deviceId, audioReactive, preview, reducedMotion]);
 
   const register = useCallback((animations: Motion[]) => {
     animations.forEach(animation => {
@@ -66,8 +120,8 @@ export default function SoundVisualization({ model, noise, listening, room, band
       const entrance = createTimeline({ defaults: { ease: settle } })
         .add('.scene-entrance', { opacity: [0, 1], y: [18, 0], scale: [.97, 1], duration: 850 }, 0)
         .add('.scene-surface-entrance', { opacity: [0, 1], y: [8, 0], duration: 650 }, 180);
-      const floating = animate('.visual-drift', { y: [-2, 3], duration: 5100, alternate: true, loop: true, ease: breathe });
-      const shadow = animate('.scene-ground-idle', { scaleX: [.93, 1], opacity: [.5, .65], duration: 5100, alternate: true, loop: true, ease: breathe });
+      const floating = animate('.visual-drift', { y: [-1.8, 2.2], duration: 5700, alternate: true, loop: true, ease: breathe });
+      const shadow = animate('.scene-ground-idle', { scaleX: [.94, 1], opacity: [.58, .72], duration: 5700, alternate: true, loop: true, ease: breathe });
       release = register([entrance, floating, shadow]);
     });
     return () => { release(); scope.revert(); };
@@ -80,6 +134,8 @@ export default function SoundVisualization({ model, noise, listening, room, band
     let release = () => {};
     const scope = createScope({ root: stage.current }).add(() => {
       const cinema = scene === 'cinema';
+      const music = scene === 'music';
+      const game = scene === 'game';
       const background = scene === 'backgroundMusic';
       const timeline = createTimeline({ defaults: { ease: settle } });
       if (oldScene !== scene) {
@@ -88,11 +144,12 @@ export default function SoundVisualization({ model, noise, listening, room, band
       }
       timeline
         .add(`[data-environment="${scene}"]`, {
-          opacity: [0, 1], x: [cinema ? -12 : background ? 5 : 0, 0],
-          scaleX: [cinema ? .88 : .98, 1], duration: cinema ? 900 : 700,
+          opacity: [0, 1], x: [cinema ? -12 : game ? 14 : background ? 5 : 0, 0],
+          scaleX: [cinema ? .88 : game ? 1.08 : .98, 1], duration: cinema ? 900 : music ? 1000 : game ? 600 : 700,
         }, 0)
         .add('.visual-reaction', { y: [3, cinema ? -2 : 0], scale: [1, cinema ? 1.025 : background ? .985 : 1], duration: 480 }, 0)
         .add('.scene-mode-label', { opacity: [.2, 1], y: [4, 0], duration: 300 }, 80);
+      timeline.add('.scene-3d-room', { opacity: [.25, 1], duration: 700 }, 0);
       release = register([timeline]);
     });
     return () => { release(); scope.revert(); };
@@ -106,7 +163,8 @@ export default function SoundVisualization({ model, noise, listening, room, band
     let release = () => {};
     const scope = createScope({ root: stage.current }).add(() => {
       const roomTransition = animate('.scene-room-depth', { scaleX: [before, target], duration: 700, ease: settle });
-      release = register([roomTransition]);
+      const roomReveal = animate('.scene-3d-room', { opacity: [.4, 1], duration: 650, ease: settle });
+      release = register([roomTransition, roomReveal]);
     });
     return () => { release(); scope.revert(); };
   }, [room, reducedMotion, register]);
@@ -117,7 +175,7 @@ export default function SoundVisualization({ model, noise, listening, room, band
     const scope = createScope({ root: stage.current }).add(() => {
       const open = noise === 'ambient';
       const quiet = noise === 'cancelling';
-      const curtainOpacity = quiet ? .8 : open ? .12 : .38;
+      const curtainOpacity = quiet ? .42 : open ? .12 : .24;
       const timeline = createTimeline({ defaults: { ease: settle } })
         .add('.scene-quiet-left', { x: [open ? 0 : -22, open ? -26 : 0], opacity: [.3, curtainOpacity], duration: 650 }, 0)
         .add('.scene-quiet-right', { x: [open ? 0 : 22, open ? 26 : 0], opacity: [.3, curtainOpacity], duration: 650 }, 0)
@@ -175,8 +233,12 @@ export default function SoundVisualization({ model, noise, listening, room, band
   return <div ref={stage} className="sound-visual" data-scene={scene} data-noise={noise} data-listening={listening}
     data-room={String(room ?? 0)} data-eq-available={bands.length === 10}
     data-choreography={`${noise}/${listening}/${room ?? 0}`} data-motion={reducedMotion ? 'reduced' : undefined} data-pending={pending}>
+    <div className="scene-backplane" aria-hidden="true"><i className="scene-light-key"/><i className="scene-light-fill"/><i className="scene-grain"/></div>
     <div className="scene-environments" aria-hidden="true">
+      <ListeningRoom scene={scene} room={room} reducedMotion={reducedMotion}/>
       <div className="scene-environment scene-standard" data-environment="standard"><i className="scene-studio-light"/><i className="scene-studio-seam"/></div>
+      <div className="scene-environment scene-music" data-environment="music"><i className="scene-acoustic-wall scene-acoustic-left"/><i className="scene-acoustic-wall scene-acoustic-right"/><i className="scene-music-stage"/></div>
+      <div className="scene-environment scene-game" data-environment="game"><i className="scene-game-plane scene-game-left"/><i className="scene-game-plane scene-game-right"/><i className="scene-game-horizon"/></div>
       <div className="scene-environment scene-background" data-environment="backgroundMusic"><div className="scene-room-depth">
         <i className="scene-back-wall"/><i className="scene-room-wing scene-room-left"/><i className="scene-room-wing scene-room-right"/>
         <i className="scene-room-floor"/><i className="scene-room-window"/><i className="scene-room-spill"/>
@@ -187,10 +249,13 @@ export default function SoundVisualization({ model, noise, listening, room, band
       <div className="scene-periphery"><i className="scene-air-pane scene-air-left"/><i className="scene-air-pane scene-air-right"/></div>
       <div className="scene-quiet-left"/><div className="scene-quiet-right"/><div className="scene-eq-highlight"/>
       <div className="scene-ground-idle"><div className="scene-ground-eq"/></div>
+      <div className="scene-plinth"><i/></div>
     </div>
+    <NoiseField/>
     <div className={`visual-product-frame${model.includes('CH720') ? ' visual-product-wide' : ''}`}>
-      <div className="scene-entrance"><div className="visual-reaction"><div className="visual-drift"><Headphones model={model}/></div></div></div>
+      <div className="scene-entrance"><div className="visual-reaction"><div className="visual-drift"><div className="visual-audio"><i className="earcup-light earcup-light-left" aria-hidden="true"/><i className="earcup-light earcup-light-right" aria-hidden="true"/><Headphones model={model}/></div></div></div></div>
     </div>
+    <div className="scene-channel-indicators" aria-label="Left and right output peak indicators" title={preview ? 'Channel indicators · no audio is sampled in preview' : audioReactive && !reducedMotion ? 'Live Windows output peaks when available' : 'Audio levels unavailable'}><span><b>L</b><i className="channel-track"><i className="channel-level channel-left"/></i></span><span><i className="channel-track"><i className="channel-level channel-right"/></i><b>R</b></span></div>
     <div className="scene-surface-wrap" aria-label="Equalizer settings surface">
       <div className="scene-surface-entrance">
       <svg ref={surface} className="visual-profile" viewBox="0 0 600 125" aria-hidden="true">
@@ -207,7 +272,7 @@ export default function SoundVisualization({ model, noise, listening, room, band
       <div className="scene-frequency-labels"><span>BASS</span><span>MIDS</span><span>TREBLE</span></div>
       </div>
     </div>
-    <div className="visual-caption"><span className="scene-mode-label">{sceneName(scene)}</span><span className="scene-caption-dot">·</span><span className="scene-noise-label">{pending ? 'WAITING FOR HEADPHONE' : noiseName(noise)}</span></div>
+    <div className="visual-caption"><span className="scene-mode-label">{listening === 'unknown' ? 'Listening mode unconfirmed' : spatialScene ? sceneName(listening) : scene === 'backgroundMusic' ? ['My room', 'Living room', 'Cafe'][Number(room)] ?? sceneName(scene) : sceneName(scene)}</span><span className="scene-caption-dot">·</span><span className="scene-noise-label">{pending ? 'WAITING FOR HEADPHONE' : noiseName(noise)}</span></div>
     <span className="scene-pending-line" aria-hidden="true"/>
   </div>;
 }
