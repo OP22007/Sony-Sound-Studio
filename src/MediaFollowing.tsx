@@ -9,7 +9,8 @@ interface MediaAutomationSnapshot {
   enabled: boolean;
   status: string;
   source: string | null;
-  desiredMode: 'standard' | 'cinema' | null;
+  desiredMode: 'movie' | 'music' | 'game' | 'other' | null;
+  plannedSettings?: string[];
   reason: string;
   manualOverride: boolean;
   extensionToken: string;
@@ -36,6 +37,8 @@ function statusLabel(snapshot: MediaAutomationSnapshot): string {
   if (snapshot.status === 'retrying') return 'Waiting to retry';
   return 'Waiting for playback';
 }
+
+const categoryLabel = { movie: 'MOVIE', music: 'MUSIC', game: 'GAME', other: 'STANDARD' } as const;
 
 export default function MediaFollowing({ deviceConnected, cinemaSupported }: Props) {
   const [snapshot, setSnapshot] = useState<MediaAutomationSnapshot | null>(null);
@@ -145,7 +148,7 @@ export default function MediaFollowing({ deviceConnected, cinemaSupported }: Pro
       <div className="mf-heading-copy">
         <span className="eyebrow"><span className="eyebrow-line"/> AUTOMATIC LISTENING</span>
         <h2>Follow what’s playing</h2>
-        <p>Opt in to switch listening mode with your music and movies.</p>
+        <p>Opt in to match your headphones to games, music and movies.</p>
       </div>
       <div className={`mf-state${enabled && !snapshot?.manualOverride ? ' is-on' : ''}`}><span className="status-dot"/>{status}</div>
     </div>
@@ -154,7 +157,7 @@ export default function MediaFollowing({ deviceConnected, cinemaSupported }: Pro
     {snapshot?.status === 'unsupported' && nativeAvailable && <div className="mf-notice"><Info size={15}/><span>Automatic listening currently requires Windows.</span></div>}
 
     <div className="mf-toggle-row">
-      <div><strong>Follow media</strong><small>Only changes the headphone listening mode. This preference is saved on this computer.</small></div>
+      <div><strong>Follow media</strong><small>Only changes settings your headphones confirm: listening mode, spatial audio and Game mode. This preference is saved on this computer.</small></div>
       <button className={`mf-switch${enabled ? ' checked' : ''}`} type="button" role="switch" aria-checked={enabled} aria-label="Follow media" disabled={toggleDisabled} onClick={() => void runCommand('set_media_automation', !enabled)}>
         <span/>
       </button>
@@ -168,8 +171,9 @@ export default function MediaFollowing({ deviceConnected, cinemaSupported }: Pro
     {enabled && snapshot && <div className="mf-live">
       <div className="mf-live-icon"><Radio size={17}/></div>
       <div className="mf-live-copy">
-        <div className="mf-live-top"><span>{snapshot.browserConnected ? 'Browser companion reached desktop' : deviceConnected ? 'Headphones connected' : 'Headphones disconnected'}</span>{snapshot.desiredMode && <b>{snapshot.desiredMode === 'cinema' ? 'CINEMA' : 'STANDARD'}</b>}</div>
+        <div className="mf-live-top"><span>{snapshot.browserConnected ? 'Browser companion reached desktop' : deviceConnected ? 'Headphones connected' : 'Headphones disconnected'}</span>{snapshot.desiredMode && <b>{categoryLabel[snapshot.desiredMode]}</b>}</div>
         {snapshot.source && <small className="mf-source">{snapshot.source}</small>}
+        {!!snapshot.plannedSettings?.length && <small className="mf-planned">{snapshot.plannedSettings.join(' · ')}</small>}
         <small className="mf-reason">{snapshot.reason}</small>
       </div>
     </div>}
@@ -179,9 +183,11 @@ export default function MediaFollowing({ deviceConnected, cinemaSupported }: Pro
 
     {enabled && snapshot?.browserReceiverError && <div className="mf-error" role="alert"><Info size={14}/><span>{snapshot.browserReceiverError}</span></div>}
     <div className="mf-rules">
-      <div><Sparkles size={14}/><span><strong>Music and ordinary video</strong><small>Standard</small></span></div>
-      <div><Sparkles size={14}/><span><strong>Streaming movies and shows</strong><small>Cinema</small></span></div>
-      <p>VLC uses the media type it reports. Atmos is not identified automatically yet.</p>
+      <div><Sparkles size={14}/><span><strong>Games</strong><small>Game mode or Game listening mode</small></span></div>
+      <div><Sparkles size={14}/><span><strong>Music apps and sites</strong><small>Music mode, spatial audio off</small></span></div>
+      <div><Sparkles size={14}/><span><strong>Streaming movies and shows</strong><small>Cinema, or spatial audio on</small></span></div>
+      <div><Sparkles size={14}/><span><strong>Anything else</strong><small>Standard</small></span></div>
+      <p>Only settings your headphones confirm are changed. A game wins over background music. VLC uses the media type it reports. Atmos is not identified automatically yet.</p>
     </div>
 
     {enabled && nativeAvailable && <VlcConnection/>}

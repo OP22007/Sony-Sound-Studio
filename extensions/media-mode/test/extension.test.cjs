@@ -13,6 +13,7 @@ test("classifies only the explicit streaming host allowlist", () => {
   assert.equal(vm.runInNewContext('classify("www.netflix.com")', context), "movie");
   assert.equal(vm.runInNewContext('classify("jiohotstar.com")', context), "movie");
   assert.equal(vm.runInNewContext('classify("music.youtube.com")', context), "music");
+  assert.equal(vm.runInNewContext('classify("open.spotify.com")', context), "music");
   assert.equal(vm.runInNewContext('classify("youtube.com")', context), "other");
   assert.equal(vm.runInNewContext('classify("video.example")', context), "other");
 });

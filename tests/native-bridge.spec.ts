@@ -543,9 +543,14 @@ test('Follow media uses native opt-in, displays readback status, and releases a 
   await expect(toggle).toHaveAttribute('aria-checked', 'false');
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-checked', 'true');
-  await page.evaluate(() => (window as unknown as { __emitMedia: (change: Record<string, unknown>) => void }).__emitMedia({ status: 'following', source: 'www.netflix.com', desiredMode: 'cinema', reason: 'Cinema confirmed by headphones.', browserConnected: true }));
+  await page.evaluate(() => (window as unknown as { __emitMedia: (change: Record<string, unknown>) => void }).__emitMedia({ status: 'following', source: 'www.netflix.com', desiredMode: 'movie', plannedSettings: ['Listening mode: cinema'], reason: 'Cinema confirmed by headphones.', browserConnected: true }));
   await expect(panel).toContainText('www.netflix.com');
+  await expect(panel).toContainText('MOVIE');
+  await expect(panel).toContainText('Listening mode: cinema');
   await expect(panel).toContainText('Cinema confirmed by headphones.');
+  await page.evaluate(() => (window as unknown as { __emitMedia: (change: Record<string, unknown>) => void }).__emitMedia({ source: 'cs2.exe', desiredMode: 'game', plannedSettings: ['Game mode: on'], reason: 'Game detected · confirmed by headphones.' }));
+  await expect(panel).toContainText('GAME');
+  await expect(panel).toContainText('Game mode: on');
   await page.evaluate(() => (window as unknown as { __emitMedia: (change: Record<string, unknown>) => void }).__emitMedia({ status: 'manual', manualOverride: true }));
   await expect(panel).toContainText('Your manual mode is being respected');
   await panel.getByRole('button', { name: 'Resume', exact: true }).click();

@@ -6,7 +6,11 @@ const reportQueues = new Map();
 const MUSIC_HOSTS = new Set([
   "music.youtube.com",
   "music.apple.com",
-  "tidal.com"
+  "tidal.com",
+  "open.spotify.com",
+  "soundcloud.com",
+  "deezer.com",
+  "music.amazon.com"
 ]);
 
 const MOVIE_HOSTS = new Set([

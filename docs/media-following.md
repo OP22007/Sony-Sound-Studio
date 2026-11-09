@@ -2,30 +2,54 @@
 
 Follow media is an optional Windows feature in the **Automatic listening** navigation tab.
 It uses the existing device command queue and matched device readback. It starts off.
-Connect one headphone with a validated Cinema option, then enable **Follow media**.
+Connect one headphone that confirms at least one automatable setting (a listening mode, spatial audio or Game mode), then enable **Follow media**.
 Expand **Browser companion setup** to prepare the bundled Chrome/Edge/Brave or
 Firefox extension, open its folder, and copy the pairing key. The installed desktop
 app includes these extension sources; a separate repository checkout is not needed.
 
 ## Rules
 
-| Playback | Requested listening mode |
-| --- | --- |
-| Netflix app reporting Windows playback | Cinema |
-| VLC reporting Video through its local status connection or Windows media sessions | Cinema |
-| VLC reporting Music or an unknown playback type | Standard |
-| Apple Music, Tidal and other desktop music sessions | Standard |
-| Movie/show websites identified by the paired extension | Cinema |
-| YouTube Music, Apple Music web, Tidal web and ordinary browser media | Standard |
+Follow media detects what is playing, then applies only the settings your connected
+headphones have confirmed. The Automatic listening tab shows the detected category and
+the settings it will apply.
 
-Recognized movie/show hosts: Netflix, Prime Video, Disney+, Hulu, Max/HBO Max,
-Apple TV, Peacock, Paramount+, JioHotstar and Hotstar. Subdomains are supported;
-lookalike domain names do not match. Prime Video playback hosted on an Amazon
-shopping domain is not classified as Cinema. Unknown sites use Standard.
-This is a site rule, so previews and ads on a supported streaming site share its mode.
+| Content | Sony upmix series (e.g. 1000X COLLEXION) | OnePlus (where the model advertises it) |
+| --- | --- | --- |
+| Game | Game listening mode | Game mode on, plus the Game sound profile when offered; spatial audio off |
+| Music | Music listening mode | Spatial audio off, Game mode off |
+| Movie or show | Cinema | Fixed spatial audio on, Game mode off |
+| Anything else | Standard | Spatial audio off, Game mode off |
+
+A mode the headphones do not offer falls back to Standard, or is skipped when Standard
+is not offered either. Head tracking is never selected automatically. Other Sony models
+that only offer Standard and Cinema follow the same rules with those two modes.
+
+### What counts as each category
+
+- **Movie:** Netflix app reporting Windows playback; VLC reporting Video; movie/show
+  websites identified by the paired extension (Netflix, Prime Video, Disney+, Hulu,
+  Max/HBO Max, Apple TV, Peacock, Paramount+, JioHotstar and Hotstar, including
+  subdomains; lookalike names do not match). Prime Video on an Amazon shopping
+  domain is not classified as a movie. Previews and ads share their site's category.
+- **Music:** desktop music sessions such as Spotify, Apple Music and Tidal; VLC
+  reporting audio; and music sites identified by the extension (YouTube Music, Apple
+  Music web, Tidal web, Spotify web, SoundCloud, Deezer, Amazon Music).
+- **Game:** see below. A running game wins over music or video playing in the background.
+- **Other:** any other playback, including ordinary YouTube videos.
+
+### Game detection
+
+Windows does not publish games as media sessions, so the app checks the foreground
+window every two seconds, read-only. The foreground app counts as a game when Windows
+reports a full-screen Direct3D application, or when its executable is in a built-in
+list of popular games (Unreal Engine `*-Win64-Shipping.exe` builds also match).
+Browsers, media players, presentation apps and game launchers (Steam, Epic, Battle.net)
+are never games by themselves. Borderless-windowed games that Windows does not report
+as full-screen are detected only through the executable list. Detection has not yet
+been validated against real games on hardware.
 
 The extension is necessary for browser sites; Windows media sessions alone do not
-reliably provide the site. Browsers without the extension do not trigger a Cinema
+reliably provide the site. Browsers without the extension do not trigger a movie
 guess based on video metadata. Install and pair the companion using
 [the extension instructions](../extensions/media-mode/README.md).
 
@@ -37,7 +61,8 @@ guess based on video metadata. Install and pair the companion using
 - When multiple headphones are connected, automatic commands target the matched active
   Windows audio output. If output identity cannot be determined, exactly one connected
   headphone is required. A known speaker/non-headphone output never falls back to another headphone.
-- A user-initiated listening-mode change pauses automation for the current app session.
+- A user-initiated change to listening mode, spatial audio, Game mode or the Game sound
+  profile pauses automation for the current app session.
 - Discovery, connection checks, equalizer/noise-control changes, and readbacks do not
   create a manual hold. Commands rejected before entering the device queue do not
   create one either. An explicitly queued listening-mode choice pauses automation
@@ -77,7 +102,7 @@ It polls every two seconds only when Follow media and the VLC connection are ena
 The VLC response can contain media metadata; only playback state and stream type are
 used, and titles/file paths are discarded. The dedicated password is saved locally
 in `vlc-connection.json`, never in browser storage or diagnostics. Unknown VLC playback
-types use Standard; file names and window titles are not inspected.
+types are treated as Other (Standard); file names and window titles are not inspected.
 
 Browser companion 1.0.1 verifies pairing with the desktop before displaying Connected
 and attaches to existing accessible tabs. Existing installations must reload the
@@ -85,8 +110,8 @@ extension after preparing the updated files. The HTTP receiver runs separately f
 headphone commands, so a pending Bluetooth readback cannot block browser pairing.
 
 **Atmos/spatial track detection is not implemented.** Windows' general media-session
-metadata does not expose an Atmos flag. Apple Music and Tidal therefore use Standard,
-including tracks whose source format cannot be verified. You can manually select
+metadata does not expose an Atmos flag. Apple Music and Tidal therefore use the Music rule,
+regardless of source format. You can manually select
 Cinema; that choice pauses automation. System spatial audio being enabled is not
 treated as proof that the current track is Atmos.
 
