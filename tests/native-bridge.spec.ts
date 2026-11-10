@@ -543,9 +543,23 @@ test('Follow media uses native opt-in, displays readback status, and releases a 
   await expect(toggle).toHaveAttribute('aria-checked', 'false');
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-checked', 'true');
-  await page.evaluate(() => (window as unknown as { __emitMedia: (change: Record<string, unknown>) => void }).__emitMedia({ status: 'following', source: 'www.netflix.com', desiredMode: 'cinema', reason: 'Cinema confirmed by headphones.', browserConnected: true }));
+  await page.evaluate(() => (window as unknown as { __emitMedia: (change: Record<string, unknown>) => void }).__emitMedia({ status: 'following', source: 'www.netflix.com', desiredMode: 'movie', plannedSettings: ['Listening mode: cinema'], reason: 'Cinema confirmed by headphones.', browserConnected: true }));
   await expect(panel).toContainText('www.netflix.com');
+  await expect(panel.locator('.mf-readout')).toHaveText('Movie');
+  await expect(panel).toContainText('Listening mode: cinema');
   await expect(panel).toContainText('Cinema confirmed by headphones.');
+  await page.evaluate(() => (window as unknown as { __emitMedia: (change: Record<string, unknown>) => void }).__emitMedia({ source: 'cs2.exe', desiredMode: 'game', plannedSettings: ['Game mode: on'], reason: 'Game detected · confirmed by headphones.' }));
+  await expect(panel.locator('.mf-readout')).toHaveText('Game');
+  await expect(panel).toContainText('Game mode: on');
+  const card = (name: string) => panel.locator('.mf-map li').filter({ has: page.locator('strong', { hasText: new RegExp(`^${name}$`) }) });
+  await expect(card('Movie')).toContainText('Supported');
+  await expect(card('Movie')).toContainText('Listening mode: cinema');
+  await expect(card('Standard')).toContainText('Supported');
+  await expect(card('Game')).toContainText('Not supported');
+  await expect(card('Game')).toContainText('Your headphones stay as they are');
+  await expect(card('Music')).toContainText('Not supported');
+  await expect(panel).toContainText('fully supports Movie, Standard');
+  await expect(panel).toContainText('Game, Music will leave your headphones unchanged');
   await page.evaluate(() => (window as unknown as { __emitMedia: (change: Record<string, unknown>) => void }).__emitMedia({ status: 'manual', manualOverride: true }));
   await expect(panel).toContainText('Your manual mode is being respected');
   await panel.getByRole('button', { name: 'Resume', exact: true }).click();
@@ -813,7 +827,7 @@ test('descriptor-driven select, toggle, and range settings wait for device confi
   ];
   await installNativeFixture(page, false, {
     deviceCapabilities: ['soundQuality', 'focusOnVoice', 'ambient'],
-    deviceSettings: { controlDescriptors: descriptors, soundQuality: 'quality', focusOnVoice: false, ambient: 4 },
+    deviceSettings: { controlDescriptors: descriptors, soundQuality: 'quality', noise: 'ambient', focusOnVoice: false, ambient: 4 },
   });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Device settings', exact: true }).click();
@@ -864,4 +878,15 @@ test('descriptor-driven setting failure keeps confirmed value and exposes the de
   await expect(page.locator('.feedback.error[role="alert"]')).toContainText('The headphone did not confirm the selected mode.');
   await expect(quality).toHaveValue('0');
   await expect(quality).toBeEnabled();
+});
+
+test('Focus on voice is disabled with an explanation unless Noise control is Ambient sound', async ({ page }) => {
+  await installNativeFixture(page, false, {
+    deviceCapabilities: ['focusOnVoice'],
+    deviceSettings: { controlDescriptors: [{ key: 'focusOnVoice', label: 'Focus on voice', description: 'Emphasize speech in ambient mode.', kind: 'toggle' }], noise: 'cancelling', focusOnVoice: false },
+  });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Device settings', exact: true }).click();
+  await expect(page.getByRole('switch', { name: 'Focus on voice' })).toBeDisabled();
+  await expect(page.getByText('Available while Noise control is set to Ambient sound.')).toBeVisible();
 });

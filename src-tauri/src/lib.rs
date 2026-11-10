@@ -5,6 +5,8 @@ mod device_monitor;
 mod device_observer;
 mod discovery;
 mod media_automation;
+mod game_detector;
+mod listening_policy;
 mod media_vlc;
 #[cfg(windows)]
 mod media_windows;
@@ -15,6 +17,7 @@ mod output_levels;
 mod preferences;
 pub mod protocol;
 mod sony_listening;
+mod system_settings;
 mod transport;
 mod vlc_connection;
 
@@ -1023,30 +1026,6 @@ async fn apply_setting(
     .await
 }
 
-fn supports_listening_mode(device: &Device, mode: &str) -> bool {
-    device
-        .capabilities
-        .iter()
-        .any(|capability| capability == "listeningMode")
-        && device
-            .settings
-            .get("controlDescriptors")
-            .and_then(Value::as_array)
-            .is_some_and(|descriptors| {
-                descriptors.iter().any(|descriptor| {
-                    descriptor.get("key").and_then(Value::as_str) == Some("listeningMode")
-                        && descriptor
-                            .get("options")
-                            .and_then(Value::as_array)
-                            .is_some_and(|options| {
-                                options.iter().any(|option| {
-                                    option.get("value").and_then(Value::as_str) == Some(mode)
-                                })
-                            })
-                })
-            })
-}
-
 async fn apply_setting_internal(
     app: AppHandle,
     runtime: Arc<Runtime>,
@@ -1064,16 +1043,16 @@ async fn apply_setting_internal(
     {
         return Err("Invalid setting name.".into());
     }
-    // Re-selecting the confirmed mode is not a manual override.
+    // Re-selecting a confirmed value of an automated setting is not a manual override.
     let manual_mode_change = automation_epoch.is_none()
-        && setting == "listeningMode"
+        && listening_policy::is_automated_key(&setting)
         && runtime
             .inner
             .lock()
             .map_err(|_| "Native state unavailable.")?
             .devices
             .get(&device_id)
-            .and_then(|device| device.settings.get("listeningMode"))
+            .and_then(|device| device.settings.get(setting.as_str()))
             != Some(&value);
     let change = match setting.as_str() {
         "probe-noise-schema" => discovery::SettingChange::ProbeNoiseSchema,

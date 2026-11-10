@@ -1,5 +1,9 @@
 //! Opt-in, local playback rules. No titles, audio, artwork or listening history.
-use crate::{preferences::PreferencesStore, ConnectionState, Runtime};
+use crate::{
+    listening_policy::{self, Category},
+    preferences::PreferencesStore,
+    ConnectionState, Runtime,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -25,6 +29,7 @@ pub struct Snapshot {
     pub status: String,
     pub source: Option<String>,
     pub desired_mode: Option<String>,
+    pub planned_settings: Vec<String>,
     pub reason: String,
     pub manual_override: bool,
     pub extension_token: String,
@@ -104,7 +109,7 @@ impl Automation {
             .map_err(|_| "Could not save media preferences.")?;
         Ok((Self { inner: Mutex::new(Inner {
             snapshot: Snapshot { enabled: config.enabled, status: if !cfg!(windows) { "unsupported" } else if config.manual_override { "manual" } else if config.enabled { "waiting" } else { "disabled" }.into(),
-                source: None, desired_mode: None, reason: if config.manual_override { "Your manual listening mode is held until you resume Follow media." } else { "Enable Follow media to use local playback rules. Windows playback detection is required." }.into(),
+                source: None, desired_mode: None, planned_settings: Vec::new(), reason: if config.manual_override { "Your manual listening mode is held until you resume Follow media." } else { "Enable Follow media to use local playback rules. Windows playback detection is required." }.into(),
                 manual_override: config.manual_override, extension_token: config.token, browser_connected: false, browser_receiver_error: None },
             epoch: 0, browser: BTreeMap::new(), browser_seen: None,
         }), store, wake, http_wake, http_receiver: Mutex::new(Some(http_receiver)) }, receiver))
@@ -255,6 +260,7 @@ pub fn set_media_automation(app: AppHandle, enabled: bool) -> Result<Snapshot, S
     .into();
     inner.snapshot.source = None;
     inner.snapshot.desired_mode = None;
+    inner.snapshot.planned_settings.clear();
     inner.snapshot.browser_connected = false;
     inner.snapshot.browser_receiver_error = None;
     inner.browser_seen = None;
@@ -325,6 +331,10 @@ fn host_kind(site: &str) -> &'static str {
         "music.apple.com",
         "tidal.com",
         "listen.tidal.com",
+        "open.spotify.com",
+        "soundcloud.com",
+        "deezer.com",
+        "music.amazon.com",
     ]
     .iter()
     .any(|host| matches(host))
@@ -564,7 +574,7 @@ fn start_http(app: AppHandle, state: Arc<Automation>, runtime: Arc<Runtime>) {
 struct Choice {
     key: String,
     source: String,
-    mode: &'static str,
+    category: Category,
     reason: &'static str,
 }
 
@@ -612,6 +622,8 @@ pub fn start(app: AppHandle, state: Arc<Automation>, receiver: mpsc::Receiver<()
             .clone();
         let mut vlc_refresh = Instant::now() - Duration::from_secs(60);
         let mut vlc_playback = None;
+        let mut game_exe: Option<String> = None;
+        let mut game_refresh = Instant::now() - Duration::from_secs(60);
         loop {
             if runtime.stopping.load(std::sync::atomic::Ordering::Acquire) {
                 break;
@@ -629,8 +641,13 @@ pub fn start(app: AppHandle, state: Arc<Automation>, receiver: mpsc::Receiver<()
                 stable = StableChoice::default();
                 last_attempt = None;
                 vlc_playback = None;
+                game_exe = None;
             } else {
                 let now = Instant::now();
+                if signalled || now.duration_since(game_refresh) >= Duration::from_secs(2) {
+                    game_exe = crate::game_detector::detect(&crate::game_detector::SystemProbe);
+                    game_refresh = now;
+                }
                 if vlc.enabled()
                     && (signalled || now.duration_since(vlc_refresh) >= Duration::from_secs(2))
                 {
@@ -669,14 +686,14 @@ pub fn start(app: AppHandle, state: Arc<Automation>, receiver: mpsc::Receiver<()
                         .browser
                         .retain(|_, entry| now.saturating_duration_since(entry.updated) < TTL);
                     inner.snapshot.browser_connected = inner.browser_seen.is_some_and(|seen| {
-                        now.saturating_duration_since(seen) < Duration::from_secs(30)
+                        now.saturating_duration_since(seen) < Duration::from_secs(75)
                     });
                     let browser = if inner.browser.len() == 1 {
                         inner.browser.values().next()
                     } else {
                         None
                     };
-                    let conflicting_vlc = vlc_playback
+                    let conflicting_vlc = game_exe.is_none() && vlc_playback
                         .as_ref()
                         .is_some_and(|playback| playback.playing)
                         && (!inner.browser.is_empty()
@@ -693,15 +710,11 @@ pub fn start(app: AppHandle, state: Arc<Automation>, receiver: mpsc::Receiver<()
                         Some(Choice {
                             key: "vlc-local-status".into(),
                             source: "VLC".into(),
-                            mode: if playback.kind == "movie" {
-                                "cinema"
-                            } else {
-                                "standard"
-                            },
-                            reason: if playback.kind == "movie" {
-                                "VLC reports a video stream"
-                            } else {
-                                "VLC audio or unknown stream: Standard"
+                            category: Category::from_kind(playback.kind),
+                            reason: match Category::from_kind(playback.kind) {
+                                Category::Movie => "VLC reports a video stream",
+                                Category::Music => "VLC reports an audio stream",
+                                _ => "VLC unknown stream",
                             },
                         })
                     } else if let Some(observation) = native.as_ref().filter(|observation| {
@@ -712,15 +725,11 @@ pub fn start(app: AppHandle, state: Arc<Automation>, receiver: mpsc::Receiver<()
                         Some(Choice {
                             key: observation.key.clone(),
                             source: observation.source.clone(),
-                            mode: if observation.kind == "movie" {
-                                "cinema"
-                            } else {
-                                "standard"
-                            },
-                            reason: if observation.kind == "movie" {
-                                "Movie/video player rule"
-                            } else {
-                                "Music or other player: Standard"
+                            category: Category::from_kind(&observation.kind),
+                            reason: match Category::from_kind(&observation.kind) {
+                                Category::Movie => "Movie/video player rule",
+                                Category::Music => "Music player rule",
+                                _ => "Other player",
                             },
                         })
                     } else if native
@@ -733,27 +742,33 @@ pub fn start(app: AppHandle, state: Arc<Automation>, receiver: mpsc::Receiver<()
                                 entry.report.session_id, entry.report.site
                             ),
                             source: entry.report.site.clone(),
-                            mode: if host_kind(&entry.report.site) == "movie" {
-                                "cinema"
-                            } else {
-                                "standard"
-                            },
-                            reason: if host_kind(&entry.report.site) == "movie" {
-                                "Movie/show streaming site rule"
-                            } else {
-                                "Music and ordinary browser content: Standard"
+                            category: Category::from_kind(host_kind(&entry.report.site)),
+                            reason: match Category::from_kind(host_kind(&entry.report.site)) {
+                                Category::Movie => "Movie/show streaming site rule",
+                                Category::Music => "Music streaming site rule",
+                                _ => "Ordinary browser content",
                             },
                         })
                     } else {
                         None
                     };
+                    // A running game wins over background music or video.
+                    let choice = match game_exe.as_ref() {
+                        Some(exe) => Some(Choice {
+                            key: format!("game:{exe}"),
+                            source: exe.clone(),
+                            category: Category::Game,
+                            reason: "Game detected",
+                        }),
+                        None => choice,
+                    };
                     inner.snapshot.source = choice.as_ref().map(|choice| choice.source.clone());
-                    inner.snapshot.desired_mode = choice.as_ref().map(|choice| choice.mode.into());
+                    inner.snapshot.desired_mode = choice.as_ref().map(|choice| choice.category.key().into());
                     if !inner.snapshot.manual_override {
                         inner.snapshot.status = "waiting".into();
                         inner.snapshot.reason = detection_error.or_else(|| inner.snapshot.browser_receiver_error.clone()).unwrap_or_else(|| {
                             if conflicting_vlc { "VLC and another player are active. Pause one before automatic switching.".into() }
-                            else if inner.browser.len() > 1 { "Multiple browser tabs are playing. Pause one before automatic switching.".into() }
+                            else if inner.browser.len() > 1 && game_exe.is_none() { "Multiple browser tabs are playing. Pause one before automatic switching.".into() }
                             else { choice.as_ref().map(|choice| choice.reason.into()).unwrap_or_else(|| "Waiting for playback. Pauses keep the current mode; browser sites need the companion extension.".into()) }
                         });
                     }
@@ -785,55 +800,52 @@ pub fn start(app: AppHandle, state: Arc<Automation>, receiver: mpsc::Receiver<()
                         // against the stable playback choice through normal apply.
                         let mut status = "device-unavailable";
                         let mut reason =
-                            "The connected headphone has not confirmed this listening mode."
+                            "The connected headphone offers no confirmed setting for this content."
                                 .to_string();
-                        if crate::supports_listening_mode(&device, choice.mode) {
-                            if device
-                                .settings
-                                .get("listeningMode")
-                                .and_then(serde_json::Value::as_str)
-                                == Some(choice.mode)
-                            {
+                        let desired = listening_policy::desired_settings(&device, choice.category);
+                        let planned: Vec<String> = desired.iter().map(listening_policy::describe).collect();
+                        if !desired.is_empty() {
+                            let pending = listening_policy::pending_settings(&device, choice.category);
+                            if pending.is_empty() {
                                 status = "following";
-                                reason = format!(
-                                    "{} · {} confirmed by headphones.",
-                                    choice.reason, choice.mode
-                                );
+                                reason = format!("{} · confirmed by headphones.", choice.reason);
                             } else {
-                                let attempt_key =
-                                    format!("{epoch}:{}:{}:{}", device.id, choice.key, choice.mode);
+                                let attempt_key = format!(
+                                    "{epoch}:{}:{}:{}",
+                                    device.id,
+                                    choice.key,
+                                    choice.category.key()
+                                );
                                 if last_attempt.as_ref().is_none_or(|(key, time)| {
                                     key != &attempt_key
                                         || now.duration_since(*time) >= Duration::from_secs(30)
                                 }) {
                                     last_attempt = Some((attempt_key, now));
-                                    match tauri::async_runtime::block_on(
-                                        crate::apply_setting_internal(
-                                            app.clone(),
-                                            runtime.clone(),
-                                            device.id.clone(),
-                                            "listeningMode".into(),
-                                            serde_json::Value::from(choice.mode),
-                                            Some(epoch),
-                                        ),
-                                    ) {
-                                        Ok(_) => {
-                                            status = "following";
-                                            reason = format!(
-                                                "{} · {} confirmed by headphones.",
-                                                choice.reason, choice.mode
-                                            );
-                                        }
-                                        Err(error) => {
+                                    status = "following";
+                                    reason = format!("{} · confirmed by headphones.", choice.reason);
+                                    for setting in pending {
+                                        if let Err(error) = tauri::async_runtime::block_on(
+                                            crate::apply_setting_internal(
+                                                app.clone(),
+                                                runtime.clone(),
+                                                device.id.clone(),
+                                                setting.key.into(),
+                                                setting.value.clone(),
+                                                Some(epoch),
+                                            ),
+                                        ) {
                                             status = "error";
-                                            reason =
-                                                format!("Mode could not be confirmed: {error}");
+                                            reason = format!(
+                                                "{} could not be confirmed: {error}",
+                                                listening_policy::describe(&setting)
+                                            );
+                                            break;
                                         }
                                     }
                                 } else {
                                     status = "retrying";
                                     reason =
-                                        "Waiting before retrying the unconfirmed mode request."
+                                        "Waiting before retrying the unconfirmed setting request."
                                             .into();
                                 }
                             }
@@ -841,6 +853,7 @@ pub fn start(app: AppHandle, state: Arc<Automation>, receiver: mpsc::Receiver<()
                         if let Ok(mut inner) = state.inner.lock() {
                             if inner.epoch == epoch && !inner.snapshot.manual_override {
                                 inner.snapshot.status = status.into();
+                                inner.snapshot.planned_settings = planned;
                                 inner.snapshot.reason = reason;
                             }
                         }
@@ -1045,7 +1058,7 @@ mod tests {
         let choice = Choice {
             key: "a".into(),
             source: "Netflix".into(),
-            mode: "cinema",
+            category: Category::Movie,
             reason: "site",
         };
         let mut stable = StableChoice::default();
@@ -1057,9 +1070,19 @@ mod tests {
             stable
                 .update(Some(choice), now + Duration::from_secs(3))
                 .unwrap()
-                .mode,
-            "cinema"
+                .category,
+            Category::Movie
         );
         assert!(stable.update(None, now + Duration::from_secs(4)).is_none());
+    }
+
+    #[test]
+    fn music_sites_are_classified_without_matching_lookalikes() {
+        for site in ["open.spotify.com", "music.youtube.com", "listen.tidal.com", "soundcloud.com"] {
+            assert_eq!(host_kind(site), "music", "{site}");
+        }
+        assert_eq!(host_kind("open.spotify.com.evil.example"), "other");
+        assert_eq!(host_kind("www.youtube.com"), "other");
+        assert_eq!(Category::from_kind(host_kind("netflix.com")), Category::Movie);
     }
 }

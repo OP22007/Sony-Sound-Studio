@@ -8,6 +8,7 @@ use crate::device_controls::{
 };
 use crate::protocol::{encode, Decoder, Frame};
 use crate::sony_listening::{self, UpmixMode};
+use crate::system_settings::{self as sys, GsCapability, GsKind, GsValue};
 use crate::transport::Connection;
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -200,8 +201,42 @@ pub fn read_basics(
                 // Exact FunctionType mappings decoded from the same APK. These
                 // entries mark advertised support only; they do not create an
                 // editable descriptor until a typed GET/SET/readback is ready.
-                if functions.contains(&0xf1) {
+                if functions.contains(&sys::WEAR_FUNCTION) {
                     result.controls.capabilities.push("wear".into());
+                    match session.wear_read(connection, cancelled) {
+                        Ok((true, on)) => result.controls.device_controls.push(ConfirmedControl {
+                            descriptor: sys::wear_descriptor(),
+                            value: ControlValue::Boolean(on),
+                        }),
+                        Ok((false, on)) => {
+                            result.controls.read_only_values.insert("wear".into(), ControlValue::Boolean(on));
+                            result.warnings.push("The headphone reports wear detection as currently unavailable, so it cannot be changed right now.".into());
+                        }
+                        Err(error) => result.warnings.push(format!("Wear detection could not be read: {error}")),
+                    }
+                }
+                for slot in 1..=4u8 {
+                    if !functions.contains(&(0xd0 + slot)) {
+                        continue;
+                    }
+                    match session.general_setting_read(connection, cancelled, slot) {
+                        Ok((control, true)) => {
+                            let key = control.descriptor.key.clone();
+                            if !result.controls.capabilities.contains(&key) {
+                                result.controls.capabilities.push(key);
+                            }
+                            result.controls.device_controls.push(control);
+                        }
+                        Ok((control, false)) => {
+                            let key = control.descriptor.key.clone();
+                            if !result.controls.capabilities.contains(&key) {
+                                result.controls.capabilities.push(key.clone());
+                            }
+                            result.controls.read_only_values.insert(key, control.value);
+                            result.warnings.push(format!("The headphone reports {} as currently unavailable, so it cannot be changed right now.", control.descriptor.label));
+                        }
+                        Err(error) => result.warnings.push(format!("General setting {slot} could not be read: {error}")),
+                    }
                 }
                 if [0x41, 0x42, 0x44].iter().any(|id| functions.contains(id)) {
                     result.controls.capabilities.push("guidance".into());
@@ -212,12 +247,19 @@ pub fn read_basics(
                 if functions.contains(&0x48) {
                     result.controls.capabilities.push("notificationTone".into());
                 }
-                // Table-1 AUTO_POWER_OFF is function 0x24. It uses inquiry
-                // 0x04 and has a fully validated option, GET, SET and readback
-                // path in the shipped Sony APK. Do not route the XM6's distinct
-                // 0x25 wearing-detection variant through this setter.
-                if functions.contains(&0x24) {
-                    match session.power_off_setting(connection, cancelled, 0x04) {
+                // AUTO_POWER_OFF is function 0x24 (inquiry 0x04); the wearing-aware
+                // AUTO_POWER_OFF_WITH_WEARING_DETECTION is function 0x25 (inquiry 0x05).
+                // Both use [28, inquiry, active, selectedTime] for SET (the 0x05 builder is
+                // yn0.w0 in the shipped APK) with matching GET readback.
+                let power_off_inquiry = if functions.contains(&0x24) {
+                    Some(0x04)
+                } else if functions.contains(&0x25) {
+                    Some(0x05)
+                } else {
+                    None
+                };
+                if let Some(inquiry) = power_off_inquiry {
+                    match session.power_off_setting(connection, cancelled, inquiry) {
                         Ok(info) => {
                             result.controls.capabilities.push("autoPowerOff".into());
                             let options = power_off_options(&info.options);
@@ -263,40 +305,6 @@ pub fn read_basics(
                             }
                         }
                         Err(error) => result.warnings.push(error),
-                    }
-                }
-                // Function 0x25 is AUTO_POWER_OFF_WITH_WEARING_DETECTION,
-                // not the standard 0x24 setter route. Record bounded read-only
-                // capability/value replies for follow-up; its distinct SET
-                // serializer is not yet verified.
-                if functions.contains(&0x25) && !functions.contains(&0x24) {
-                    match session.power_off_read_only(connection, cancelled, 0x05) {
-                        Ok((capability, value, active, selected_time)) => {
-                            if !result
-                                .controls
-                                .capabilities
-                                .iter()
-                                .any(|key| key == "autoPowerOff")
-                            {
-                                result.controls.capabilities.push("autoPowerOff".into());
-                                result.controls.capabilities.push("autoPowerOffTime".into());
-                            }
-                            result.controls.read_only_values.insert(
-                                "autoPowerOff".into(),
-                                ControlValue::Integer(i64::from(active)),
-                            );
-                            result.controls.read_only_values.insert(
-                                "autoPowerOffTime".into(),
-                                ControlValue::Integer(i64::from(selected_time)),
-                            );
-                            result.warnings.push(format!(
-                                "Read-only wearing-aware power setting: capability [{}], value [{}].",
-                                to_hex(&capability), to_hex(&value)
-                            ));
-                        }
-                        Err(error) => result.warnings.push(format!(
-                            "Read-only wearing-aware power setting is not decoded: {error}"
-                        )),
                     }
                 }
                 if functions.contains(&0xe2) {
@@ -776,6 +784,13 @@ fn parse_device_string(payload: &[u8], inquiry: u8) -> Option<String> {
     Some(value.into())
 }
 
+/// A general setting the headphone described itself (touch panel, multipoint, voice guidance...).
+#[derive(Clone, Debug)]
+struct GeneralSettingSlot {
+    inquiry: u8,
+    capability: GsCapability,
+}
+
 pub struct ReadSession {
     sequence: u8,
     synchronized: bool,
@@ -792,6 +807,8 @@ pub struct ReadSession {
     listening_cinema_enabled: Option<bool>,
     speak_to_chat_supported: bool,
     speak_to_chat_aux: Option<u8>,
+    wear_supported: bool,
+    general_settings: BTreeMap<String, GeneralSettingSlot>,
     power_off_inquiry: Option<u8>,
     power_off_options: Vec<u8>,
     device_control_descriptors: BTreeMap<String, ControlDescriptor>,
@@ -817,6 +834,8 @@ impl ReadSession {
             listening_cinema_enabled: None,
             speak_to_chat_supported: false,
             speak_to_chat_aux: None,
+            wear_supported: false,
+            general_settings: BTreeMap::new(),
             power_off_inquiry: None,
             power_off_options: Vec::new(),
             device_control_descriptors: BTreeMap::new(),
@@ -912,29 +931,14 @@ impl ReadSession {
         Ok((response, options))
     }
 
-    fn power_off_read_only(
-        &mut self,
-        connection: &mut dyn Connection,
-        cancelled: &AtomicBool,
-        inquiry: u8,
-    ) -> Result<(Vec<u8>, Vec<u8>, u8, u8), String> {
-        let (capability, options) = self.power_off_capability(connection, cancelled, inquiry)?;
-        let value = self.exchange(connection, cancelled, vec![0x26, inquiry], |payload| {
-            parse_power_off_value(payload, 0x27, inquiry, &options).is_some()
-        })?;
-        let (active, selected_time) = parse_power_off_value(&value, 0x27, inquiry, &options)
-            .ok_or_else(|| "Wearing-aware power parameter fields are invalid.".to_string())?;
-        Ok((capability, value, active, selected_time))
-    }
-
     fn power_off_setting(
         &mut self,
         connection: &mut dyn Connection,
         cancelled: &AtomicBool,
         inquiry: u8,
     ) -> Result<PowerOffInfo, String> {
-        if inquiry != 0x04 {
-            return Err("Editable automatic power off is only validated for inquiry 0x04.".into());
+        if !matches!(inquiry, 0x04 | 0x05) {
+            return Err("Editable automatic power off is only validated for inquiries 0x04 and 0x05.".into());
         }
         let (_capability, options) = self.power_off_capability(connection, cancelled, inquiry)?;
         let payload = self.exchange(connection, cancelled, vec![0x26, inquiry], |payload| {
@@ -1073,6 +1077,12 @@ impl ReadSession {
         if change.key == "speakToChat" {
             return self.apply_speak_to_chat(connection, cancelled, change.value);
         }
+        if change.key == "wear" {
+            return self.apply_wear(connection, cancelled, change.value);
+        }
+        if self.general_settings.contains_key(&change.key) {
+            return self.apply_general_setting(connection, cancelled, change);
+        }
         if change.key == "bgmRoomSize" {
             return self.apply_bgm_room_size(connection, cancelled, change.value);
         }
@@ -1089,6 +1099,11 @@ impl ReadSession {
         let mut requested = before.clone();
         match (change.key.as_str(), &change.value) {
             ("focusOnVoice", ControlValue::Boolean(value)) => {
+                // The voice option belongs to Ambient sound mode. In Noise cancelling or Off the
+                // headphone keeps its previous value, so a write could never be confirmed.
+                if before.mode != "ambient" {
+                    return Err("Focus on voice only applies in Ambient sound mode. Switch Noise control to Ambient sound, then try again.".into());
+                }
                 requested.ambient_mode = u8::from(*value);
                 requested.focus_on_voice = *value;
             }
@@ -1149,9 +1164,9 @@ impl ReadSession {
         cancelled: &AtomicBool,
         change: DeviceControlChange,
     ) -> Result<SettingConfirmation, String> {
-        if self.power_off_inquiry != Some(0x04) {
+        if !matches!(self.power_off_inquiry, Some(0x04 | 0x05)) {
             return Err(
-                "This writable power-off control requires the validated inquiry 0x04 path.".into(),
+                "This writable power-off control requires a validated power-off inquiry.".into(),
             );
         }
         let ControlValue::Integer(value) = change.value else {
@@ -1218,7 +1233,7 @@ impl ReadSession {
         let inquiry = self
             .power_off_inquiry
             .ok_or_else(|| "Automatic power-off inquiry is no longer available.".to_string())?;
-        if inquiry != 0x04 || requested.0 > 17 || requested.1 > 17 {
+        if !matches!(inquiry, 0x04 | 0x05) || requested.0 > 17 || requested.1 > 17 {
             return Err("Automatic power-off SET values do not match the verified schema.".into());
         }
         self.write_acknowledged(
@@ -1356,6 +1371,199 @@ impl ReadSession {
             }
             std::thread::sleep(Duration::from_millis(200));
         }
+    }
+
+    /// Record a device-reported value and queue an update only when it changed.
+    fn observe_device_value(&mut self, key: &str, value: ControlValue) {
+        if !self.device_control_descriptors.contains_key(key) {
+            return;
+        }
+        let before = self.device_control_values.insert(key.into(), value.clone());
+        if let Some(before) = before.filter(|before| *before != value) {
+            self.device_updates.push(DeviceControlConfirmation {
+                key: key.into(),
+                before,
+                confirmed: value,
+            });
+        }
+    }
+
+    /// Wear detection (function 0xF1): returns whether the setting is currently enabled and its value.
+    fn wear_read(
+        &mut self,
+        connection: &mut dyn Connection,
+        cancelled: &AtomicBool,
+    ) -> Result<(bool, bool), String> {
+        let status = self.exchange(connection, cancelled, sys::wear_status_request(), |payload| {
+            sys::parse_wear_status(payload, 0xf3).is_some()
+        })?;
+        let enabled = sys::parse_wear_status(&status, 0xf3)
+            .ok_or_else(|| "Wear-detection status fields are invalid.".to_string())?;
+        let on = self.wear_value(connection, cancelled)?;
+        self.wear_supported = true;
+        Ok((enabled, on))
+    }
+
+    fn wear_value(
+        &mut self,
+        connection: &mut dyn Connection,
+        cancelled: &AtomicBool,
+    ) -> Result<bool, String> {
+        let value = self.exchange(connection, cancelled, sys::wear_param_request(), |payload| {
+            sys::parse_wear_param(payload, 0xf7).is_some()
+        })?;
+        sys::parse_wear_param(&value, 0xf7)
+            .ok_or_else(|| "Wear-detection value fields are invalid.".to_string())
+    }
+
+    fn apply_wear(
+        &mut self,
+        connection: &mut dyn Connection,
+        cancelled: &AtomicBool,
+        value: ControlValue,
+    ) -> Result<SettingConfirmation, String> {
+        if !self.wear_supported {
+            return Err("Wear detection was not confirmed by the connected headphone.".into());
+        }
+        let ControlValue::Boolean(on) = value else {
+            return Err("Wear detection requires an on/off value.".into());
+        };
+        let before = self.wear_value(connection, cancelled)?;
+        if before != on {
+            self.write_acknowledged(connection, cancelled, &sys::wear_set_request(on))?;
+            self.wait_for(cancelled, "wear detection", |session| {
+                session.wear_value(connection, cancelled).map(|current| current == on)
+            })?;
+        }
+        let confirmed = ControlValue::Boolean(on);
+        self.device_control_values.insert("wear".into(), confirmed.clone());
+        Ok(SettingConfirmation::DeviceControl(DeviceControlConfirmation {
+            key: "wear".into(),
+            before: ControlValue::Boolean(before),
+            confirmed,
+        }))
+    }
+
+    /// Poll a readback until it matches or eight seconds pass. No restoring write is ever sent.
+    fn wait_for(
+        &mut self,
+        cancelled: &AtomicBool,
+        what: &str,
+        mut matches: impl FnMut(&mut Self) -> Result<bool, String>,
+    ) -> Result<(), String> {
+        let deadline = Instant::now() + Duration::from_secs(8);
+        loop {
+            match matches(self) {
+                Ok(true) => return Ok(()),
+                Ok(false) => {}
+                Err(error) if Instant::now() >= deadline => return Err(error),
+                Err(_) => {}
+            }
+            if Instant::now() >= deadline {
+                return Err(format!("The headphone did not confirm the requested {what} setting. No restoration command was sent."));
+            }
+            if cancelled.load(Ordering::Acquire) {
+                return Err(format!("The {what} readback was cancelled."));
+            }
+            std::thread::sleep(Duration::from_millis(200));
+        }
+    }
+
+    /// Read general setting `slot` (1..=4): capability, status and current value. Registers the
+    /// slot for later writes. The returned flag is whether the headphone currently allows changes.
+    fn general_setting_read(
+        &mut self,
+        connection: &mut dyn Connection,
+        cancelled: &AtomicBool,
+        slot: u8,
+    ) -> Result<(ConfirmedControl, bool), String> {
+        let inquiry = sys::general_setting_inquiry(slot)
+            .ok_or_else(|| "General setting slot is out of range.".to_string())?;
+        let reply = self.exchange(connection, cancelled, sys::gs_capability_request(inquiry), |payload| {
+            payload.len() >= 2 && payload[..2] == [0xd1, inquiry]
+        })?;
+        let capability = sys::parse_gs_capability(&reply, inquiry)
+            .ok_or_else(|| format!("General setting {slot} capability fields are invalid."))?;
+        let status = self.exchange(connection, cancelled, sys::gs_status_request(inquiry), |payload| {
+            sys::parse_gs_status(payload, 0xd3, inquiry).is_some()
+        })?;
+        let enabled = sys::parse_gs_status(&status, 0xd3, inquiry)
+            .ok_or_else(|| format!("General setting {slot} status fields are invalid."))?;
+        let mut descriptor = sys::gs_descriptor(slot, &capability);
+        // Keys stay unique if two slots resolve to the same name.
+        if self.general_settings.contains_key(&descriptor.key) {
+            descriptor.key = format!("gs{slot}");
+        }
+        let slot_state = GeneralSettingSlot { inquiry, capability };
+        let value = self.general_setting_value(connection, cancelled, &slot_state)?;
+        let control = ConfirmedControl {
+            descriptor,
+            value: sys::gs_value_as_control(value),
+        };
+        control.validate()?;
+        self.general_settings.insert(control.descriptor.key.clone(), slot_state);
+        Ok((control, enabled))
+    }
+
+    fn general_setting_value(
+        &mut self,
+        connection: &mut dyn Connection,
+        cancelled: &AtomicBool,
+        slot: &GeneralSettingSlot,
+    ) -> Result<GsValue, String> {
+        let inquiry = slot.inquiry;
+        let reply = self.exchange(connection, cancelled, sys::gs_param_request(inquiry), |payload| {
+            sys::parse_gs_param(payload, 0xd7, inquiry).is_some()
+        })?;
+        let value = sys::parse_gs_param(&reply, 0xd7, inquiry)
+            .ok_or_else(|| "General setting value fields are invalid.".to_string())?;
+        match (slot.capability.kind, value) {
+            (GsKind::Boolean, GsValue::Boolean(_)) => Ok(value),
+            (GsKind::List, GsValue::List(index)) if usize::from(index) < slot.capability.elements.len() => Ok(value),
+            _ => Err("The headphone returned a value of a different type than it advertised.".into()),
+        }
+    }
+
+    fn apply_general_setting(
+        &mut self,
+        connection: &mut dyn Connection,
+        cancelled: &AtomicBool,
+        change: DeviceControlChange,
+    ) -> Result<SettingConfirmation, String> {
+        let slot = self
+            .general_settings
+            .get(&change.key)
+            .cloned()
+            .ok_or_else(|| "The headphone did not confirm this setting.".to_string())?;
+        let wanted = match (slot.capability.kind, &change.value) {
+            (GsKind::Boolean, ControlValue::Boolean(on)) => GsValue::Boolean(*on),
+            (GsKind::List, ControlValue::Integer(index))
+                if usize::try_from(*index).is_ok_and(|index| index < slot.capability.elements.len()) =>
+            {
+                GsValue::List(*index as u8)
+            }
+            _ => return Err("The requested value is not one of the options the headphone advertised.".into()),
+        };
+        let status = self.exchange(connection, cancelled, sys::gs_status_request(slot.inquiry), |payload| {
+            sys::parse_gs_status(payload, 0xd3, slot.inquiry).is_some()
+        })?;
+        if sys::parse_gs_status(&status, 0xd3, slot.inquiry) != Some(true) {
+            return Err("The headphone currently does not allow changing this setting.".into());
+        }
+        let before = self.general_setting_value(connection, cancelled, &slot)?;
+        if before != wanted {
+            self.write_acknowledged(connection, cancelled, &sys::gs_set_request(slot.inquiry, wanted))?;
+            self.wait_for(cancelled, &change.key, |session| {
+                session.general_setting_value(connection, cancelled, &slot).map(|current| current == wanted)
+            })?;
+        }
+        let confirmed = sys::gs_value_as_control(wanted);
+        self.device_control_values.insert(change.key.clone(), confirmed.clone());
+        Ok(SettingConfirmation::DeviceControl(DeviceControlConfirmation {
+            key: change.key,
+            before: sys::gs_value_as_control(before),
+            confirmed,
+        }))
     }
 
     fn require_standard_processing(
@@ -2327,6 +2535,28 @@ impl ReadSession {
                     }
                 }
             }
+            if self.wear_supported {
+                if let Some(on) = sys::parse_wear_param(&frame.payload, 0xf9) {
+                    self.observe_device_value("wear", ControlValue::Boolean(on));
+                }
+            }
+            let observed: Vec<(String, GeneralSettingSlot)> = self
+                .general_settings
+                .iter()
+                .map(|(key, slot)| (key.clone(), slot.clone()))
+                .collect();
+            for (key, slot) in observed {
+                if let Some(value) = sys::parse_gs_param(&frame.payload, 0xd9, slot.inquiry) {
+                    let valid = match (slot.capability.kind, value) {
+                        (GsKind::Boolean, GsValue::Boolean(_)) => true,
+                        (GsKind::List, GsValue::List(index)) => usize::from(index) < slot.capability.elements.len(),
+                        _ => false,
+                    };
+                    if valid {
+                        self.observe_device_value(&key, sys::gs_value_as_control(value));
+                    }
+                }
+            }
             if let Some(value) = parse_upscaling_value(&frame.payload, 0xe9) {
                 if self.device_control_descriptors.contains_key("dsee") {
                     let value = ControlValue::Text(value.into());
@@ -2945,6 +3175,233 @@ mod tests {
         assert_eq!(setting_requests(&no_readback, 0xe8), 1);
     }
 
+
+    /// Stateful wire-level replay of a headphone exposing wear detection and two general settings.
+    struct SystemFixture {
+        reads: VecDeque<Vec<u8>>,
+        commands: Vec<Vec<u8>>,
+        wear_on: bool,
+        wear_enabled: bool,
+        ignore_sets: bool,
+        touch_on: bool,
+        language: u8,
+    }
+    impl Default for SystemFixture {
+        fn default() -> Self {
+            Self { reads: VecDeque::new(), commands: vec![], wear_on: true, wear_enabled: true, ignore_sets: false, touch_on: true, language: 0 }
+        }
+    }
+    fn gs_text(value: &str) -> Vec<u8> {
+        let mut bytes = vec![value.len() as u8];
+        bytes.extend(value.as_bytes());
+        bytes
+    }
+    impl Connection for SystemFixture {
+        fn service_uuid(&self) -> &'static str {
+            "956c7b26-d49a-4ba8-b03f-b17d393cb6e2"
+        }
+        fn read(&mut self, buffer: &mut [u8], _timeout: Duration) -> std::io::Result<usize> {
+            let Some(bytes) = self.reads.pop_front() else {
+                return Ok(0);
+            };
+            buffer[..bytes.len()].copy_from_slice(&bytes);
+            Ok(bytes.len())
+        }
+        fn write_all(&mut self, bytes: &[u8], _timeout: Duration) -> std::io::Result<()> {
+            for frame in Decoder::default().feed(bytes) {
+                let frame = frame.unwrap();
+                if frame.data_type != 0x0c {
+                    continue;
+                }
+                self.commands.push(frame.payload.clone());
+                let mut frames = vec![Frame { data_type: 1, sequence: 1 - frame.sequence, payload: vec![] }];
+                let reply = match frame.payload.as_slice() {
+                    [0xf2, 0x01] => Some(vec![0xf3, 0x01, u8::from(!self.wear_enabled)]),
+                    [0xf6, 0x01] => Some(vec![0xf7, 0x01, u8::from(!self.wear_on)]),
+                    [0xf8, 0x01, value] => {
+                        if !self.ignore_sets {
+                            self.wear_on = *value == 0;
+                        }
+                        None
+                    }
+                    [0xd0, 0xd1, 0x01] => {
+                        let mut p = vec![0xd1, 0xd1, 0, 1];
+                        p.extend(gs_text("TOUCH_PANEL_SETTING"));
+                        p.extend(gs_text(""));
+                        Some(p)
+                    }
+                    [0xd0, 0xd2, 0x01] => {
+                        let mut p = vec![0xd1, 0xd2, 1, 1];
+                        p.extend(gs_text("VOICE_GUIDANCE_SETTING"));
+                        p.extend(gs_text(""));
+                        p.push(2);
+                        for name in ["VOICE_GUIDANCE_ELEM_ENGLISH", "VOICE_GUIDANCE_ELEM_FRENCH"] {
+                            p.push(1);
+                            p.extend(gs_text(name));
+                            p.extend(gs_text(""));
+                        }
+                        Some(p)
+                    }
+                    [0xd2, inquiry] => Some(vec![0xd3, *inquiry, 0]),
+                    [0xd6, 0xd1] => Some(vec![0xd7, 0xd1, 0, u8::from(!self.touch_on)]),
+                    [0xd6, 0xd2] => Some(vec![0xd7, 0xd2, 1, self.language]),
+                    [0xd8, 0xd1, 0, value] => {
+                        if !self.ignore_sets {
+                            self.touch_on = *value == 0;
+                        }
+                        None
+                    }
+                    [0xd8, 0xd2, 1, index] => {
+                        if !self.ignore_sets {
+                            self.language = *index;
+                        }
+                        None
+                    }
+                    _ => None,
+                };
+                if let Some(payload) = reply {
+                    frames.push(Frame { data_type: 0x0c, sequence: 0, payload });
+                }
+                // Capability replies list every option name, so they exceed the 64-byte helper limit.
+                self.reads.push_back(frames.iter().flat_map(|frame| encode(frame, 1024).unwrap()).collect());
+            }
+            Ok(())
+        }
+    }
+    fn system_change(key: &str, value: ControlValue) -> SettingChange {
+        SettingChange::DeviceControl(DeviceControlChange { key: key.into(), value })
+    }
+    fn count_command(connection: &SystemFixture, command: u8) -> usize {
+        connection.commands.iter().filter(|payload| payload.first() == Some(&command)).count()
+    }
+
+    #[test]
+    fn wear_detection_reads_status_and_value_then_writes_and_confirms_by_readback() {
+        let mut connection = SystemFixture::default();
+        let cancelled = AtomicBool::new(false);
+        let mut session = ReadSession::new();
+        assert_eq!(session.wear_read(&mut connection, &cancelled).unwrap(), (true, true));
+        session.install_device_controls(&[ConfirmedControl {
+            descriptor: sys::wear_descriptor(),
+            value: ControlValue::Boolean(true),
+        }]);
+        let SettingConfirmation::DeviceControl(confirmation) = session
+            .apply_setting(&mut connection, &cancelled, system_change("wear", ControlValue::Boolean(false)))
+            .unwrap()
+        else {
+            panic!("expected a typed wear confirmation");
+        };
+        assert_eq!(confirmation.before, ControlValue::Boolean(true));
+        assert_eq!(confirmation.confirmed, ControlValue::Boolean(false));
+        assert!(!connection.wear_on);
+        let sets: Vec<_> = connection.commands.iter().filter(|c| c[0] == 0xf8).collect();
+        assert_eq!(sets, [&vec![0xf8, 0x01, 1]]);
+    }
+
+    #[test]
+    fn wear_detection_without_matching_readback_is_never_confirmed_and_sends_no_restore() {
+        let mut connection = SystemFixture { ignore_sets: true, ..SystemFixture::default() };
+        let cancelled = AtomicBool::new(false);
+        let mut session = ReadSession::new();
+        session.wear_read(&mut connection, &cancelled).unwrap();
+        session.install_device_controls(&[ConfirmedControl { descriptor: sys::wear_descriptor(), value: ControlValue::Boolean(true) }]);
+        let error = session
+            .apply_setting(&mut connection, &cancelled, system_change("wear", ControlValue::Boolean(false)))
+            .unwrap_err();
+        assert!(error.contains("did not confirm"), "{error}");
+        assert_eq!(count_command(&connection, 0xf8), 1, "one SET, no automatic restoration");
+    }
+
+    #[test]
+    fn unavailable_wear_status_is_reported_without_an_error() {
+        let mut connection = SystemFixture { wear_enabled: false, wear_on: false, ..SystemFixture::default() };
+        let mut session = ReadSession::new();
+        assert_eq!(session.wear_read(&mut connection, &AtomicBool::new(false)).unwrap(), (false, false));
+    }
+
+    #[test]
+    fn general_settings_are_described_by_the_headphone_and_written_with_readback() {
+        let mut connection = SystemFixture::default();
+        let cancelled = AtomicBool::new(false);
+        let mut session = ReadSession::new();
+        let (touch, enabled) = session.general_setting_read(&mut connection, &cancelled, 1).unwrap();
+        assert!(enabled);
+        assert_eq!(touch.descriptor.key, "touch");
+        assert_eq!(touch.value, ControlValue::Boolean(true));
+        let (guidance, _) = session.general_setting_read(&mut connection, &cancelled, 2).unwrap();
+        assert_eq!(guidance.descriptor.key, "guidance");
+        assert_eq!(guidance.value, ControlValue::Integer(0));
+        session.install_device_controls(&[touch, guidance]);
+
+        let SettingConfirmation::DeviceControl(done) = session
+            .apply_setting(&mut connection, &cancelled, system_change("touch", ControlValue::Boolean(false)))
+            .unwrap()
+        else {
+            panic!("expected a typed confirmation");
+        };
+        assert_eq!(done.confirmed, ControlValue::Boolean(false));
+        assert!(!connection.touch_on);
+        session
+            .apply_setting(&mut connection, &cancelled, system_change("guidance", ControlValue::Integer(1)))
+            .unwrap();
+        assert_eq!(connection.language, 1);
+        let sets: Vec<_> = connection.commands.iter().filter(|c| c[0] == 0xd8).cloned().collect();
+        assert_eq!(sets, [vec![0xd8, 0xd1, 0, 1], vec![0xd8, 0xd2, 1, 1]]);
+        assert!(
+            session
+                .apply_setting(&mut connection, &cancelled, system_change("guidance", ControlValue::Integer(2)))
+                .is_err(),
+            "an option the headphone never listed is rejected before any write"
+        );
+        assert_eq!(count_command(&connection, 0xd8), 2);
+    }
+
+    #[test]
+    fn general_setting_without_matching_readback_is_never_confirmed() {
+        let mut connection = SystemFixture { ignore_sets: true, ..SystemFixture::default() };
+        let cancelled = AtomicBool::new(false);
+        let mut session = ReadSession::new();
+        let (touch, _) = session.general_setting_read(&mut connection, &cancelled, 1).unwrap();
+        session.install_device_controls(&[touch]);
+        assert!(session
+            .apply_setting(&mut connection, &cancelled, system_change("touch", ControlValue::Boolean(false)))
+            .is_err());
+        assert_eq!(count_command(&connection, 0xd8), 1);
+    }
+
+    #[test]
+    fn wear_and_general_setting_notifications_update_confirmed_values() {
+        let mut connection = SystemFixture::default();
+        let cancelled = AtomicBool::new(false);
+        let mut session = ReadSession::new();
+        session.wear_read(&mut connection, &cancelled).unwrap();
+        let (touch, _) = session.general_setting_read(&mut connection, &cancelled, 1).unwrap();
+        session.install_device_controls(&[ConfirmedControl { descriptor: sys::wear_descriptor(), value: ControlValue::Boolean(true) }, touch]);
+        for payload in [vec![0xf9, 0x01, 1], vec![0xd9, 0xd1, 0, 1], vec![0xd9, 0xd2, 1, 0]] {
+            session.record_noise_observation(&Frame { data_type: 0x0c, sequence: 0, payload });
+        }
+        let updates = session.drain_device_updates();
+        let keys: Vec<_> = updates.iter().map(|update| (update.key.as_str(), update.confirmed.clone())).collect();
+        assert_eq!(keys, [("wear", ControlValue::Boolean(false)), ("touch", ControlValue::Boolean(false))]);
+    }
+
+    #[test]
+    fn wearing_aware_power_off_accepts_the_inquiry_0x05_path_and_rejects_unadvertised_options() {
+        let mut session = ReadSession::new();
+        session.power_off_inquiry = Some(0x05);
+        session.power_off_options = vec![0, 1, 16, 17];
+        let mut connection = FixtureConnection { reads: VecDeque::new(), writes: vec![], service: "956c7b26-d49a-4ba8-b03f-b17d393cb6e2" };
+        let error = session
+            .apply_power_off_setting(
+                &mut connection,
+                &AtomicBool::new(false),
+                DeviceControlChange { key: "autoPowerOff".into(), value: ControlValue::Integer(4) },
+            )
+            .unwrap_err();
+        assert!(error.contains("not advertised"), "{error}");
+        assert!(connection.writes.is_empty());
+    }
+
     #[test]
     fn dsee_final_notification_updates_confirmed_control_value() {
         let mut session = ReadSession::new();
@@ -3027,7 +3484,7 @@ mod tests {
                     Frame {
                         data_type: 0x0c,
                         sequence: 0,
-                        payload: vec![0x67, 0x19, 1, 1, 0, 0, 9, 1, 2],
+                        payload: vec![0x67, 0x19, 1, 1, 1, 0, 9, 1, 2],
                     },
                 ),
                 wire_frames(&[Frame {
@@ -3040,7 +3497,7 @@ mod tests {
                     Frame {
                         data_type: 0x0c,
                         sequence: 0,
-                        payload: vec![0x67, 0x19, 1, 1, 0, 1, 9, 1, 2],
+                        payload: vec![0x67, 0x19, 1, 1, 1, 1, 9, 1, 2],
                     },
                 ),
             ]),
@@ -3073,7 +3530,40 @@ mod tests {
             .map(Result::unwrap)
             .find(|frame| frame.data_type == 0x0c && frame.payload.first() == Some(&0x68))
             .unwrap();
-        assert_eq!(request.payload, [0x68, 0x19, 1, 1, 0, 1, 9, 1, 2]);
+        assert_eq!(request.payload, [0x68, 0x19, 1, 1, 1, 1, 9, 1, 2]);
+    }
+
+    #[test]
+    fn focus_on_voice_is_refused_without_a_write_outside_ambient_sound_mode() {
+        for ncasm_mode in [0u8] {
+            let mut connection = FixtureConnection {
+                reads: VecDeque::from([noise19_exchange(
+                    1,
+                    Frame {
+                        data_type: 0x0c,
+                        sequence: 0,
+                        payload: vec![0x67, 0x19, 1, 1, ncasm_mode, 0, 9, 1, 2],
+                    },
+                )]),
+                writes: vec![],
+                service: "956c7b26-d49a-4ba8-b03f-b17d393cb6e2",
+            };
+            let mut session = ReadSession::new();
+            session.noise_inquiry = Some(0x19);
+            session.install_device_controls(&[focus_control(false)]);
+            let error = session
+                .apply_setting(
+                    &mut connection,
+                    &AtomicBool::new(false),
+                    SettingChange::DeviceControl(DeviceControlChange {
+                        key: "focusOnVoice".into(),
+                        value: ControlValue::Boolean(true),
+                    }),
+                )
+                .unwrap_err();
+            assert!(error.contains("Ambient sound"), "{error}");
+            assert_eq!(setting_requests(&connection, 0x68), 0, "no SET is sent");
+        }
     }
 
     #[test]
