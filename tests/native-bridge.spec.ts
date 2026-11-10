@@ -827,7 +827,7 @@ test('descriptor-driven select, toggle, and range settings wait for device confi
   ];
   await installNativeFixture(page, false, {
     deviceCapabilities: ['soundQuality', 'focusOnVoice', 'ambient'],
-    deviceSettings: { controlDescriptors: descriptors, soundQuality: 'quality', focusOnVoice: false, ambient: 4 },
+    deviceSettings: { controlDescriptors: descriptors, soundQuality: 'quality', noise: 'ambient', focusOnVoice: false, ambient: 4 },
   });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Device settings', exact: true }).click();
@@ -878,4 +878,15 @@ test('descriptor-driven setting failure keeps confirmed value and exposes the de
   await expect(page.locator('.feedback.error[role="alert"]')).toContainText('The headphone did not confirm the selected mode.');
   await expect(quality).toHaveValue('0');
   await expect(quality).toBeEnabled();
+});
+
+test('Focus on voice is disabled with an explanation unless Noise control is Ambient sound', async ({ page }) => {
+  await installNativeFixture(page, false, {
+    deviceCapabilities: ['focusOnVoice'],
+    deviceSettings: { controlDescriptors: [{ key: 'focusOnVoice', label: 'Focus on voice', description: 'Emphasize speech in ambient mode.', kind: 'toggle' }], noise: 'cancelling', focusOnVoice: false },
+  });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Device settings', exact: true }).click();
+  await expect(page.getByRole('switch', { name: 'Focus on voice' })).toBeDisabled();
+  await expect(page.getByText('Available while Noise control is set to Ambient sound.')).toBeVisible();
 });
