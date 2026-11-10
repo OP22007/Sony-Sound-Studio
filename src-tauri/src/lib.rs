@@ -17,6 +17,7 @@ mod output_levels;
 mod preferences;
 pub mod protocol;
 mod sony_listening;
+mod system_settings;
 mod transport;
 mod vlc_connection;
 

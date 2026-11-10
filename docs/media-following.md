@@ -104,7 +104,8 @@ used, and titles/file paths are discarded. The dedicated password is saved local
 in `vlc-connection.json`, never in browser storage or diagnostics. Unknown VLC playback
 types are treated as Other (Standard); file names and window titles are not inspected.
 
-Browser companion 1.0.1 verifies pairing with the desktop before displaying Connected
+Browser companion 1.0.2 pairs by itself on install, browser start and every 30 seconds
+(no need to open its popup), and verifies pairing with the desktop before displaying Connected
 and attaches to existing accessible tabs. Existing installations must reload the
 extension after preparing the updated files. The HTTP receiver runs separately from
 headphone commands, so a pending Bluetooth readback cannot block browser pairing.

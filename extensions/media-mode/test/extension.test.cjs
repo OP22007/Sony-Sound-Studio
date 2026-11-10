@@ -269,3 +269,31 @@ function stubChrome(existingTabs = []) {
     injectedScripts
   };
 }
+
+test("background pairs with the desktop by itself on install, start, key change and heartbeat", async () => {
+  const requests = [];
+  const chrome = stubChrome();
+  const listeners = { installed: [], startup: [], alarm: [], changed: [] };
+  chrome.runtime.onInstalled = { addListener: (fn) => listeners.installed.push(fn) };
+  chrome.runtime.onStartup = { addListener: (fn) => listeners.startup.push(fn) };
+  const created = [];
+  chrome.alarms = { create: (name, info) => created.push({ name, info }), onAlarm: { addListener: (fn) => listeners.alarm.push(fn) } };
+  chrome.storage.onChanged = { addListener: (fn) => listeners.changed.push(fn) };
+  const context = {
+    chrome,
+    fetch: async (url, options) => { requests.push({ url, body: JSON.parse(options.body) }); return { ok: true }; },
+    URL, crypto: { randomUUID: () => "nonce" }, AbortSignal
+  };
+  vm.runInNewContext(fs.readFileSync(path.join(root, "background.js"), "utf8"), context);
+  assert.deepEqual(created.map((alarm) => alarm.info.periodInMinutes), [0.5]);
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+  for (const fire of [() => listeners.installed.forEach((fn) => fn()), () => listeners.startup[0](), () => listeners.alarm[0]({ name: created[0].name }), () => listeners.changed[0]({ pairingToken: {} }, "local")]) {
+    fire();
+    await flush();
+  }
+  listeners.alarm[0]({ name: "something-else" });
+  listeners.changed[0]({ pairingToken: {} }, "sync");
+  await flush();
+  assert.equal(requests.length, 4);
+  assert.ok(requests.every((request) => request.url === "http://127.0.0.1:47653/pair" && request.body.token === "a".repeat(64)));
+});

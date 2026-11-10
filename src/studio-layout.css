@@ -81,7 +81,8 @@
 .rail-device small { font-size: 11px; }
 .device-hero { grid-template-columns: minmax(250px, .9fr) minmax(0, 1.1fr); min-height: 320px; background: var(--surface); }
 .hero-copy { align-self: center; padding: 24px 30px; }
-.hero-copy h2 { font-size: clamp(32px, 3.2vw, 44px); margin: 0; }
+.hero-copy h2 { font-size: clamp(26px, 2.4vw, 34px); letter-spacing: -1.1px; text-wrap: balance; margin: 0; }
+.hero-copy h2.is-long-name { font-size: clamp(24px, 2.1vw, 30px); }
 .device-kicker { font-size: 11px; }
 .hero-output { margin-left: auto; color: var(--muted); font-size: 10px; }
 .hero-meta { font-size: 12px; line-height: 1.6; }

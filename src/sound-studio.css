@@ -131,3 +131,6 @@
 .scene-ground-eq { opacity: .6; }
 .scene-plinth { opacity: .55; }
 .earcup-light { opacity: calc(.48 + var(--audio-energy) * .14); }
+
+/* Empty state: span the whole grid row so the border wraps the text instead of clipping it. */
+.listening-options > .status-label { grid-column: 1 / -1; justify-self: start; max-width: 100%; white-space: normal; padding: 10px 14px; border-radius: 8px; font-size: 12px; line-height: 1.5; }

@@ -686,7 +686,7 @@ pub fn start(app: AppHandle, state: Arc<Automation>, receiver: mpsc::Receiver<()
                         .browser
                         .retain(|_, entry| now.saturating_duration_since(entry.updated) < TTL);
                     inner.snapshot.browser_connected = inner.browser_seen.is_some_and(|seen| {
-                        now.saturating_duration_since(seen) < Duration::from_secs(30)
+                        now.saturating_duration_since(seen) < Duration::from_secs(75)
                     });
                     let browser = if inner.browser.len() == 1 {
                         inner.browser.values().next()

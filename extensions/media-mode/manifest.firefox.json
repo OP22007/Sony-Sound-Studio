@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Sound Connect Media Mode",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Reports whether a tab is playing movie, music, or other media to Sound Connect on this computer.",
-  "permissions": ["storage", "tabs", "scripting"],
+  "permissions": ["storage", "tabs", "scripting", "alarms"],
   "host_permissions": ["<all_urls>", "http://127.0.0.1:47653/*"],
   "background": {
     "scripts": ["background.js"]

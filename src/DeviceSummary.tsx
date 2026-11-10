@@ -14,6 +14,7 @@ interface Props {
 }
 
 export default function DeviceSummary({ device, preview, activeOutput, listening, noise, pending, busy, onConnection }: Props) {
+  const deviceName = device.name.replace('WH-', '');
   const connected = device.connection === 'connected';
   const battery = !preview && typeof device.battery === 'number' && Number.isFinite(device.battery)
     && device.battery >= 0 && device.battery <= 100 ? Math.round(device.battery) : null;
@@ -29,7 +30,7 @@ export default function DeviceSummary({ device, preview, activeOutput, listening
   return <div className="hero-copy">
     <div className="device-kicker"><span className={`status-dot ${preview || connected ? 'online' : ''}`}/>{status}</div>
     <div className="device-identity">
-      <h2>{device.name.replace('WH-', '')}</h2>
+      <h2 className={deviceName.length > 16 ? 'is-long-name' : undefined}>{deviceName}</h2>
       <div className={`device-battery${low ? ' is-low' : ''}${isCharging && battery !== null ? ' is-charging' : ''}`} title={preview ? 'Battery is unavailable in preview' : batteryReadout(device)}>
         <span className="battery-glyph" aria-hidden="true"><i style={{ width: `${battery ?? 0}%` }}/>{isCharging && battery !== null && <Zap size={11} strokeWidth={2.5}/>}</span>
         <strong>{battery === null ? '—' : `${battery}%`}</strong>
