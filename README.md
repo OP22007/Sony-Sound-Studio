@@ -23,18 +23,25 @@ A local desktop companion for Sony headphones. Shape your sound, switch listenin
 - **Model-specific equalizers:** built-in sound profiles use each model’s own protocol indices. Custom curves use the earbuds’ reported frequencies and dB range; save edits, rename and apply profiles with matching device readback. Supported models can create a new profile from their original-app tuning layout.
 - **Spatial listening:** model-listed Off/fixed modes and head tracking appear only after compatible live capability and current-mode replies. Older firmware uses its spatial on/off path. [Protocol evidence and model coverage](docs/research/oneplus-spatial.md).
 - **BassWave:** a dedicated slider in the Equalizer tab uses the connected model’s reported range. Supported models also expose a separate enable switch. Both level changes and enablement require device readback.
-- All OnePlus entries are experimental and awaiting hardware testing; these controls are included in 0.1.5. Models outside the catalog can be discovered by their OnePlus headphone name, but unknown product IDs cannot enable settings. Custom profile deletion and multipoint management are unavailable. macOS control connections remain disabled.
+- All OnePlus entries are experimental and awaiting hardware testing; these controls are included in 0.1.6. Models outside the catalog can be discovered by their OnePlus headphone name, but unknown product IDs cannot enable settings. Custom profile deletion and multipoint management are unavailable. macOS control connections remain disabled.
 
 See the [HeyMelody evidence and testing guide](docs/research/oneplus-heymelody.md) for command layouts, original-app references and validation limits.
 
 ### Automatic listening · Windows
 
-- A dedicated tab for opt-in media-based switching between Standard and Cinema.
-- Movies and shows on supported streaming sites request Cinema through the paired browser companion. Other browser media, including ordinary YouTube videos, requests Standard.
+- A dedicated tab for opt-in switching by what is playing: games, music, movies and everything else. Each connected device gets only the settings it confirms: Sony Standard, Cinema, Music and Game, and OnePlus spatial audio and Game mode. The page shows which playback types your headphones support.
+- Movies and shows on supported streaming sites are identified by the paired browser companion, which connects on its own. Music sites and apps use the Music rule; games are detected read-only from full-screen apps and a known-game list, and win over background music.
 - An optional local VLC connection distinguishes video from audio-only playback when Windows does not expose VLC as a media session.
 - Manual mode choices pause automatic switching until you resume it.
 
 See [automatic listening setup](docs/media-following.md) for supported rules, browser pairing and VLC configuration. Automatic Dolby Atmos detection is not implemented.
+
+### Listening history
+
+- A **Listening history** tab shows connected time per headphone, listening mode and noise control for today, 7 days, 30 days or all time, with a daily chart, breakdowns and recent sessions. It defaults to the headphone in use; other devices appear when you choose them or choose All devices.
+- Recording is on by default for connected time and mode, and a headphone counts only while Windows reports its Bluetooth link as up.
+- Two optional switches, both off by default and applying from then on only: **Record apps and sites** (playback type and app or site name) and **Record exact titles and URLs** (full page address including its query, song and artist, and game window title; never from private browser windows). Playback details are Windows only.
+- Everything stays on this computer and nothing is uploaded. **Clear history** deletes it all. [Design and decisions](docs/superpowers/specs/2026-11-10-listening-history-design.md).
 
 ### Device and desktop settings
 
@@ -44,11 +51,11 @@ See [automatic listening setup](docs/media-following.md) for supported rules, br
 - Closing to tray releases the studio webview while the native companion remains active. Quit from the tray to disconnect and exit.
 - **Signed in-app updates:** check release notes, download updates and install/restart from App settings on Windows, macOS and Linux AppImage. [Update behavior and maintainer setup](docs/app-updates.md).
 - An explicit **Studio preview** lets you explore XM6, XM5 and CH720N layouts without sending headphone commands.
-- Core operation needs no account, cloud server or telemetry. Preferences and saved presets stay on your computer.
+- Core operation needs no account, cloud server or telemetry. Preferences, saved presets and listening history stay on your computer.
 
 ## Download
 
-Get the [latest preview release](https://github.com/OP22007/Sony-Sound-Studio/releases). 0.1.5 provides signed Windows x64, macOS Apple Silicon and Intel, and Linux x64 packages. [0.1.5 changes and limitations](docs/releases/v0.1.5.md).
+Get the [latest preview release](https://github.com/OP22007/Sony-Sound-Studio/releases). 0.1.6 provides signed Windows x64, macOS Apple Silicon and Intel, and Linux x64 packages. [0.1.6 changes and limitations](docs/releases/v0.1.6.md).
 
 Package formats and platform support:
 
