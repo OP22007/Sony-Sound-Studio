@@ -1,4 +1,6 @@
-//! Opt-in, local playback rules. No titles, audio, artwork or listening history.
+//! Opt-in, local playback rules. Audio and artwork are never read. Titles, artists, page
+//! addresses and game window titles are read only while the user has turned on "Record exact
+//! titles and URLs" in Listening history, and they never leave this computer.
 use crate::{
     listening_policy::{self, Category},
     preferences::PreferencesStore,
@@ -11,6 +13,7 @@ use std::{
     net::{TcpListener, TcpStream},
     path::PathBuf,
     sync::{
+        atomic::{AtomicBool, Ordering},
         mpsc::{self, SyncSender},
         Arc, Mutex,
     },
@@ -56,6 +59,37 @@ struct BrowserReport {
     kind: String,
     playing: bool,
     spatial: bool,
+    /// Exact address and title of a non-private tab. Dropped on receipt unless exact details are on.
+    #[serde(default)]
+    url: Option<String>,
+    #[serde(default)]
+    title: Option<String>,
+}
+
+/// What is playing, in the user's own words. Only ever produced while exact details are on.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct PlaybackDetail {
+    pub title: Option<String>,
+    pub artist: Option<String>,
+    pub url: Option<String>,
+}
+
+/// Printable text of bounded length, or nothing. Control characters never reach the log.
+pub(crate) fn clean_text(text: &str, max: usize) -> Option<String> {
+    let cleaned: String = text.chars().filter(|c| !c.is_control()).collect();
+    let trimmed = cleaned.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.chars().take(max).collect())
+    }
+}
+
+fn clean_url(url: &str) -> Option<String> {
+    let valid = url.len() <= 2048
+        && (url.starts_with("https://") || url.starts_with("http://"))
+        && !url.chars().any(|c| c.is_control() || c.is_whitespace());
+    valid.then(|| url.to_owned())
 }
 struct BrowserEntry {
     report: BrowserReport,
@@ -73,9 +107,40 @@ pub struct Automation {
     wake: SyncSender<()>,
     http_wake: SyncSender<()>,
     http_receiver: Mutex<Option<mpsc::Receiver<()>>>,
+    exact: AtomicBool,
+    detail: Mutex<Option<PlaybackDetail>>,
 }
 
 impl Automation {
+    /// Whether titles, artists, URLs and game window titles may be read at all.
+    pub fn set_exact_details(&self, on: bool) {
+        self.exact.store(on, Ordering::Release);
+        if !on {
+            if let Ok(mut detail) = self.detail.lock() {
+                *detail = None;
+            }
+        }
+    }
+
+    pub fn exact_details(&self) -> bool {
+        self.exact.load(Ordering::Acquire)
+    }
+
+    /// The current playback detail, or nothing when exact details are off.
+    pub fn playback_detail(&self) -> Option<PlaybackDetail> {
+        if !self.exact_details() {
+            return None;
+        }
+        self.detail.lock().ok().and_then(|detail| detail.clone())
+    }
+
+    #[cfg_attr(not(windows), allow(dead_code))]
+    fn publish_detail(&self, next: Option<PlaybackDetail>) {
+        if let Ok(mut detail) = self.detail.lock() {
+            *detail = if self.exact_details() { next } else { None };
+        }
+    }
+
     pub fn new(path: PathBuf) -> Result<(Self, mpsc::Receiver<()>), String> {
         let config = match std::fs::read(path.join(CONFIG)) {
             Ok(bytes) if bytes.len() <= 4096 => serde_json::from_slice::<Config>(&bytes).ok(),
@@ -112,7 +177,7 @@ impl Automation {
                 source: None, desired_mode: None, planned_settings: Vec::new(), reason: if config.manual_override { "Your manual listening mode is held until you resume Follow media." } else { "Enable Follow media to use local playback rules. Windows playback detection is required." }.into(),
                 manual_override: config.manual_override, extension_token: config.token, browser_connected: false, browser_receiver_error: None },
             epoch: 0, browser: BTreeMap::new(), browser_seen: None,
-        }), store, wake, http_wake, http_receiver: Mutex::new(Some(http_receiver)) }, receiver))
+        }), store, wake, http_wake, http_receiver: Mutex::new(Some(http_receiver)), exact: AtomicBool::new(false), detail: Mutex::new(None) }, receiver))
     }
 
     pub fn snapshot(&self) -> Result<Snapshot, String> {
@@ -345,7 +410,16 @@ fn host_kind(site: &str) -> &'static str {
     }
 }
 
-fn accept_report(state: &Automation, report: BrowserReport, now: Instant) -> Result<(), ()> {
+fn accept_report(state: &Automation, mut report: BrowserReport, now: Instant) -> Result<(), ()> {
+    // Exact details are collected only when the user turned them on; otherwise they are dropped
+    // here and never stored.
+    if state.exact_details() {
+        report.url = report.url.take().and_then(|url| clean_url(&url));
+        report.title = report.title.take().and_then(|title| clean_text(&title, 300));
+    } else {
+        report.url = None;
+        report.title = None;
+    }
     if report.session_id.is_empty()
         || report.session_id.len() > 96
         || report.source.len() > 80
@@ -623,6 +697,7 @@ pub fn start(app: AppHandle, state: Arc<Automation>, receiver: mpsc::Receiver<()
         let mut vlc_refresh = Instant::now() - Duration::from_secs(60);
         let mut vlc_playback = None;
         let mut game_exe: Option<String> = None;
+        let mut game_title: Option<String> = None;
         let mut game_refresh = Instant::now() - Duration::from_secs(60);
         loop {
             if runtime.stopping.load(std::sync::atomic::Ordering::Acquire) {
@@ -642,10 +717,17 @@ pub fn start(app: AppHandle, state: Arc<Automation>, receiver: mpsc::Receiver<()
                 last_attempt = None;
                 vlc_playback = None;
                 game_exe = None;
+                game_title = None;
+                state.publish_detail(None);
             } else {
                 let now = Instant::now();
+                let exact = state.exact_details();
                 if signalled || now.duration_since(game_refresh) >= Duration::from_secs(2) {
-                    game_exe = crate::game_detector::detect(&crate::game_detector::SystemProbe);
+                    let foreground = crate::game_detector::detect_foreground(
+                        &crate::game_detector::SystemProbe { with_title: exact },
+                    );
+                    game_title = foreground.as_ref().and_then(|found| found.title.clone());
+                    game_exe = foreground.map(|found| found.exe);
                     game_refresh = now;
                 }
                 if vlc.enabled()
@@ -664,11 +746,11 @@ pub fn start(app: AppHandle, state: Arc<Automation>, receiver: mpsc::Receiver<()
                     }
                     refresh = now;
                     if let Some(observer) = observer.as_mut() {
-                        native = observer.current().ok().flatten();
+                        native = observer.current(exact).ok().flatten();
                     }
                 } else if signalled || now.duration_since(refresh) >= Duration::from_secs(30) {
                     if let Some(observer) = observer.as_mut() {
-                        match observer.current() {
+                        match observer.current(exact) {
                             Ok(value) => native = value,
                             Err(error) => {
                                 native = None;
@@ -678,7 +760,7 @@ pub fn start(app: AppHandle, state: Arc<Automation>, receiver: mpsc::Receiver<()
                         refresh = now;
                     }
                 }
-                let (choice, epoch, manual) = {
+                let (choice, epoch, manual, detail) = {
                     let Ok(mut inner) = state.inner.lock() else {
                         break;
                     };
@@ -762,6 +844,30 @@ pub fn start(app: AppHandle, state: Arc<Automation>, receiver: mpsc::Receiver<()
                         }),
                         None => choice,
                     };
+                    // What is playing, in words, for the optional history. Produced only when on.
+                    let detail = if !exact {
+                        None
+                    } else if game_exe.is_some() {
+                        Some(PlaybackDetail { title: game_title.clone(), ..PlaybackDetail::default() })
+                    } else if choice.as_ref().is_some_and(|choice| choice.key.starts_with("browser:")) {
+                        let media = native.as_ref().filter(|observation| observation.browser && observation.playing);
+                        Some(PlaybackDetail {
+                            url: browser.and_then(|entry| entry.report.url.clone()),
+                            title: media
+                                .and_then(|observation| observation.title.clone())
+                                .or_else(|| browser.and_then(|entry| entry.report.title.clone())),
+                            artist: media.and_then(|observation| observation.artist.clone()),
+                        })
+                    } else {
+                        native
+                            .as_ref()
+                            .filter(|observation| observation.playing && !observation.browser)
+                            .map(|observation| PlaybackDetail {
+                                title: observation.title.clone(),
+                                artist: observation.artist.clone(),
+                                url: None,
+                            })
+                    };
                     inner.snapshot.source = choice.as_ref().map(|choice| choice.source.clone());
                     inner.snapshot.desired_mode = choice.as_ref().map(|choice| choice.category.key().into());
                     if !inner.snapshot.manual_override {
@@ -772,8 +878,9 @@ pub fn start(app: AppHandle, state: Arc<Automation>, receiver: mpsc::Receiver<()
                             else { choice.as_ref().map(|choice| choice.reason.into()).unwrap_or_else(|| "Waiting for playback. Pauses keep the current mode; browser sites need the companion extension.".into()) }
                         });
                     }
-                    (choice, inner.epoch, inner.snapshot.manual_override)
+                    (choice, inner.epoch, inner.snapshot.manual_override, detail)
                 };
+                state.publish_detail(detail);
                 if epoch != observed_epoch {
                     stable = StableChoice::default();
                     last_attempt = None;
@@ -897,6 +1004,8 @@ mod tests {
             kind: "movie".into(),
             playing: true,
             spatial: false,
+            url: None,
+            title: None,
         }
     }
 
@@ -918,6 +1027,43 @@ mod tests {
         stopped.playing = false;
         accept_report(&state, stopped, now).unwrap();
         assert!(state.inner.lock().unwrap().browser.is_empty());
+        std::fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn page_addresses_and_titles_are_dropped_unless_exact_details_are_on_and_are_cleaned_when_kept() {
+        let (state, path) = fixture();
+        state.inner.lock().unwrap().snapshot.enabled = true;
+        let now = Instant::now();
+        let with_details = |state: &Automation| BrowserReport {
+            url: Some("https://www.netflix.com/watch/81?trackId=7&q=secret".into()),
+            title: Some("Stranger\u{0007} Things\n".into()),
+            ..report(state)
+        };
+        accept_report(&state, with_details(&state), now).unwrap();
+        {
+            let inner = state.inner.lock().unwrap();
+            let stored = &inner.browser.values().next().unwrap().report;
+            assert_eq!((stored.url.as_deref(), stored.title.as_deref()), (None, None), "off by default: nothing is stored");
+        }
+        state.set_exact_details(true);
+        accept_report(&state, with_details(&state), now).unwrap();
+        {
+            let inner = state.inner.lock().unwrap();
+            let stored = &inner.browser.values().next().unwrap().report;
+            assert_eq!(stored.url.as_deref(), Some("https://www.netflix.com/watch/81?trackId=7&q=secret"), "the full address, query included");
+            assert_eq!(stored.title.as_deref(), Some("Stranger Things"), "control characters are removed");
+        }
+        for bad in ["javascript:alert(1)", "file:///C:/secret.txt", "https://a.example/with space", "https://a.example/\u{0000}"] {
+            let mut report = with_details(&state);
+            report.url = Some(bad.into());
+            accept_report(&state, report, now).unwrap();
+            assert_eq!(state.inner.lock().unwrap().browser.values().next().unwrap().report.url, None, "{bad}");
+        }
+        state.set_exact_details(false);
+        assert_eq!(state.playback_detail(), None);
+        assert_eq!(clean_text("  \u{0001}  ", 10), None);
+        assert_eq!(clean_text("abcdefghij", 4).as_deref(), Some("abcd"));
         std::fs::remove_dir_all(path).unwrap();
     }
 

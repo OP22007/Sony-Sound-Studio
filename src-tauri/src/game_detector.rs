@@ -11,6 +11,8 @@ pub struct Foreground {
     pub exe: String,
     /// Windows reports a full-screen Direct3D application (`QUNS_RUNNING_D3D_FULL_SCREEN`).
     pub fullscreen_d3d: bool,
+    /// The window title, read only when the user opted in to exact titles (it is usually the game's name).
+    pub title: Option<String>,
 }
 
 pub trait GameProbe {
@@ -54,12 +56,22 @@ pub fn is_game(foreground: &Foreground) -> bool {
 }
 
 /// Name of the detected game's executable, if any.
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn detect(probe: &dyn GameProbe) -> Option<String> {
-    probe.foreground().filter(is_game).map(|f| f.exe)
+    detect_foreground(probe).map(|f| f.exe)
+}
+
+/// The detected game, with its window title when the probe was asked for it.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn detect_foreground(probe: &dyn GameProbe) -> Option<Foreground> {
+    probe.foreground().filter(is_game)
 }
 
 #[cfg(windows)]
-pub struct SystemProbe;
+pub struct SystemProbe {
+    /// Read the foreground window title. Off unless the user turned on exact titles.
+    pub with_title: bool,
+}
 
 #[cfg(windows)]
 impl GameProbe for SystemProbe {
@@ -70,7 +82,7 @@ impl GameProbe for SystemProbe {
             OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
         };
         use windows::Win32::UI::Shell::{SHQueryUserNotificationState, QUNS_RUNNING_D3D_FULL_SCREEN};
-        use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
+        use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId};
         unsafe {
             let window = GetForegroundWindow();
             if window.0.is_null() {
@@ -97,7 +109,18 @@ impl GameProbe for SystemProbe {
             let fullscreen_d3d = SHQueryUserNotificationState()
                 .map(|state| state == QUNS_RUNNING_D3D_FULL_SCREEN)
                 .unwrap_or(false);
-            Some(Foreground { exe, fullscreen_d3d })
+            let title = if self.with_title {
+                let mut text = [0u16; 256];
+                let length = GetWindowTextW(window, &mut text);
+                if length > 0 {
+                    crate::media_automation::clean_text(&String::from_utf16_lossy(&text[..length as usize]), 200)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+            Some(Foreground { exe, fullscreen_d3d, title })
         }
     }
 }
@@ -107,7 +130,7 @@ mod tests {
     use super::*;
 
     fn fg(exe: &str, fullscreen_d3d: bool) -> Foreground {
-        Foreground { exe: exe.into(), fullscreen_d3d }
+        Foreground { exe: exe.into(), fullscreen_d3d, title: None }
     }
     struct Fake(Option<Foreground>);
     impl GameProbe for Fake {

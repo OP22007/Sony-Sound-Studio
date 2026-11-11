@@ -50,6 +50,33 @@ test("background sends the native JSON contract and trusts the sender tab URL", 
   assert.equal(JSON.stringify(body).includes("private"), false);
 });
 
+test("playing tabs send their exact address and title, but never from private windows or when the tab cannot be checked", async () => {
+  const cases = [
+    { name: "normal tab", tab: { incognito: false, title: "Stranger Things" }, url: true, title: true },
+    { name: "private window", tab: { incognito: true, title: "Secret" }, url: false, title: false },
+    { name: "tab cannot be looked up", tab: null, url: false, title: false },
+    { name: "tab with no incognito flag", tab: { title: "Unknown" }, url: false, title: false }
+  ];
+  for (const scenario of cases) {
+    const requests = [];
+    const chrome = stubChrome();
+    chrome.tabs.get = async () => scenario.tab;
+    const context = {
+      chrome, URL, AbortSignal, crypto: { randomUUID: () => "nonce" },
+      fetch: async (url, options) => { requests.push(JSON.parse(options.body)); return { ok: true }; }
+    };
+    vm.runInNewContext(fs.readFileSync(path.join(root, "background.js"), "utf8"), context);
+    await vm.runInNewContext('reportTab(7, "https://www.netflix.com/watch/81?trackId=7", true)', context);
+    await vm.runInNewContext('reportTab(7, "https://www.netflix.com/watch/81?trackId=7", false)', context);
+    assert.equal(requests.length, 2, scenario.name);
+    assert.equal(requests[0].url, scenario.url ? "https://www.netflix.com/watch/81?trackId=7" : undefined, scenario.name);
+    assert.equal(requests[0].title, scenario.title ? "Stranger Things" : undefined, scenario.name);
+    assert.equal(requests[1].playing, false);
+    assert.equal("url" in requests[1] || "title" in requests[1], false, `${scenario.name}: a stop report carries no address`);
+    assert.equal(requests[0].site, "www.netflix.com");
+  }
+});
+
 test("inactive browsing is not reported and play/pause reports stay ordered with one tab ID", async () => {
   const requests = [];
   let release;

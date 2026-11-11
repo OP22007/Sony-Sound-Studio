@@ -40,6 +40,8 @@ async function installNativeFixture(page: Page, noiseSupported: boolean, options
   applySettingError?: string;
   mediaState?: Record<string, unknown>;
   mediaSetError?: string;
+  historySummary?: Record<string, unknown>;
+  historyError?: string;
 } = {}) {
   await page.addInitScript(({ noiseSupported, options }) => {
     const calls: string[] = [];
@@ -51,6 +53,9 @@ async function installNativeFixture(page: Page, noiseSupported: boolean, options
     const defaultPreferences = { theme: 'dark', reduceMotion: false, closeToTray: true, launchAtLogin: false, autoReconnect: true, startMinimized: false };
     let appPreferences = JSON.parse(localStorage.getItem(preferenceStorageKey) ?? 'null') ?? { ...defaultPreferences, ...options.appPreferences };
     let media = { enabled: false, status: 'disabled', source: null, desiredMode: null, reason: 'Follow media is off.', manualOverride: false, extensionToken: 'a'.repeat(64), browserConnected: false, ...options.mediaState };
+    let historySettings = { enabled: true, details: !!options.historySummary?.details, exact: !!options.historySummary?.exact };
+    let historyCleared = false;
+    const emptyHistory = { totalMs: 0, firstMs: null, days: [], modes: [], noise: [], devices: [], knownDevices: [], categories: [], sources: [], titles: [], urls: [], recent: [], skipped: 0, writeError: null, contentSupported: true };
     let vlc = { enabled: false, passwordConfigured: false, status: 'VLC connection is off.', playing: false, kind: null as string | null };
     const state = {
       revision: 1,
@@ -85,7 +90,7 @@ async function installNativeFixture(page: Page, noiseSupported: boolean, options
       __TAURI_INTERNALS__: {
         transformCallback: (callback: (event: unknown) => void) => { const id = ++nextCallback; callbacks.set(id, callback); return id; },
         unregisterCallback: (id: number) => callbacks.delete(id),
-        invoke: (command: string, args?: { password?: string; enabled?: boolean; event?: string; handler?: number; preferences?: unknown; setting?: string; value?: unknown; deviceId?: string }) => {
+        invoke: (command: string, args?: { range?: string; details?: boolean; exact?: boolean; password?: string; enabled?: boolean; event?: string; handler?: number; preferences?: unknown; setting?: string; value?: unknown; deviceId?: string }) => {
           calls.push(command);
           requests.push({ command, args: args as Record<string, unknown> | undefined });
           if (command === 'plugin:event|listen') { eventHandlers.set(args?.event ?? '', args?.handler ?? 0); return Promise.resolve(1); }
@@ -93,6 +98,14 @@ async function installNativeFixture(page: Page, noiseSupported: boolean, options
           if (command === 'get_app_state') return Promise.resolve(snapshot());
           if (command === 'get_app_update') return Promise.resolve({ currentVersion: '0.1.2', status: 'idle', version: null, notes: null, downloaded: 0, total: null, error: null });
           if (command === 'get_media_automation') return Promise.resolve({ ...media });
+          if (command === 'get_history') {
+            if (options.historyError) return Promise.reject(new Error(options.historyError));
+            const base = historyCleared || !options.historySummary ? emptyHistory : options.historySummary;
+            return Promise.resolve({ ...base, range: args?.range, ...historySettings });
+          }
+          if (command === 'get_history_settings') return Promise.resolve({ ...historySettings });
+          if (command === 'set_history_settings') { historySettings = { enabled: !!args?.enabled, details: !!args?.details, exact: !!args?.exact }; return Promise.resolve({ ...historySettings }); }
+          if (command === 'clear_history') { historyCleared = true; return Promise.resolve(null); }
           if (command === 'get_vlc_connection') return Promise.resolve({ ...vlc });
           if (command === 'test_vlc_connection') return Promise.resolve({ ...vlc, playing: true, kind: 'movie', status: 'VLC connection test succeeded; playback detected.' });
           if (command === 'configure_vlc_connection') {
@@ -889,4 +902,164 @@ test('Focus on voice is disabled with an explanation unless Noise control is Amb
   await page.getByRole('button', { name: 'Device settings', exact: true }).click();
   await expect(page.getByRole('switch', { name: 'Focus on voice' })).toBeDisabled();
   await expect(page.getByText('Available while Noise control is set to Ambient sound.')).toBeVisible();
+});
+
+const HOUR = 3_600_000;
+function historyFixture(overrides: Record<string, unknown> = {}) {
+  const now = Date.now();
+  const days = [0, 1, 2, 3, 4, 5, 6].map(index => ({ startMs: now - (6 - index) * 24 * HOUR, ms: [0, 2, 1, 0, 3, 1, 2][index] * HOUR }));
+  const start = now - 3 * HOUR;
+  return {
+    totalMs: 9 * HOUR, firstMs: now - 6 * 24 * HOUR, days,
+    modes: [{ key: 'music', ms: 5 * HOUR }, { key: 'cinema', ms: 3 * HOUR }, { key: 'standard', ms: HOUR }],
+    noise: [{ key: 'cancelling', ms: 6 * HOUR }, { key: 'ambient', ms: 3 * HOUR }],
+    devices: [{ key: 'WH-1000XM6', ms: 9 * HOUR }], knownDevices: ['OnePlus Buds 3 Pro', 'WH-1000XM6'],
+    categories: [{ key: 'music', ms: 5 * HOUR }, { key: 'movie', ms: 3 * HOUR }],
+    sources: [{ key: 'Spotify', ms: 5 * HOUR }, { key: 'netflix.com', ms: 3 * HOUR }],
+    titles: [], urls: [],
+    recent: [{ start, end: start + 90 * 60_000, device: 'WH-1000XM6', mode: 'cinema', noise: 'cancelling', category: 'movie', source: 'netflix.com' }],
+    skipped: 0, writeError: null, contentSupported: true, ...overrides,
+  };
+}
+const requestsOf = (page: Page) => page.evaluate(() => (window as unknown as { __fixtureRequests: Array<{ command: string; args?: Record<string, unknown> }> }).__fixtureRequests);
+
+test('Listening history shows totals, breakdowns and recent sessions, and reloads when the range changes', async ({ page }) => {
+  await installNativeFixture(page, true, { historySummary: historyFixture({ details: true }) });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Listening history', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Listening history.' })).toBeVisible();
+  await expect(page.locator('.hs-readout')).toHaveAttribute('data-total-ms', String(9 * HOUR));
+  await expect(page.locator('.hs-readout')).toHaveText('9h0min');
+  await expect(page.getByText('Stays on this computer. Nothing is uploaded.')).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Time by listening mode' }).getByRole('listitem')).toHaveCount(3);
+  await expect(page.getByRole('list', { name: 'Time by listening mode' }).getByRole('listitem').first()).toContainText('Music');
+  await expect(page.getByRole('list', { name: 'Time by noise control' })).toContainText('Noise cancelling');
+  // History follows the headphone in use. Other devices appear only after choosing "All devices".
+  await expect(page.getByLabel('Show history for')).toHaveValue('WH-1000XM6');
+  await expect(page.getByRole('heading', { name: 'By device' })).toHaveCount(0);
+  await expect(page.locator('.hs-stage-label')).toContainText('WH-1000XM6');
+  expect((await requestsOf(page)).filter(request => request.command === 'get_history').at(-1)?.args).toMatchObject({ device: 'WH-1000XM6' });
+  await page.getByLabel('Show history for').selectOption({ label: 'All devices' });
+  await expect(page.getByRole('list', { name: 'Time by device' })).toContainText('WH-1000XM6');
+  expect((await requestsOf(page)).filter(request => request.command === 'get_history').at(-1)?.args).toMatchObject({ device: null });
+  await page.getByLabel('Show history for').selectOption('WH-1000XM6');
+  await expect(page.getByRole('list', { name: 'Time by app or site' })).toContainText('Spotify');
+  await expect(page.getByRole('group', { name: 'Daily listening time' }).getByRole('listitem')).toHaveCount(7);
+  await expect(page.locator('.hs-session').first()).toContainText('Cinema · Noise cancelling');
+  await expect(page.locator('.hs-session').first()).toContainText('netflix.com');
+  await expect(page.getByRole('button', { name: '7 days' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Today' }).click();
+  await expect(page.getByRole('button', { name: 'Today' })).toHaveAttribute('aria-pressed', 'true');
+  const historyCalls = (await requestsOf(page)).filter(request => request.command === 'get_history');
+  expect(historyCalls.at(-1)?.args).toMatchObject({ range: 'today', tzOffsetMinutes: expect.any(Number) });
+});
+
+test('Listening history explains an empty log and unavailable details instead of showing blanks', async ({ page }) => {
+  await installNativeFixture(page, true, {});
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Listening history', exact: true }).click();
+  await expect(page.getByText('Nothing recorded yet. History starts when a headphone connects.')).toBeVisible();
+  await expect(page.locator('.hs-readout')).toHaveText('0min');
+  await expect(page.getByRole('heading', { name: 'By listening mode' })).toHaveCount(0);
+
+  const windowsOnly = await page.context().newPage();
+  await installNativeFixture(windowsOnly, true, { historySummary: historyFixture({ contentSupported: false, categories: [], sources: [] }) });
+  await windowsOnly.goto('/');
+  await windowsOnly.getByRole('button', { name: 'Listening history', exact: true }).click();
+  await expect(windowsOnly.getByText('Playback details are recorded on Windows only.')).toBeVisible();
+  await windowsOnly.close();
+});
+
+test('Listening history keeps details off by default, saves the toggle, and clears only after confirmation', async ({ page }) => {
+  await installNativeFixture(page, true, { historySummary: historyFixture() });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Listening history', exact: true }).click();
+  const basic = page.getByRole('switch', { name: 'Record listening history' });
+  const details = page.getByRole('switch', { name: 'Record apps and sites' });
+  await expect(basic).toHaveAttribute('aria-checked', 'true');
+  await expect(details).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByText('Off. Turn on “Record apps and sites” below to see what you listen to.')).toBeVisible();
+  await details.click();
+  await expect(details).toHaveAttribute('aria-checked', 'true');
+  expect((await requestsOf(page)).filter(request => request.command === 'set_history_settings').at(-1)?.args).toEqual({ enabled: true, details: true, exact: false });
+  await basic.click();
+  await expect(basic).toHaveAttribute('aria-checked', 'false');
+  await expect(details).toBeDisabled();
+
+  await page.getByRole('button', { name: 'Clear history…' }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'cannot be undone' })).toBeVisible();
+  await page.getByRole('button', { name: 'Keep it' }).click();
+  expect((await requestsOf(page)).some(request => request.command === 'clear_history')).toBe(false);
+  await page.getByRole('button', { name: 'Clear history…' }).click();
+  await page.getByRole('button', { name: 'Delete history' }).click();
+  await expect(page.getByText('Nothing recorded yet. History starts when a headphone connects.')).toBeVisible();
+  expect((await requestsOf(page)).some(request => request.command === 'clear_history')).toBe(true);
+});
+
+test('Listening history reports read and save failures and fits a 390px screen', async ({ page }) => {
+  await installNativeFixture(page, true, { historySummary: historyFixture({ writeError: "History couldn't be saved. Check free disk space and folder permissions.", skipped: 2 }) });
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Listening history', exact: true }).click();
+  await expect(page.getByText("History couldn't be saved.")).toBeVisible();
+  await expect(page.getByText('2 damaged entries were skipped.')).toBeVisible();
+  await expect(page.locator('.hs-readout')).toHaveText('9h0min');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  const broken = await page.context().newPage();
+  await installNativeFixture(broken, true, { historyError: 'History is unavailable.' });
+  await broken.goto('/');
+  await broken.getByRole('button', { name: 'Listening history', exact: true }).click();
+  await expect(broken.getByRole('alert').filter({ hasText: 'History is unavailable.' })).toBeVisible();
+  await broken.close();
+});
+
+
+test('Listening history shows exact titles and URLs only after the third switch, which depends on the second', async ({ page }) => {
+  const url = 'https://www.netflix.com/watch/81?trackId=7&q=stranger';
+  const now = Date.now();
+  await installNativeFixture(page, true, { historySummary: historyFixture({
+    details: true, exact: false,
+    titles: [{ key: 'Radiohead \u2014 Karma Police', ms: 3 * HOUR }, { key: 'Elden Ring', ms: 2 * HOUR }],
+    urls: [{ key: url, ms: 3 * HOUR }],
+    recent: [
+      { start: now - 2 * HOUR, end: now - HOUR, device: 'WH-1000XM6', mode: 'music', category: 'music', source: 'Spotify', title: 'Karma Police', artist: 'Radiohead' },
+      { start: now - 4 * HOUR, end: now - 3 * HOUR, device: 'WH-1000XM6', mode: 'cinema', category: 'movie', source: 'netflix.com', title: 'Stranger Things', url },
+    ],
+  }) });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Listening history', exact: true }).click();
+  const exact = page.getByRole('switch', { name: 'Record exact titles and URLs' });
+  await expect(exact).toHaveAttribute('aria-checked', 'false');
+  await expect(exact).toBeEnabled();
+  await expect(page.getByText('Top songs, videos and games')).toHaveCount(0);
+  await expect(page.getByRole('list', { name: 'Time by page address' })).toHaveCount(0);
+
+  await exact.click();
+  await expect(exact).toHaveAttribute('aria-checked', 'true');
+  expect((await requestsOf(page)).filter(request => request.command === 'set_history_settings').at(-1)?.args).toEqual({ enabled: true, details: true, exact: true });
+  await expect(page.getByRole('list', { name: 'Time by title' })).toContainText('Radiohead \u2014 Karma Police');
+  await expect(page.getByRole('list', { name: 'Time by title' })).toContainText('Elden Ring');
+  await expect(page.getByRole('list', { name: 'Time by page address' })).toContainText(url);
+  await expect(page.locator('.hs-session').first().locator('strong')).toHaveText('Radiohead \u2014 Karma Police');
+  await expect(page.locator('.hs-session').first()).toContainText('Music \u00b7 WH-1000XM6 \u00b7 Music \u00b7 Spotify');
+  await expect(page.locator('.hs-session-url')).toHaveText(url);
+
+  await page.getByRole('switch', { name: 'Record apps and sites' }).click();
+  await expect(exact).toBeDisabled();
+});
+
+test('Listening history offers other devices only on request and never shows them by default', async ({ page }) => {
+  await installNativeFixture(page, true, { historySummary: historyFixture() });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Listening history', exact: true }).click();
+  const scope = page.getByLabel('Show history for');
+  await expect(scope.locator('option')).toHaveText(['WH-1000XM6 (in use)', 'OnePlus Buds 3 Pro', 'All devices']);
+  await expect(scope).toHaveValue('WH-1000XM6');
+  const calls = (await requestsOf(page)).filter(request => request.command === 'get_history');
+  expect(calls.every(request => request.args?.device === 'WH-1000XM6')).toBe(true);
+  await scope.selectOption('OnePlus Buds 3 Pro');
+  await expect(page.locator('.hs-stage-label')).toContainText('OnePlus Buds 3 Pro');
+  expect((await requestsOf(page)).filter(request => request.command === 'get_history').at(-1)?.args).toMatchObject({ device: 'OnePlus Buds 3 Pro' });
+  await expect(page.getByRole('heading', { name: 'By device' })).toHaveCount(0);
 });
