@@ -62,6 +62,22 @@ async function getSessionId(tabId) {
   return sessionId;
 }
 
+// The exact address and title of a playing tab, for the optional local listening history. Sent only
+// while something is playing, never from a private window, and fail closed: if the tab cannot be
+// looked up (and so cannot be shown to be non-private) nothing beyond the site name is sent. The
+// desktop discards these fields unless the user has turned on "Record exact titles and URLs".
+async function pageDetails(tabId, url) {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    if (!tab || tab.incognito !== false || !/^https?:\/\//i.test(url)) return {};
+    const details = { url: url.slice(0, 2048) };
+    if (typeof tab.title === "string" && tab.title) details.title = tab.title.slice(0, 300);
+    return details;
+  } catch {
+    return {};
+  }
+}
+
 async function postState(tabId, url, playing) {
   const hostname = hostnameFromUrl(url);
   if (!hostname) return;
@@ -75,7 +91,8 @@ async function postState(tabId, url, playing) {
     kind: classify(hostname),
     playing: Boolean(playing),
     spatial: false,
-    sessionId
+    sessionId,
+    ...(playing ? await pageDetails(tabId, url) : {})
   };
   try {
     const response = await fetch(ENDPOINT, {

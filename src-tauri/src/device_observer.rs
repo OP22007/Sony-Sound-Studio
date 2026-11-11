@@ -16,6 +16,9 @@ pub fn start(app: AppHandle) {
             match transport::activity_snapshot() {
                 Ok(activity) => {
                     reported_error = false;
+                    if let Ok(mut inner) = runtime.inner.lock() {
+                        inner.link_up = Some(crate::history::linked_addresses(&activity.bluetooth_connected));
+                    }
                     let previous_edges = edges.clone();
                     let change = edges.observe(&activity, automatic_reconnect_enabled(&app));
                     if change.changed {
@@ -56,10 +59,12 @@ pub fn start(app: AppHandle) {
                 }
                 Err(_) if !reported_error => {
                     reported_error = true;
-                    if let Ok(mut inner) = runtime.inner.lock() { inner.log("System Bluetooth activity is temporarily unavailable. Manual discovery and connection remain available."); }
+                    if let Ok(mut inner) = runtime.inner.lock() { inner.link_up = None; inner.log("System Bluetooth activity is temporarily unavailable. Manual discovery and connection remain available."); }
                     emit_state(&app, &runtime);
                 }
-                Err(_) => {}
+                Err(_) => {
+                    if let Ok(mut inner) = runtime.inner.lock() { inner.link_up = None; }
+                }
             }
             // Remains native-only in the tray; no audio capture or webview required.
             for _ in 0..16 {

@@ -69,6 +69,13 @@ impl Session {
             Self::OnePlus(session) => session.drain_noise_observations(),
         }
     }
+    /// Protocol notes for the diagnostics log (OnePlus spatial audio). Sony sessions have none.
+    pub fn drain_diagnostics(&mut self) -> Vec<String> {
+        match self {
+            Self::Sony(_) => Vec::new(),
+            Self::OnePlus(session) => session.drain_diagnostics(),
+        }
+    }
     pub fn drain_device_updates(&mut self) -> Vec<DeviceControlConfirmation> {
         match self {
             Self::Sony(session) => session.drain_device_updates(),

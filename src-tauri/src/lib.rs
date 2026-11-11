@@ -6,6 +6,7 @@ mod device_observer;
 mod discovery;
 mod media_automation;
 mod game_detector;
+mod history;
 mod listening_policy;
 mod media_vlc;
 #[cfg(windows)]
@@ -128,6 +129,9 @@ struct Inner {
     discovering: bool,
     reconnect_jobs: BTreeMap<String, Arc<AtomicBool>>,
     reconnect_suppressed: BTreeSet<String>,
+    /// Normalized addresses the OS currently reports as Bluetooth-connected, refreshed by the
+    /// activity observer. `None` means the OS could not be asked, so no conclusion is drawn.
+    link_up: Option<BTreeSet<String>>,
 }
 
 pub struct Runtime {
@@ -155,6 +159,7 @@ impl Runtime {
             discovering: false,
             reconnect_jobs: BTreeMap::new(),
             reconnect_suppressed: BTreeSet::new(),
+            link_up: None,
         };
         inner.log("Native companion started. Device settings remain unavailable until protocol capabilities are validated.");
         Self {
@@ -168,6 +173,16 @@ impl Runtime {
             .lock()
             .map(|inner| inner.snapshot())
             .map_err(|_| "Native state is unavailable; restart the application.".into())
+    }
+
+    /// Whether the OS reports this device's Bluetooth link as up. A control session can outlive the
+    /// link, so listening history uses this on top of the session state.
+    fn link_is_up(&self, device_id: &str) -> bool {
+        let Ok(inner) = self.inner.lock() else { return true };
+        history::is_linked(
+            inner.link_up.as_ref(),
+            inner.catalogue.get(device_id).map(|paired| paired.address.as_str()),
+        )
     }
 
     fn stop_all(&self) {
@@ -837,6 +852,20 @@ fn observe_connection(
                 publish(snapshot);
             }
         }
+        let notes = read_session.drain_diagnostics();
+        if !notes.is_empty() {
+            if let Ok(mut inner) = runtime.inner.lock() {
+                if !inner.is_current(&device_id, generation) {
+                    break;
+                }
+                for note in notes {
+                    inner.log(&note);
+                }
+            }
+            if let Ok(snapshot) = runtime.snapshot() {
+                publish(snapshot);
+            }
+        }
         let updates = read_session.drain_device_updates();
         if !updates.is_empty() {
             if let Ok(mut inner) = runtime.inner.lock() {
@@ -1439,6 +1468,10 @@ pub fn run() {
             media_automation::set_media_automation,
             media_automation::resume_media_automation,
             media_automation::prepare_media_companion,
+            history::get_history,
+            history::get_history_settings,
+            history::set_history_settings,
+            history::clear_history,
             vlc_connection::get_vlc_connection,
             vlc_connection::configure_vlc_connection,
             vlc_connection::configure_vlc_startup,
@@ -1454,6 +1487,9 @@ pub fn run() {
             let automation = Arc::new(automation);
             app.manage(automation.clone());
             media_automation::start(app.handle().clone(), automation, receiver);
+            let listening_history = Arc::new(history::History::new(app.path().app_config_dir()?));
+            app.manage(listening_history.clone());
+            history::start(app.handle().clone(), listening_history);
             let store = PreferencesStore::new(app.path().app_config_dir()?);
             let loaded = store.load().map_err(std::io::Error::other)?;
             if let Some(diagnostic) = loaded.diagnostic {
@@ -1537,7 +1573,12 @@ pub fn run() {
         RunEvent::ExitRequested {
             code: None, api, ..
         } => api.prevent_exit(),
-        RunEvent::Exit => shutdown_runtime.stop_all(),
+        RunEvent::Exit => {
+            if let Some(history) = _app.try_state::<Arc<history::History>>() {
+                history.finish(history::now_ms());
+            }
+            shutdown_runtime.stop_all();
+        }
         #[cfg(target_os = "macos")]
         RunEvent::Reopen { .. } => {
             let _ = open_main(_app);

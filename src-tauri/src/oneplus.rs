@@ -197,6 +197,27 @@ fn successful(data: &[u8]) -> Result<&[u8], String> {
     }
 }
 
+fn hex(data: &[u8]) -> String {
+    if data.is_empty() {
+        return "(empty)".into();
+    }
+    data.iter().take(32).map(|byte| format!("{byte:02x}")).collect::<Vec<_>>().join(" ")
+}
+
+fn spatial_support_summary(support: &[u8], path: Option<SpatialPath>) -> String {
+    let path = match path {
+        Some(SpatialPath::Typed) => "typed (GET 0x012a / SET 0x0422)",
+        Some(SpatialPath::Legacy) => "legacy on/off (feature 27, GET 0x010d / SET 0x0403)",
+        None => "none",
+    };
+    format!(
+        "path {path}; capability 47 (typed) = {}, capability 7 (legacy) = {}; support bytes {}",
+        capability(support, 47),
+        capability(support, 7),
+        hex(support)
+    )
+}
+
 fn capability(mask: &[u8], bit: usize) -> bool {
     mask.get(bit / 8)
         .is_some_and(|byte| byte & (1 << (bit % 8)) != 0)
@@ -678,6 +699,8 @@ pub struct Session {
     eq_profiles: Vec<crate::oneplus_eq::EqProfile>,
     metadata: BTreeMap<String, serde_json::Value>,
     metadata_updates: BTreeMap<String, serde_json::Value>,
+    /// Human-readable protocol notes for the diagnostics log. Bounded, drained by the connection loop.
+    notes: Vec<String>,
 }
 
 impl Session {
@@ -700,7 +723,19 @@ impl Session {
             eq_profiles: Vec::new(),
             metadata: BTreeMap::new(),
             metadata_updates: BTreeMap::new(),
+            notes: Vec::new(),
         }
+    }
+
+    fn note(&mut self, text: String) {
+        if self.notes.len() == 32 {
+            self.notes.remove(0);
+        }
+        self.notes.push(text);
+    }
+
+    pub fn drain_diagnostics(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.notes)
     }
 
     pub fn is_synchronized(&self) -> bool {
@@ -1084,25 +1119,52 @@ impl Session {
                         if spatial_control(model, path, value).is_none() {
                             return Err("Spatial mode is not supported by this device path.".into());
                         }
-                        match path {
-                            SpatialPath::Typed => {
-                                self.exchange(connection, cancelled, 0x0422, &[value])?;
-                            }
-                            SpatialPath::Legacy => {
-                                self.exchange(connection, cancelled, 0x0403, &[27, value])?;
-                            }
+                        self.note(format!(
+                            "Spatial audio change to {value} requested: {}.",
+                            spatial_support_summary(&self.support, Some(path))
+                        ));
+                        let (set_command, set_body): (u16, Vec<u8>) = match path {
+                            SpatialPath::Typed => (0x0422, vec![value]),
+                            SpatialPath::Legacy => (0x0403, vec![27, value]),
+                        };
+                        let set_reply = self.exchange(connection, cancelled, set_command, &set_body);
+                        match &set_reply {
+                            Ok(reply) => self.note(format!(
+                                "Spatial audio SET 0x{set_command:04x} [{}] was acknowledged; reply bytes {}.",
+                                hex(&set_body),
+                                hex(reply)
+                            )),
+                            Err(error) => self.note(format!(
+                                "Spatial audio SET 0x{set_command:04x} [{}] failed: {error}",
+                                hex(&set_body)
+                            )),
                         }
+                        set_reply?;
                         let mut confirmed = false;
                         for attempt in 0..3 {
-                            let reply = match path {
-                                SpatialPath::Typed => {
-                                    self.exchange(connection, cancelled, 0x012a, &[])?
-                                }
-                                SpatialPath::Legacy => {
-                                    self.exchange(connection, cancelled, 0x010d, &[1, 27])?
+                            let (get_command, get_body): (u16, &[u8]) = match path {
+                                SpatialPath::Typed => (0x012a, &[]),
+                                SpatialPath::Legacy => (0x010d, &[1, 27]),
+                            };
+                            let reply = match self.exchange(connection, cancelled, get_command, get_body) {
+                                Ok(reply) => reply,
+                                Err(error) => {
+                                    // A failed or timed-out readback must leave a trace, not just an error.
+                                    self.note(format!(
+                                        "Spatial audio readback {} of 3 failed after the SET was acknowledged: {error}",
+                                        attempt + 1
+                                    ));
+                                    return Err(error);
                                 }
                             };
-                            if spatial_readback(&reply, path) == Some(value) {
+                            let parsed = spatial_readback(&reply, path);
+                            self.note(format!(
+                                "Spatial audio readback {} of 3: bytes {} read as {}; wanted {value}.",
+                                attempt + 1,
+                                hex(&reply),
+                                parsed.map_or("an unrecognised value".to_string(), |found| found.to_string())
+                            ));
+                            if parsed == Some(value) {
                                 confirmed = true;
                                 break;
                             }
@@ -1791,11 +1853,31 @@ pub fn read_basics(
             }
         }
     }
+    if spatial_path(model, &session.support).is_none() && !model.spatial_types.is_empty() {
+        let summary = spatial_support_summary(&session.support, None);
+        session.note(format!(
+            "Spatial audio is not offered: {} lists spatial types {:?}, but {summary}.",
+            model.name, model.spatial_types
+        ));
+    }
     if let Some(path) = spatial_path(model, &session.support) {
         let response = match path {
             SpatialPath::Typed => session.exchange(connection, cancelled, 0x012a, &[]),
             SpatialPath::Legacy => session.exchange(connection, cancelled, 0x010d, &[1, 27]),
         };
+        let discovery_note = match &response {
+            Ok(reply) => format!(
+                "Spatial audio discovery: {}; current-value reply bytes {}, read as {}.",
+                spatial_support_summary(&session.support, Some(path)),
+                hex(reply),
+                spatial_readback(reply, path).map_or("an unrecognised value".to_string(), |found| found.to_string())
+            ),
+            Err(error) => format!(
+                "Spatial audio discovery: {}; the current-value request failed: {error}",
+                spatial_support_summary(&session.support, Some(path))
+            ),
+        };
+        session.note(discovery_note);
         match response {
             Ok(reply) => {
                 if let Some(control) = spatial_readback(&reply, path)
@@ -1931,6 +2013,69 @@ mod tests {
     }
 
     #[test]
+    fn spatial_discovery_records_the_path_support_bits_and_raw_reply_for_diagnostics() {
+        let mut connection = ScriptedConnection::new(vec![
+            (0x0103, vec![], vec![reply(0x0103, &[0, 0x14, 0x40, 6])]),
+            (0x0100, vec![], vec![reply(0x0100, &[0, 0, 0, 0, 0, 0, 0x80])]),
+            (0x012a, vec![], vec![reply(0x012a, &[0, 2])]),
+            (0x0200, vec![], vec![reply(0x0200, &[0, 0])]),
+        ]);
+        let (_, mut session) = read_basics(&mut connection, &AtomicBool::new(false)).unwrap();
+        let notes = session.drain_diagnostics();
+        let note = notes.iter().find(|note| note.starts_with("Spatial audio discovery")).expect("a discovery note");
+        assert!(note.contains("typed (GET 0x012a / SET 0x0422)"), "{note}");
+        assert!(note.contains("capability 47 (typed) = true"), "{note}");
+        assert!(note.contains("current-value reply bytes 00 02, read as 2"), "{note}");
+        assert!(session.drain_diagnostics().is_empty(), "notes are drained once");
+    }
+
+    #[test]
+    fn a_failed_spatial_readback_after_an_acknowledged_set_leaves_a_diagnostic_note() {
+        let model = crate::oneplus_models::by_name("OnePlus Nord Buds 3 Pro").unwrap();
+        let mut session = Session::new();
+        session.model = Some(model);
+        session.support = vec![0x80];
+        let control = spatial_control(model, SpatialPath::Legacy, 1).unwrap();
+        session.values.insert("spatialAudio".into(), control.value);
+        session.controls.insert("spatialAudio".into(), control.descriptor);
+        // The SET is acknowledged, then the earbuds answer the readback with an error status.
+        let mut connection = ScriptedConnection::new(vec![
+            (0x0403, vec![27, 0], vec![reply(0x0403, &[0])]),
+            (0x010d, vec![1, 27], vec![reply(0x010d, &[1])]),
+        ]);
+        let result = session.apply_setting(
+            &mut connection,
+            &AtomicBool::new(false),
+            SettingChange::DeviceControl(crate::device_controls::DeviceControlChange {
+                key: "spatialAudio".into(),
+                value: ControlValue::Integer(0),
+            }),
+        );
+        assert!(result.is_err());
+        let notes = session.drain_diagnostics();
+        assert!(notes.iter().any(|note| note.contains("was acknowledged")), "{notes:?}");
+        assert!(
+            notes.iter().any(|note| note.contains("readback 1 of 3 failed after the SET was acknowledged")),
+            "the failed readback must not vanish: {notes:?}"
+        );
+        assert_eq!(session.values["spatialAudio"], ControlValue::Integer(1), "the last confirmed value is kept");
+    }
+
+    #[test]
+    fn a_listed_model_without_a_live_spatial_capability_says_why_it_is_not_offered() {
+        let mut connection = ScriptedConnection::new(vec![
+            (0x0103, vec![], vec![reply(0x0103, &[0, 0x14, 0x40, 6])]),
+            (0x0100, vec![], vec![reply(0x0100, &[0, 0, 0, 0, 0, 0, 0])]),
+            (0x0200, vec![], vec![reply(0x0200, &[0, 0])]),
+        ]);
+        let (info, mut session) = read_basics(&mut connection, &AtomicBool::new(false)).unwrap();
+        assert!(!info.controls.capabilities.contains(&"spatialAudio".to_string()));
+        let notes = session.drain_diagnostics();
+        let note = notes.iter().find(|note| note.starts_with("Spatial audio is not offered")).expect("an explanation");
+        assert!(note.contains("capability 47 (typed) = false") && note.contains("capability 7 (legacy) = false"), "{note}");
+    }
+
+    #[test]
     fn spatial_set_requires_matching_readback_and_never_sends_restoration() {
         for (path, requested, observed, succeeds) in [
             (SpatialPath::Typed, 2, 2, true),
@@ -1976,6 +2121,12 @@ mod tests {
                 }),
             );
             assert_eq!(result.is_ok(), succeeds);
+            let notes = session.drain_diagnostics();
+            assert!(notes[0].contains(&format!("change to {requested} requested")), "{notes:?}");
+            let support_bit = if path == SpatialPath::Typed { "capability 47 (typed) = true" } else { "capability 7 (legacy) = true" };
+            assert!(notes[0].contains(support_bit), "{notes:?}");
+            assert!(notes.iter().any(|note| note.contains(&format!("SET 0x{set:04x}")) && note.contains("was acknowledged")), "{notes:?}");
+            assert_eq!(notes.iter().filter(|note| note.contains("readback")).count(), if succeeds { 1 } else { 3 }, "{notes:?}");
             assert_eq!(
                 session.values["spatialAudio"],
                 ControlValue::Integer(if succeeds { i64::from(requested) } else { 0 })
