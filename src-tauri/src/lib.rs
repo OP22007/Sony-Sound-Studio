@@ -585,7 +585,9 @@ async fn connect_device_internal(
         // attempt skips the optional equalizer and multipoint reads so the core controls still work.
         let mut attempt = 0u8;
         loop {
-            let mut connection = transport::connect(&paired, Arc::clone(&connect_cancel))?;
+            // After the headphone drops the link it can need a few seconds before it accepts the
+            // control service again, so a reconnect gets several tries instead of failing outright.
+            let mut connection = connect_with_patience(&paired, &connect_cancel, if attempt > 0 { 5 } else { 1 })?;
             let (mut basics, read_session) = control_session::read_basics_with(&paired, &mut *connection, &connect_cancel, attempt < 2)?;
             let dropped = discovery::closed_during_discovery(&basics);
             if (dropped || !read_session.is_synchronized()) && attempt < 2 && !connect_cancel.load(Ordering::Acquire) {
@@ -985,6 +987,29 @@ fn automatic_reconnect_enabled(app: &AppHandle) -> bool {
                 .map(|preferences| preferences.auto_reconnect)
         })
         .unwrap_or(false)
+}
+
+/// Opens the control connection, trying again after a pause while the headphone is still
+/// releasing its previous session. Cancellation and the final error are never swallowed.
+fn connect_with_patience(
+    paired: &transport::PairedDevice,
+    cancelled: &Arc<AtomicBool>,
+    tries: u8,
+) -> Result<Box<dyn transport::Connection>, String> {
+    let mut last = String::new();
+    for attempt in 0..tries.max(1) {
+        if attempt > 0 {
+            std::thread::sleep(Duration::from_millis(2000));
+        }
+        if cancelled.load(Ordering::Acquire) {
+            return Err("Connection was cancelled.".into());
+        }
+        match transport::connect(paired, Arc::clone(cancelled)) {
+            Ok(connection) => return Ok(connection),
+            Err(error) => last = error,
+        }
+    }
+    Err(last)
 }
 
 fn schedule_reconnect(app: AppHandle, device_id: String) {
