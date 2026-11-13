@@ -157,11 +157,13 @@ pub fn connect(
     let records = run_tool("sdptool", &["browse", &device.address], Duration::from_secs(8)).map_err(|_| {
         "Could not read the headphones' Bluetooth service records. Make sure the headphones are on and connected, and that BlueZ's sdptool is installed.".to_string()
     })?;
+    let mut notes: Vec<String> = Vec::new();
     for &service in super::service_uuids(device) {
         if cancelled.load(Ordering::Acquire) {
             return Err("Connection was cancelled.".into());
         }
         let Some(channel) = rfcomm_channel_for_service(&records, service).filter(|c| (1..=30).contains(c)) else {
+            notes.push(format!("service {service} is not in the headphones' service records"));
             continue;
         };
         let raw = unsafe {
@@ -172,7 +174,10 @@ pub fn connect(
             )
         };
         if raw < 0 {
-            return Err("Cannot open a Linux RFCOMM socket; check Bluetooth permissions.".into());
+            return Err(format!(
+                "Cannot open a Linux RFCOMM socket ({}); check Bluetooth permissions.",
+                io::Error::last_os_error()
+            ));
         }
         let socket = BluetoothSocket(raw, service);
         // Match the security level the headset expects (authenticated, encrypted link).
@@ -205,7 +210,9 @@ pub fn connect(
         if result == 0 {
             return Ok(Box::new(socket));
         }
-        if io::Error::last_os_error().raw_os_error() != Some(libc::EINPROGRESS) {
+        let started = io::Error::last_os_error();
+        if started.raw_os_error() != Some(libc::EINPROGRESS) {
+            notes.push(format!("RFCOMM channel {channel} refused the connection ({started})"));
             continue;
         }
         let deadline = Instant::now() + Duration::from_secs(4);
@@ -230,11 +237,21 @@ pub fn connect(
                 if success == 0 && error == 0 && poll.revents & libc::POLLOUT != 0 {
                     return Ok(Box::new(socket));
                 }
+                notes.push(format!(
+                    "RFCOMM channel {channel} failed ({})",
+                    io::Error::from_raw_os_error(if success == 0 { error } else { libc::EIO })
+                ));
                 break;
             }
         }
+        if !notes.last().is_some_and(|n| n.contains(&format!("channel {channel}"))) {
+            notes.push(format!("RFCOMM channel {channel} did not connect within 4 seconds"));
+        }
     }
-    Err("Sony's RFCOMM control service did not connect. Wake the paired headphones and close other headphone-control apps. Linux transport is not hardware-tested.".into())
+    Err(format!(
+        "Sony's RFCOMM control service did not connect: {}. Make sure the headphones are on and connected in your Bluetooth settings, and close other headphone-control apps. Linux transport is not hardware-tested.",
+        if notes.is_empty() { "no usable service was found".to_string() } else { notes.join("; ") }
+    ))
 }
 
 impl Connection for BluetoothSocket {
