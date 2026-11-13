@@ -23,7 +23,7 @@ A local desktop companion for Sony headphones. Shape your sound, switch listenin
 - **Model-specific equalizers:** built-in sound profiles use each model’s own protocol indices. Custom curves use the earbuds’ reported frequencies and dB range; save edits, rename and apply profiles with matching device readback. Supported models can create a new profile from their original-app tuning layout.
 - **Spatial listening:** model-listed Off/fixed modes and head tracking appear only after compatible live capability and current-mode replies. Older firmware uses its spatial on/off path. [Protocol evidence and model coverage](docs/research/oneplus-spatial.md).
 - **BassWave:** a dedicated slider in the Equalizer tab uses the connected model’s reported range. Supported models also expose a separate enable switch. Both level changes and enablement require device readback.
-- All OnePlus entries are experimental and awaiting hardware testing; these controls are included in 0.1.7. Models outside the catalog can be discovered by their OnePlus headphone name, but unknown product IDs cannot enable settings. Custom profile deletion and multipoint management are unavailable. macOS control connections remain disabled.
+- All OnePlus entries are experimental and awaiting hardware testing; these controls are included in 0.1.7. Models outside the catalog can be discovered by their OnePlus headphone name, but unknown product IDs cannot enable settings. Custom profile deletion and multipoint management are unavailable.
 
 See the [HeyMelody evidence and testing guide](docs/research/oneplus-heymelody.md) for command layouts, original-app references and validation limits.
 
@@ -67,7 +67,7 @@ Package formats and platform support:
 | Platform | Packages | Current support |
 | --- | --- | --- |
 | Windows x64 | Setup EXE | Native headphone controls; XM6 firmware 3.1.5 is the hardware-tested baseline |
-| macOS Apple Silicon / Intel | DMG | UI and paired-device discovery; headphone control connections are disabled |
+| macOS Apple Silicon / Intel | DMG | UI, paired-device discovery and experimental headphone control (not yet tested on hardware) |
 | Linux x64 | DEB, RPM, AppImage | BlueZ discovery and RFCOMM implemented; hardware validation remains outstanding |
 
 These are preview builds with signed updater packages; macOS builds are not notarized and the Windows installer has no Authenticode publisher signature. Read the [installation and testing notes](docs/releases/v0.1.3.md) before installing. Automatic listening currently requires Windows. On Linux, install the packages providing `bluetoothctl` and `sdptool` and pair through your operating system first.

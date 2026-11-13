@@ -11,6 +11,10 @@ mod linux;
 mod macos;
 #[cfg(windows)]
 mod windows;
+#[cfg(any(target_os = "macos", test))]
+mod worker;
+#[cfg(any(target_os = "macos", test))]
+mod macos_state;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PairedDevice {
@@ -177,7 +181,7 @@ pub fn status() -> &'static str {
     } else if cfg!(target_os = "linux") {
         "Linux BlueZ paired-device enumeration and RFCOMM transport require bluetoothctl and sdptool; not hardware-tested."
     } else if cfg!(target_os = "macos") {
-        "macOS supports paired-device discovery and connected-state reporting for supported headphones. Active audio-output identity and headphone control connections are currently unavailable on this preview."
+        "macOS experimental Sony and OnePlus RFCOMM control sessions use live service discovery and confirmed device readback. Hardware validation is pending. Active audio-output identity and automatic listening remain unavailable."
     } else {
         "Native Bluetooth transport is unavailable on this operating system."
     }
