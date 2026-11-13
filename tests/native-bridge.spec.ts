@@ -42,17 +42,22 @@ async function installNativeFixture(page: Page, noiseSupported: boolean, options
   mediaSetError?: string;
   historySummary?: Record<string, unknown>;
   historyError?: string;
+  updateAvailable?: boolean;
+  updateCheckDelayMs?: number;
 } = {}) {
   await page.addInitScript(({ noiseSupported, options }) => {
     const calls: string[] = [];
     const requests: Array<{ command: string; args?: Record<string, unknown> }> = [];
     const callbacks = new Map<number, (event: unknown) => void>();
     let nextCallback = 0;
-    const eventHandlers = new Map<string, number>();
+    const eventHandlers = new Map<string, number[]>();
+    const emit = (name: string, id: number, payload: unknown) => (eventHandlers.get(name) ?? []).forEach(handler => callbacks.get(handler)?.({ event: name, id, payload }));
     const preferenceStorageKey = '__fixtureNativePreferences';
     const defaultPreferences = { theme: 'dark', reduceMotion: false, closeToTray: true, launchAtLogin: false, autoReconnect: true, startMinimized: false };
     let appPreferences = JSON.parse(localStorage.getItem(preferenceStorageKey) ?? 'null') ?? { ...defaultPreferences, ...options.appPreferences };
     let media = { enabled: false, status: 'disabled', source: null, desiredMode: null, reason: 'Follow media is off.', manualOverride: false, extensionToken: 'a'.repeat(64), browserConnected: false, ...options.mediaState };
+    let updateState: Record<string, unknown> = { currentVersion: '0.1.6', status: 'idle', version: null, notes: null, downloaded: 0, total: null, error: null };
+    (window as unknown as { __updateCheckDelayMs: number }).__updateCheckDelayMs = options.updateCheckDelayMs ?? 8000;
     let historySettings = { enabled: true, details: !!options.historySummary?.details, exact: !!options.historySummary?.exact };
     let historyCleared = false;
     const emptyHistory = { totalMs: 0, firstMs: null, days: [], modes: [], noise: [], devices: [], knownDevices: [], categories: [], sources: [], titles: [], urls: [], recent: [], skipped: 0, writeError: null, contentSupported: true };
@@ -80,12 +85,12 @@ async function installNativeFixture(page: Page, noiseSupported: boolean, options
       __fixtureRequests: requests,
       __emitMedia: (change: Record<string, unknown>) => {
         media = { ...media, ...change };
-        callbacks.get(eventHandlers.get('media-automation') ?? 0)?.({ event: 'media-automation', id: 2, payload: { ...media } });
+        emit('media-automation', 2, { ...media });
       },
       __emitState: (settings: Record<string, unknown>) => {
         Object.assign(state.devices[0].settings, settings);
         state.revision += 1;
-        callbacks.get(eventHandlers.get('app-state') ?? 0)?.({ event: 'app-state', id: 1, payload: snapshot() });
+        emit('app-state', 1, snapshot());
       },
       __TAURI_INTERNALS__: {
         transformCallback: (callback: (event: unknown) => void) => { const id = ++nextCallback; callbacks.set(id, callback); return id; },
@@ -93,10 +98,22 @@ async function installNativeFixture(page: Page, noiseSupported: boolean, options
         invoke: (command: string, args?: { range?: string; details?: boolean; exact?: boolean; password?: string; enabled?: boolean; event?: string; handler?: number; preferences?: unknown; setting?: string; value?: unknown; deviceId?: string }) => {
           calls.push(command);
           requests.push({ command, args: args as Record<string, unknown> | undefined });
-          if (command === 'plugin:event|listen') { eventHandlers.set(args?.event ?? '', args?.handler ?? 0); return Promise.resolve(1); }
+          if (command === 'plugin:event|listen') { eventHandlers.set(args?.event ?? '', [...(eventHandlers.get(args?.event ?? '') ?? []), args?.handler ?? 0]); return Promise.resolve(1); }
           if (command.startsWith('plugin:event|')) return Promise.resolve(1);
           if (command === 'get_app_state') return Promise.resolve(snapshot());
-          if (command === 'get_app_update') return Promise.resolve({ currentVersion: '0.1.2', status: 'idle', version: null, notes: null, downloaded: 0, total: null, error: null });
+          if (command === 'get_app_update') return Promise.resolve({ ...updateState });
+          if (command === 'check_app_update') {
+            updateState = options.updateAvailable
+              ? { ...updateState, status: 'available', version: '0.9.9', notes: 'Faster connections, a Multipoint tab and a new equalizer.' }
+              : { ...updateState, status: 'upToDate' };
+            emit('app-update', 3, { ...updateState });
+            return Promise.resolve({ ...updateState });
+          }
+          if (command === 'install_app_update') {
+            updateState = { ...updateState, status: 'installing' };
+            emit('app-update', 3, { ...updateState });
+            return Promise.resolve({ ...updateState });
+          }
           if (command === 'get_media_automation') return Promise.resolve({ ...media });
           if (command === 'get_history') {
             if (options.historyError) return Promise.reject(new Error(options.historyError));
@@ -1062,4 +1079,271 @@ test('Listening history offers other devices only on request and never shows the
   await expect(page.locator('.hs-stage-label')).toContainText('OnePlus Buds 3 Pro');
   expect((await requestsOf(page)).filter(request => request.command === 'get_history').at(-1)?.args).toMatchObject({ device: 'OnePlus Buds 3 Pro' });
   await expect(page.getByRole('heading', { name: 'By device' })).toHaveCount(0);
+});
+
+const ch720nLayout = {
+  inquiry: 0, bandCount: 6, levelSteps: 21, customizable: true,
+  labels: ['Clear Bass', '400 Hz', '1 kHz', '2.5 kHz', '6.3 kHz', '16 kHz'], clearBassIndex: 0,
+  presets: [{ id: 0, label: 'Off' }, { id: 22, label: 'Bass' }, { id: 160, label: 'Custom' }, { id: 112, label: 'Warm' }],
+};
+const finishApply = (page: Page) => page.evaluate(() => (window as unknown as { __finishApply: () => void }).__finishApply());
+
+test('A headphone that describes its own equalizer gets its own bands, range and presets', async ({ page }) => {
+  await installNativeFixture(page, true, {
+    model: 'WH-CH720N', firmware: '1.0.0', deviceCapabilities: ['noise', 'equalizer'],
+    deviceSettings: { equalizer: [10, 10, 10, 10, 10, 10], equalizerPresetCode: 0, eqLayout: ch720nLayout },
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
+  await expect(page.getByText('CONFIRMED ON DEVICE')).toBeVisible();
+  await expect(page.getByText('6 independent bands, as reported by your headphone.')).toBeVisible();
+  const sliders = page.getByRole('slider');
+  await expect(sliders).toHaveCount(6);
+  for (const label of ch720nLayout.labels) {
+    await expect(page.getByRole('slider', { name: `${label} device equalizer step`, exact: true })).toHaveAttribute('aria-valuemax', '20');
+  }
+  const bass = page.getByRole('slider', { name: 'Clear Bass device equalizer step', exact: true });
+  await expect(bass).toHaveAttribute('aria-valuetext', '0 dB');
+  await expect(page.getByText('±10 dB').first()).toBeVisible();
+  // No XM6 factory curves are applied to a headphone that did not offer them.
+  await expect(page.getByRole('group', { name: 'Sony equalizer presets' })).toHaveCount(0);
+  const selector = page.getByLabel('Device equalizer profile', { exact: true });
+  await expect(selector.locator('optgroup[label="Headphone presets"] option')).toHaveText(['Off', 'Bass', 'Warm']);
+  await expect(selector).toHaveValue('dev:0');
+
+  // Editing a band sends the six device steps; nothing is shown as changed until confirmed.
+  await bass.focus();
+  await bass.press('ArrowRight');
+  await expect(bass).toHaveAttribute('aria-valuenow', '11');
+  await page.getByRole('button', { name: 'Apply equalizer', exact: true }).click();
+  await expect(bass).toBeDisabled();
+  expect((await requestsOf(page)).filter(request => request.command === 'apply_setting').at(-1)?.args)
+    .toMatchObject({ setting: 'equalizer', value: [11, 10, 10, 10, 10, 10] });
+  await finishApply(page);
+  await expect(bass).toHaveAttribute('aria-valuenow', '11');
+  await expect(bass).toHaveAttribute('aria-valuetext', '+1 dB');
+
+  // Choosing a headphone preset sends only the preset id.
+  await page.getByRole('button', { name: 'Bass', exact: true }).click();
+  expect((await requestsOf(page)).filter(request => request.command === 'apply_setting').at(-1)?.args)
+    .toMatchObject({ setting: 'sonyEqPreset', value: 22 });
+});
+
+test('A headphone with preset-only equalizer offers presets and no band editing', async ({ page }) => {
+  await installNativeFixture(page, true, {
+    model: 'WH-CH510', firmware: '1.0.0', deviceCapabilities: ['equalizer'],
+    deviceSettings: { equalizer: [], equalizerPresetCode: 22, eqLayout: { ...ch720nLayout, inquiry: 2, customizable: false, bandCount: 0, labels: [], clearBassIndex: null, presets: [{ id: 0, label: 'Off' }, { id: 22, label: 'Bass' }] } },
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
+  await expect(page.getByText('This headphone offers equalizer presets.')).toBeVisible();
+  await expect(page.getByRole('slider')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Save preset' })).toBeDisabled();
+  await expect(page.getByLabel('Device equalizer profile', { exact: true })).toHaveValue('dev:22');
+  await expect(page.getByRole('button', { name: 'Bass', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Off', exact: true }).click();
+  expect((await requestsOf(page)).filter(request => request.command === 'apply_setting').at(-1)?.args)
+    .toMatchObject({ setting: 'sonyEqPreset', value: 0 });
+});
+
+test('A headphone that described no equalizer says so and keeps the controls disabled', async ({ page }) => {
+  await installNativeFixture(page, true, { model: 'WH-CH720N', firmware: '1.0.0', deviceCapabilities: ['noise'] });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
+  await expect(page.getByText('did not describe an equalizer that Sound Connect Desktop can control')).toBeVisible();
+  await expect(page.getByText('has not confirmed the equalizer capability and current band steps')).toBeVisible();
+});
+
+
+const mpDevices = [
+  { address: 'AA:BB:CC:00:11:22', name: 'Pixel 9', classOfDevice: 0x5a020c },
+  { address: 'AA:BB:CC:00:11:33', name: 'Work laptop', classOfDevice: 0x02010c },
+  { address: 'AA:BB:CC:00:11:44', name: 'iPad', classOfDevice: 0x5a020c },
+];
+const mpState = (connected: string[], playing = '', extra: { maxConnections?: number; thisComputer?: string } = {}) => JSON.stringify({
+  devices: mpDevices.map(device => ({ ...device, connected: connected.includes(device.name), status: connected.includes(device.name) ? 1 : 0, playback: device.name === playing, thisComputer: device.name === extra.thisComputer })),
+  ...(extra.maxConnections ? { maxConnections: extra.maxConnections } : {}),
+});
+const multipointFixture = (connected: string[], extra: Record<string, unknown> = {}) => ({
+  model: 'WH-1000XM5', firmware: '1.0.0', deviceCapabilities: ['multipointDevices'],
+  deviceSettings: { multipointDevices: mpState(connected, connected[0]) }, ...extra,
+});
+
+test('Multipoint lists every paired device with its state and lets you pick which are connected', async ({ page }) => {
+  await installNativeFixture(page, false, multipointFixture(['Pixel 9'], { applySettings: { multipointDevices: mpState(['Pixel 9', 'Work laptop'], 'Pixel 9') } }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Multipoint', exact: true }).click();
+  const panel = page.getByRole('region', { name: 'Multipoint connections' });
+  await expect(panel.getByRole('listitem')).toHaveCount(3);
+  await expect(panel.getByRole('status')).toHaveText('1 of 3 connected');
+  await expect(panel.getByText('Connected · playing audio')).toBeVisible();
+  await expect(panel.getByText('AA:BB:CC:00:11:33')).toBeVisible();
+  const laptop = panel.getByRole('switch', { name: 'Connection to Work laptop' });
+  await expect(panel.getByRole('switch', { name: 'Connection to Pixel 9' })).toHaveAttribute('aria-checked', 'true');
+  await expect(laptop).toHaveAttribute('aria-checked', 'false');
+  // The generic "not validated" row is replaced by the real control.
+  await expect(page.getByText('The desktop has not validated this device’s multipoint controls.')).toHaveCount(0);
+  await expect(panel.getByRole('heading', { name: 'Paired devices' })).toBeVisible();
+
+  await laptop.click();
+  expect((await requestsOf(page)).filter(request => request.command === 'apply_setting').at(-1)?.args)
+    .toMatchObject({ setting: 'multipointDevice', value: { address: 'AA:BB:CC:00:11:33', connect: true } });
+  await expect(panel.getByText('Waiting for the headphone…')).toBeVisible();
+  await expect(laptop).toBeDisabled();
+  await expect(laptop).toHaveAttribute('aria-checked', 'false');
+  await finishApply(page);
+  await expect(laptop).toHaveAttribute('aria-checked', 'true');
+  await expect(panel.getByRole('status')).toHaveText('2 of 3 connected');
+});
+
+test('Multipoint disconnects a device, refreshes on request and keeps the old state when the headphone does not confirm', async ({ page }) => {
+  await installNativeFixture(page, false, multipointFixture(['Pixel 9', 'iPad'], { applySettingError: 'The headphone did not report that device as disconnected within 20 seconds.' }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Multipoint', exact: true }).click();
+  const panel = page.getByRole('region', { name: 'Multipoint connections' });
+  const ipad = panel.getByRole('switch', { name: 'Connection to iPad' });
+  await expect(ipad).toHaveAttribute('aria-checked', 'true');
+  await ipad.click();
+  expect((await requestsOf(page)).filter(request => request.command === 'apply_setting').at(-1)?.args)
+    .toMatchObject({ setting: 'multipointDevice', value: { address: 'AA:BB:CC:00:11:44', connect: false } });
+  await page.evaluate(() => (window as unknown as { __rejectApply: () => void }).__rejectApply());
+  await expect(page.getByRole('alert').filter({ hasText: 'The headphone did not report that device as disconnected within 20 seconds.' }).first()).toBeVisible();
+  await expect(ipad).toHaveAttribute('aria-checked', 'true');
+  await expect(panel.getByRole('status')).toHaveText('2 of 3 connected');
+
+  await panel.getByRole('button', { name: 'Refresh' }).click();
+  expect((await requestsOf(page)).filter(request => request.command === 'apply_setting').at(-1)?.args)
+    .toMatchObject({ setting: 'multipointRefresh' });
+});
+
+test('Multipoint is not shown for a headphone that did not advertise paired-device management', async ({ page }) => {
+  await installNativeFixture(page, false, { model: 'WH-1000XM5', deviceCapabilities: [] });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Multipoint', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Multipoint connections' })).toHaveCount(0);
+  await expect(page.getByText('did not report a paired-device list')).toBeVisible();
+});
+
+test('Multipoint rows stay readable at 390px and a malformed list is ignored', async ({ page }) => {
+  await installNativeFixture(page, false, multipointFixture(['Pixel 9']));
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Multipoint', exact: true }).click();
+  const panel = page.getByRole('region', { name: 'Multipoint connections' });
+  await expect(panel.getByRole('listitem')).toHaveCount(3);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  const broken = await page.context().newPage();
+  await installNativeFixture(broken, false, { model: 'WH-1000XM5', deviceCapabilities: ['multipointDevices'], deviceSettings: { multipointDevices: '{"devices":[{"address":"nope"}]}' } });
+  await broken.goto('/');
+  await broken.getByRole('button', { name: 'Multipoint', exact: true }).click();
+  await expect(broken.getByRole('region', { name: 'Multipoint connections' })).toHaveCount(0);
+  await broken.close();
+});
+
+
+test('Multipoint is its own tab, not part of Device settings', async ({ page }) => {
+  await installNativeFixture(page, false, multipointFixture(['Pixel 9']));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Device settings' }).click();
+  await expect(page.getByRole('region', { name: 'Multipoint connections' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Multipoint', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Multipoint.' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Multipoint connections' })).toBeVisible();
+});
+
+test('Multipoint says what connecting will do when the headphone is full, and never offers to drop the active device or this computer', async ({ page }) => {
+  // Two connections allowed: the phone and this laptop. The laptop (this computer) plays audio.
+  await installNativeFixture(page, false, multipointFixture([], {
+    deviceSettings: { multipointDevices: mpState(['Pixel 9', 'Work laptop'], 'Work laptop', { maxConnections: 2, thisComputer: 'Work laptop' }) },
+    applySettings: { multipointDevices: mpState(['Work laptop', 'iPad'], 'Work laptop', { maxConnections: 2, thisComputer: 'Work laptop' }) },
+  }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Multipoint', exact: true }).click();
+  const panel = page.getByRole('region', { name: 'Multipoint connections' });
+  await expect(panel.getByText('2 of 3 connected · up to 2 at once')).toBeVisible();
+  await expect(panel.getByText('This computer', { exact: true })).toBeVisible();
+  await expect(panel.getByText('Connecting will disconnect Pixel 9 (not playing audio).')).toBeVisible();
+  const ipad = panel.getByRole('switch', { name: 'Connection to iPad' });
+  await ipad.click();
+  expect((await requestsOf(page)).filter(request => request.command === 'apply_setting').at(-1)?.args)
+    .toMatchObject({ setting: 'multipointDevice', value: { address: 'AA:BB:CC:00:11:44', connect: true } });
+  await expect(panel.getByText('Disconnecting Pixel 9, then connecting…')).toBeVisible();
+  await finishApply(page);
+  await expect(ipad).toHaveAttribute('aria-checked', 'true');
+  await expect(panel.getByRole('switch', { name: 'Connection to Pixel 9' })).toHaveAttribute('aria-checked', 'false');
+  await expect(panel.getByRole('switch', { name: 'Connection to Work laptop' })).toHaveAttribute('aria-checked', 'true');
+
+  // Phone plays audio and the laptop is this computer: nothing can be dropped, so connecting is not offered.
+  const full = await page.context().newPage();
+  await installNativeFixture(full, false, multipointFixture([], {
+    deviceSettings: { multipointDevices: mpState(['Pixel 9', 'Work laptop'], 'Pixel 9', { maxConnections: 2, thisComputer: 'Work laptop' }) },
+  }));
+  await full.goto('/');
+  await full.getByRole('button', { name: 'Multipoint', exact: true }).click();
+  const fullPanel = full.getByRole('region', { name: 'Multipoint connections' });
+  await expect(fullPanel.getByText('Full: every connected device is playing audio or is this computer.')).toBeVisible();
+  await expect(fullPanel.getByRole('switch', { name: 'Connection to iPad' })).toBeDisabled();
+  await full.close();
+});
+
+test('A control-link reset during a multipoint change is shown as a reconnecting notice, not as a failed connection', async ({ page }) => {
+  const message = 'The headphone briefly reset its control link while connecting iPad. It does that when its connections change, so the change most likely went through. Sound Connect is reconnecting, and the list updates once it has.';
+  await installNativeFixture(page, false, multipointFixture(['Pixel 9'], { applySettingError: message }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Multipoint', exact: true }).click();
+  const panel = page.getByRole('region', { name: 'Multipoint connections' });
+  await panel.getByRole('switch', { name: 'Connection to iPad' }).click();
+  await page.evaluate(() => (window as unknown as { __rejectApply: () => void }).__rejectApply());
+  await expect(page.getByRole('status').filter({ hasText: 'briefly reset its control link' })).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: 'briefly reset its control link' })).toHaveCount(0);
+  await expect(page.getByText('did not connect')).toHaveCount(0);
+  await expect(panel.getByRole('switch', { name: 'Connection to iPad' })).toBeEnabled();
+});
+
+test('A new version found in the background is announced with a one-click update', async ({ page }) => {
+  await installNativeFixture(page, true, { updateAvailable: true, updateCheckDelayMs: 50 });
+  await page.goto('/');
+  const banner = page.getByRole('status', { name: 'App update' });
+  await expect(banner.getByText('New update available')).toBeVisible();
+  await expect(banner).toContainText('Sound Connect 0.9.9 is ready. You are on 0.1.6.');
+  await expect(banner).toContainText('Faster connections, a Multipoint tab and a new equalizer.');
+  // It is shown on every page, not only in App settings.
+  await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
+  await expect(banner).toBeVisible();
+  await banner.getByRole('button', { name: 'Update now' }).click();
+  expect((await requestsOf(page)).some(request => request.command === 'install_app_update')).toBe(true);
+  await expect(banner).toContainText('Installing the update… Sound Connect will restart shortly.');
+  await expect(banner.getByRole('button', { name: 'Update now' })).toHaveCount(0);
+});
+
+test('The update banner can be put off, and is absent when the app is up to date', async ({ page }) => {
+  await installNativeFixture(page, true, { updateAvailable: true, updateCheckDelayMs: 50 });
+  await page.goto('/');
+  const banner = page.getByRole('status', { name: 'App update' });
+  await expect(banner).toBeVisible();
+  await banner.getByRole('button', { name: 'Remind me later' }).click();
+  await expect(banner).toHaveCount(0);
+
+  const current = await page.context().newPage();
+  await installNativeFixture(current, true, { updateAvailable: false, updateCheckDelayMs: 50 });
+  await current.goto('/');
+  await expect.poll(async () => (await requestsOf(current)).some(request => request.command === 'check_app_update')).toBe(true);
+  await expect(current.getByRole('status', { name: 'App update' })).toHaveCount(0);
+  await current.close();
+});
+
+test('Automatic update checks can be switched off in App settings and stay off', async ({ page }) => {
+  await installNativeFixture(page, true, { updateAvailable: true, updateCheckDelayMs: 50 });
+  await page.addInitScript(() => localStorage.setItem('sound-connect:auto-update-check', 'false'));
+  await page.goto('/');
+  await page.waitForTimeout(600);
+  expect((await requestsOf(page)).some(request => request.command === 'check_app_update')).toBe(false);
+  await expect(page.getByRole('status', { name: 'App update' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'App settings' }).click();
+  const toggle = page.getByLabel('Check for updates automatically');
+  await expect(toggle).not.toBeChecked();
+  await toggle.check();
+  await expect(page.getByRole('status', { name: 'App update' })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('sound-connect:auto-update-check'))).toBe('true');
 });

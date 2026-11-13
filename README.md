@@ -23,7 +23,7 @@ A local desktop companion for Sony headphones. Shape your sound, switch listenin
 - **Model-specific equalizers:** built-in sound profiles use each model’s own protocol indices. Custom curves use the earbuds’ reported frequencies and dB range; save edits, rename and apply profiles with matching device readback. Supported models can create a new profile from their original-app tuning layout.
 - **Spatial listening:** model-listed Off/fixed modes and head tracking appear only after compatible live capability and current-mode replies. Older firmware uses its spatial on/off path. [Protocol evidence and model coverage](docs/research/oneplus-spatial.md).
 - **BassWave:** a dedicated slider in the Equalizer tab uses the connected model’s reported range. Supported models also expose a separate enable switch. Both level changes and enablement require device readback.
-- All OnePlus entries are experimental and awaiting hardware testing; these controls are included in 0.1.6. Models outside the catalog can be discovered by their OnePlus headphone name, but unknown product IDs cannot enable settings. Custom profile deletion and multipoint management are unavailable. macOS control connections remain disabled.
+- All OnePlus entries are experimental and awaiting hardware testing; these controls are included in 0.1.7. Models outside the catalog can be discovered by their OnePlus headphone name, but unknown product IDs cannot enable settings. Custom profile deletion and multipoint management are unavailable. macOS control connections remain disabled.
 
 See the [HeyMelody evidence and testing guide](docs/research/oneplus-heymelody.md) for command layouts, original-app references and validation limits.
 
@@ -35,6 +35,11 @@ See the [HeyMelody evidence and testing guide](docs/research/oneplus-heymelody.m
 - Manual mode choices pause automatic switching until you resume it.
 
 See [automatic listening setup](docs/media-following.md) for supported rules, browser pairing and VLC configuration. Automatic Dolby Atmos detection is not implemented.
+
+### Multipoint and equalizers
+
+- **Equalizer for every Sony headphone that describes one:** the app reads each headphone's own band count, step range, presets and band frequencies (including Clear Bass) instead of assuming the XM6's ten bands. Writes are confirmed by readback and the previous profile is restored and verified if they are not. [How the layout is read](docs/research/v2-equalizer.md).
+- **Multipoint tab:** lists the devices a Sony headphone is paired with, shows which are connected and which plays audio, and lets you connect or disconnect each one. When the headphone is at its connection limit, connecting another device first disconnects one that is not playing audio, never this computer. [Protocol notes](docs/research/v2-multipoint.md).
 
 ### Listening history
 
@@ -49,13 +54,13 @@ See [automatic listening setup](docs/media-following.md) for supported rules, br
 - Device controls appear when their capabilities and current values have been established; changes stay pending until confirmation.
 - Dark, light and system appearance, reduced motion, launch at login, start minimized, close to tray and automatic reconnect preferences.
 - Closing to tray releases the studio webview while the native companion remains active. Quit from the tray to disconnect and exit.
-- **Signed in-app updates:** check release notes, download updates and install/restart from App settings on Windows, macOS and Linux AppImage. [Update behavior and maintainer setup](docs/app-updates.md).
+- **Signed in-app updates:** the app checks for a new version in the background (switchable in App settings) and shows an **Update now** banner on every page. You can also check, read release notes and install/restart from App settings on Windows, macOS and Linux AppImage. [Update behavior and maintainer setup](docs/app-updates.md).
 - An explicit **Studio preview** lets you explore XM6, XM5 and CH720N layouts without sending headphone commands.
 - Core operation needs no account, cloud server or telemetry. Preferences, saved presets and listening history stay on your computer.
 
 ## Download
 
-Get the [latest preview release](https://github.com/OP22007/Sony-Sound-Studio/releases). 0.1.6 provides signed Windows x64, macOS Apple Silicon and Intel, and Linux x64 packages. [0.1.6 changes and limitations](docs/releases/v0.1.6.md).
+Get the [latest preview release](https://github.com/OP22007/Sony-Sound-Studio/releases). 0.1.7 provides signed Windows x64, macOS Apple Silicon and Intel, and Linux x64 packages. [0.1.7 changes and limitations](docs/releases/v0.1.7.md).
 
 Package formats and platform support:
 

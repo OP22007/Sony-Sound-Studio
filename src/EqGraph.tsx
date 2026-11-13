@@ -7,6 +7,8 @@ interface Props {
   min: number;
   max: number;
   step: number;
+  /** Raw value that means 0 dB, for devices whose steps are offset from decibels. */
+  zero?: number;
   disabled: boolean;
   description: string;
   formatValue: (value: number) => string;
@@ -17,7 +19,7 @@ const WIDTH = 720;
 const TOP = 40;
 const BOTTOM = 140;
 
-export default function EqGraph({ values, labels, min, max, step, disabled, description, formatValue, onChange }: Props) {
+export default function EqGraph({ values, labels, min, max, step, zero, disabled, description, formatValue, onChange }: Props) {
   const gradient = useId().replaceAll(':', '');
   const dragStarts = useRef(new Map<number, { index: number; value: number }>());
   const x = (index: number) => WIDTH * (index + 0.5) / values.length;
@@ -52,10 +54,14 @@ export default function EqGraph({ values, labels, min, max, step, disabled, desc
 
   return <svg className="eq-curve" viewBox="0 0 720 175" role="group" aria-label={description}>
     <defs><linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--accent)" stopOpacity=".18"/><stop offset="100%" stopColor="var(--accent)" stopOpacity="0"/></linearGradient></defs>
-    {[max, (min + max) / 2, min].filter((value, index, all) => value >= min && value <= max && all.indexOf(value) === index).map(value => <g key={value}>
-      <line x1="26" y1={y(value)} x2="698" y2={y(value)} className={value === 0 ? 'eq-zero' : 'eq-grid'}/>
-      <text x="2" y={y(value) + 4}>{value > 0 ? `+${value}` : value}</text>
-    </g>)}
+    {(zero === undefined ? [max, (min + max) / 2, min] : [max, zero, min]).filter((value, index, all) => value >= min && value <= max && all.indexOf(value) === index).map(value => {
+      // Devices whose raw steps are offset from decibels name the zero step, so the axis reads in dB.
+      const shown = value - (zero ?? 0);
+      return <g key={value}>
+        <line x1="26" y1={y(value)} x2="698" y2={y(value)} className={shown === 0 ? 'eq-zero' : 'eq-grid'}/>
+        <text x="2" y={y(value) + 4}>{shown > 0 ? `+${shown}` : shown}</text>
+      </g>;
+    })}
     {values.length > 0 && <path d={`${curve} L ${x(values.length - 1)} ${BOTTOM + 10} L ${x(0)} ${BOTTOM + 10} Z`} fill={`url(#${gradient})`} aria-hidden="true"/>}
     <path className="frequency-path" d={curve} fill="none"/>
     {values.map((value, index) => <g key={`${labels[index]}-${index}`} className={`eq-graph-handle${disabled ? ' is-disabled' : ''}`} role="slider" tabIndex={disabled ? -1 : 0}

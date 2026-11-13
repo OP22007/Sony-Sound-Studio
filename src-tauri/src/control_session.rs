@@ -14,10 +14,12 @@ impl From<discovery::ReadSession> for Session {
     }
 }
 
-pub fn read_basics(
+/// `extras` controls the optional equalizer and multipoint reads (Sony only).
+pub fn read_basics_with(
     device: &transport::PairedDevice,
     connection: &mut dyn transport::Connection,
     cancelled: &AtomicBool,
+    extras: bool,
 ) -> Result<(discovery::BasicInfo, Session), String> {
     if crate::oneplus_models::is_oneplus_name(&device.model)
         || crate::oneplus_models::is_oneplus_name(&device.name)
@@ -25,7 +27,7 @@ pub fn read_basics(
         let (info, session) = oneplus::read_basics(connection, cancelled)?;
         Ok((info, Session::OnePlus(session)))
     } else if transport::is_sony_headphone(&device.name) {
-        let (info, session) = discovery::read_basics(connection, cancelled);
+        let (info, session) = discovery::read_basics_with(connection, cancelled, extras);
         Ok((info, Session::Sony(session)))
     } else {
         Err("No control adapter is available for this device.".into())

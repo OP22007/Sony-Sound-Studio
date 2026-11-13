@@ -17,6 +17,26 @@ interface Props {
   onReplaceDevice: (presets: DevicePreset[]) => boolean;
 }
 
+/** The equalizer a headphone described itself (band count, level steps, presets, band labels). */
+export interface EqLayout {
+  bandCount: number; levelSteps: number; customizable: boolean;
+  labels: string[]; clearBassIndex: number | null; presets: { id: number; label: string }[];
+}
+const CUSTOM_PRESET = 0xa0;
+export function readEqLayout(device: Device): EqLayout | null {
+  const raw = device.settings.eqLayout as Record<string, unknown> | undefined;
+  if (!raw || typeof raw !== 'object') return null;
+  const { bandCount, levelSteps, customizable, labels, clearBassIndex, presets } = raw;
+  if (!Number.isInteger(bandCount) || !Number.isInteger(levelSteps) || (levelSteps as number) < 2) return null;
+  if (!Array.isArray(labels) || labels.length !== bandCount || !labels.every(label => typeof label === 'string')) return null;
+  if (!Array.isArray(presets) || !presets.every(p => p && typeof p === 'object' && Number.isInteger((p as { id: unknown }).id) && typeof (p as { label: unknown }).label === 'string')) return null;
+  return {
+    bandCount: bandCount as number, levelSteps: levelSteps as number, customizable: customizable === true,
+    labels: labels as string[], clearBassIndex: Number.isInteger(clearBassIndex) ? clearBassIndex as number : null,
+    presets: presets as { id: number; label: string }[],
+  };
+}
+
 export default function Equalizer({ preview, available, busy, settings, device, onChange, presets, devicePresets, onReplace, onReplaceDevice }: Props) {
   const [preferred, setPreferred] = useState<string | null>(preview ? settings.preset : null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -29,29 +49,47 @@ export default function Equalizer({ preview, available, busy, settings, device, 
   }, [busy, draft, device.settings.equalizer]);
   const onePlus = isOnePlusDevice(device, preview);
   if (onePlus) return <OnePlusEqualizer device={device} busy={busy} onChange={onChange}/>;
+  const layout = preview ? null : readEqLayout(device);
+  const bandCount = layout?.bandCount ?? 10;
+  const maxStep = layout ? layout.levelSteps - 1 : 12;
+  const centre = layout ? Math.floor((layout.levelSteps - 1) / 2) : 6;
+  const labels = layout ? layout.labels : xm6Frequencies;
+  const presetOnly = !!layout && !layout.customizable;
+  const dbText = (step: number) => `${step - centre > 0 ? '+' : ''}${step - centre} dB`;
   const realBands = device.settings.equalizer;
-  const usable = available && (preview || (Array.isArray(realBands) && realBands.length === 10 && realBands.every(v => Number.isInteger(v) && v >= 0 && v <= 12)));
-  const values: number[] = preview ? settings.equalizer : usable ? draft ?? realBands as number[] : [];
-  const unapplied = !preview && usable && !!draft && !sameBands(draft, realBands as number[]);
-  const mine = preview ? presets : devicePresets.filter(p => p.model === device.model && p.firmware === device.firmware);
-  const factory = device.model === 'WH-1000XM6' ? sonyPresets.map(p => ({ ...p, bands: preview ? [...p.bands] : toDeviceSteps(p.bands) })) : [];
+  const bandsKnown = Array.isArray(realBands) && realBands.length === bandCount && realBands.every(v => Number.isInteger(v) && v >= 0 && v <= maxStep);
+  const usable = available && (preview || presetOnly || bandsKnown);
+  const values: number[] = preview ? settings.equalizer : usable && bandsKnown ? draft ?? realBands as number[] : [];
+  const unapplied = !preview && usable && bandsKnown && !!draft && !sameBands(draft, realBands as number[]);
+  const mine = preview ? presets : devicePresets.filter(p => p.model === device.model && p.firmware === device.firmware && p.bands.length === bandCount);
+  const factory = !layout && device.model === 'WH-1000XM6' ? sonyPresets.map(p => ({ ...p, bands: preview ? [...p.bands] : toDeviceSteps(p.bands) })) : [];
+  const deviceChoices = (layout?.presets ?? []).filter(p => p.id !== CUSTOM_PRESET);
+  const presetCode = typeof device.settings.equalizerPresetCode === 'number' ? device.settings.equalizerPresetCode : null;
   const choices = [...factory.map(p => ({ ...p, id: `sony:${p.name}` })), ...mine.map(p => ({ ...p, id: `local:${p.name}` }))];
   const preferredPreset = choices.find(p => (p.id === preferred || p.name === preferred) && sameBands(p.bands, values));
-  const active = preferred === 'Custom' ? undefined : preferredPreset ?? choices.find(p => sameBands(p.bands, values));
-  const selected = active?.id ?? 'Custom';
+  const matchedChoice = preferred === 'Custom' ? undefined : preferredPreset ?? choices.find(p => sameBands(p.bands, values));
+  const devicePreset = layout && preferred !== 'Custom' && presetCode !== null && presetCode !== CUSTOM_PRESET ? deviceChoices.find(p => p.id === presetCode) : undefined;
+  const active = layout ? (devicePreset ? undefined : matchedChoice) : matchedChoice;
+  const selected = devicePreset ? `dev:${devicePreset.id}` : active?.id ?? 'Custom';
   const target = mine.find(p => p.name === editing);
   const dirty = !!target && !sameBands(target.bands, values);
   const processingSuspended = !preview && ['music','cinema','game'].includes(String(device.settings.listeningMode));
   const disabled = !usable || busy || processingSuspended;
   // Old illustrative profiles can contain ±10; keep them editable without clipping.
-  const range = preview ? values.some(value => Math.abs(value) > 6) ? 10 : 6 : 12;
+  const range = preview ? values.some(value => Math.abs(value) > 6) ? 10 : 6 : maxStep;
   const minimum = preview ? -range : 0;
-  const maximum = preview ? range : 12;
+  const maximum = preview ? range : maxStep;
 
   function apply(value: string) {
     if (value === 'Custom' && !disabled) {
       setPreferred('Custom'); setEditing(null);
       if (preview) onChange('preset', 'Custom');
+      return;
+    }
+    if (value.startsWith('dev:')) {
+      if (disabled || !layout) return;
+      setDraft(null); setPreferred(value); setEditing(null);
+      onChange('sonyEqPreset', Number(value.slice(4)));
       return;
     }
     const preset = choices.find(p => p.id === value);
@@ -80,29 +118,31 @@ export default function Equalizer({ preview, available, busy, settings, device, 
     if (form?.original === preset.name) setForm(null);
     if (preview && [preset.name, `local:${preset.name}`].includes(settings.preset)) onChange('preset', 'Custom');
   }
-  const stateLabel = preview ? 'LOCAL PREVIEW' : !usable ? 'AWAITING READBACK' : busy ? 'CONFIRMING WITH DEVICE' : unapplied ? 'UNAPPLIED DRAFT' : 'CONFIRMED ON DEVICE';
+  const stateLabel = preview ? 'LOCAL PREVIEW' : !usable ? (layout ? 'UNAVAILABLE' : 'AWAITING READBACK') : busy ? 'CONFIRMING WITH DEVICE' : unapplied ? 'UNAPPLIED DRAFT' : 'CONFIRMED ON DEVICE';
   return <section className="sound-panel eq-panel eq-workspace-panel reveal" aria-label="Equalizer workspace">
-    <div className="eq-workspace-heading"><div><span className="eq-kicker">GRAPHIC EQUALIZER <span>／</span> {preview ? 'STUDIO PREVIEW' : device.model}</span><h2>Shape the detail.</h2><p>Ten independent bands. Every point maps to a precise, device-supported step.</p></div><div className={`eq-device-status${unapplied || busy ? ' is-pending' : ''}`}><i aria-hidden="true"/><span>{stateLabel}</span></div></div>
+    <div className="eq-workspace-heading"><div><span className="eq-kicker">GRAPHIC EQUALIZER <span>／</span> {preview ? 'STUDIO PREVIEW' : device.model}</span><h2>Shape the detail.</h2><p>{layout ? (presetOnly ? 'This headphone offers equalizer presets.' : `${bandCount} independent bands, as reported by your headphone. Every point maps to a precise device step.`) : 'Ten independent bands. Every point maps to a precise, device-supported step.'}</p></div><div className={`eq-device-status${unapplied || busy ? ' is-pending' : ''}`}><i aria-hidden="true"/><span>{stateLabel}</span></div></div>
     <div className="eq-editor-toolbar">
       <div className="eq-profile-picker"><span className="eq-control-label">ACTIVE CURVE</span><div className="preset-select"><select aria-label={preview ? 'Equalizer preset' : 'Device equalizer profile'} value={selected} disabled={disabled} onChange={e => apply(e.target.value)}>
         <option value="Custom">Manual</option>
         {factory.length > 0 && <optgroup label="Sony presets">{factory.map(p => <option key={p.name} value={`sony:${p.name}`}>{p.name}</option>)}</optgroup>}
+        {deviceChoices.length > 0 && <optgroup label="Headphone presets">{deviceChoices.map(p => <option key={p.id} value={`dev:${p.id}`}>{p.label}</option>)}</optgroup>}
         {mine.length > 0 && <optgroup label="My presets">{mine.map(p => <option key={p.name} value={`local:${p.name}`}>{p.name}</option>)}</optgroup>}
       </select><ChevronDown size={14}/></div></div>
-      <div className="eq-actions"><button className="eq-reset-button" aria-label="Reset equalizer" title="Reset equalizer" disabled={disabled || !factory.length} onClick={() => apply('sony:Off')}><RotateCcw size={15}/><span>Reset</span></button><button className="button small eq-save-button" disabled={disabled || mine.length >= 24 || (!preview && !device.firmware)} onClick={() => openForm('create')}><Plus size={15}/>Save preset</button></div>
+      <div className="eq-actions"><button className="eq-reset-button" aria-label="Reset equalizer" title="Reset equalizer" disabled={disabled || (layout ? !deviceChoices.some(p => p.id === 0) : !factory.length)} onClick={() => apply(layout ? 'dev:0' : 'sony:Off')}><RotateCcw size={15}/><span>Reset</span></button><button className="button small eq-save-button" disabled={disabled || presetOnly || mine.length >= 24 || (!preview && !device.firmware)} onClick={() => openForm('create')}><Plus size={15}/>Save preset</button></div>
     </div>
     <div className={`eq-editor-surface ${!usable ? 'unavailable-eq' : ''}`}>
-      <div className="eq-plot-heading"><div><span className="eq-control-label">RESPONSE CURVE</span><span className="eq-plot-help">Drag a point · Arrow keys adjust by one step</span></div><div className="eq-range-mark"><span>{preview ? `±${range} dB` : '0—12 steps'}</span><small>{preview ? 'PREVIEW RANGE' : 'DEVICE RANGE'}</small></div></div>
-      <div className="equalizer eq-plot-scroll"><div className="eq-scroll"><EqGraph values={values} labels={xm6Frequencies.map(frequency => preview ? frequency : `${frequency} device equalizer step`)} min={minimum} max={maximum} step={1} disabled={disabled} description={usable ? preview ? 'Illustrative equalizer response in decibels' : 'Equalizer device step profile' : 'Equalizer awaiting device data'} formatValue={value => preview ? `${value} decibels` : `${value} device steps`} onChange={(index, value) => { if (!editing && active?.id.startsWith('local:')) setEditing(active.name); const next = [...values]; next[index] = value; if (preview) { onChange('equalizer', next); onChange('preset', 'Custom'); } else { setDraft(next); setPreferred('Custom'); } }}/>
-        <div className="band-inputs">{xm6Frequencies.map((frequency, i) => <label key={frequency} className="band"><output>{usable ? preview ? `${values[i] > 0 ? '+' : ''}${values[i]}` : values[i] : '—'}</output><span>{frequency.replace(' Hz', '').replace(' kHz', 'k')}</span></label>)}</div>
+      <div className="eq-plot-heading"><div><span className="eq-control-label">RESPONSE CURVE</span><span className="eq-plot-help">Drag a point · Arrow keys adjust by one step</span></div><div className="eq-range-mark"><span>{preview ? `±${range} dB` : layout ? `±${centre} dB` : '0—12 steps'}</span><small>{preview ? 'PREVIEW RANGE' : 'DEVICE RANGE'}</small></div></div>
+      <div className="equalizer eq-plot-scroll"><div className="eq-scroll"><EqGraph values={values} labels={labels.map(frequency => preview ? frequency : `${frequency} device equalizer step`)} min={minimum} max={maximum} step={1} zero={layout ? centre : undefined} disabled={disabled || presetOnly} description={usable ? preview ? 'Illustrative equalizer response in decibels' : 'Equalizer device step profile' : 'Equalizer awaiting device data'} formatValue={value => preview ? `${value} decibels` : layout ? dbText(value) : `${value} device steps`} onChange={(index, value) => { if (!editing && active?.id.startsWith('local:')) setEditing(active.name); const next = [...values]; next[index] = value; if (preview) { onChange('equalizer', next); onChange('preset', 'Custom'); } else { setDraft(next); setPreferred('Custom'); } }}/>
+        <div className="band-inputs" style={layout ? { gridTemplateColumns: `repeat(${Math.max(1, labels.length)}, minmax(0, 1fr))` } : undefined}>{labels.map((frequency, i) => <label key={`${frequency}-${i}`} className="band"><output>{usable && values.length ? preview ? `${values[i] > 0 ? '+' : ''}${values[i]}` : layout ? dbText(values[i]).replace(' dB', '') : values[i] : '—'}</output><span>{frequency.replace(' Hz', '').replace(' kHz', 'k')}</span></label>)}</div>
         <div className="eq-frequency-legend"><span><b>LOW</b>Weight & warmth</span><span><b>MID</b>Voice & presence</span><span><b>HIGH</b>Air & detail</span></div>
       </div></div>
-      <div className="eq-graph-footer"><span>{preview ? 'Move freely; changes stay in this preview.' : unapplied ? 'This curve is local until you apply it.' : 'Device values update only after a confirmed reply.'}</span><span>{preview ? '−' + range + ' dB' : '0'} <i/><span>{preview ? '+' + range + ' dB' : '12 steps'}</span></span></div>
+      <div className="eq-graph-footer"><span>{preview ? 'Move freely; changes stay in this preview.' : unapplied ? 'This curve is local until you apply it.' : 'Device values update only after a confirmed reply.'}</span><span>{preview ? '−' + range + ' dB' : layout ? `−${centre} dB` : '0'} <i/><span>{preview ? '+' + range + ' dB' : layout ? `+${centre} dB` : '12 steps'}</span></span></div>
     </div>
-    <div className="eq-confirmation-line"><span>{preview ? 'Studio preview · changes stay local' : unapplied ? 'Draft · waiting for explicit apply' : 'Device values shown after confirmed readback'}</span><span>{preview ? `±${range} dB` : '0–12 steps'}</span></div>
+    <div className="eq-confirmation-line"><span>{preview ? 'Studio preview · changes stay local' : unapplied ? 'Draft · waiting for explicit apply' : 'Device values shown after confirmed readback'}</span><span>{preview ? `±${range} dB` : layout ? `±${centre} dB` : '0–12 steps'}</span></div>
     {unapplied && <div className="eq-draft-actions" role="status"><span>{busy ? 'Waiting for headphone confirmation…' : 'Your curve is ready. Apply it to hear the change.'}</span><div><button className="text-button" disabled={disabled} onClick={() => { setDraft(null); setPreferred(null); }}>Discard changes</button><button className="button small" disabled={disabled} onClick={() => onChange('equalizer', [...values])}>Apply equalizer <Check size={14}/></button></div></div>}
     {!usable && <p className="unavailable"><Info size={14}/>Equalizer controls are unavailable because this connected device has not confirmed the equalizer capability and current band steps.</p>}
-    {factory.length > 0 ? <div className="eq-preset-section"><div className="eq-library-heading eq-preset-heading"><div><span className="eq-control-label">CURVE LIBRARY</span><p>Start with a voicing, then shape it to your taste.</p></div><span>{factory.length} SONY CURVES</span></div><div className="sony-eq-library" role="group" aria-label="Sony equalizer presets">{factory.map(p => <button className="sony-eq-preset" key={p.name} disabled={disabled} aria-pressed={selected === `sony:${p.name}`} onClick={() => apply(`sony:${p.name}`)}><svg viewBox="0 0 120 60" aria-hidden="true"><line x1="4" y1="30" x2="116" y2="30"/><polyline points={p.bands.map((v, i) => `${6 + i * 12},${52 - (v - (preview ? -range : 0)) * 40 / (preview ? range * 2 : 12)}`).join(' ')}/></svg><span>{p.name}</span><small>{p.description}</small></button>)}</div><p className="eq-library-note">{preview ? 'Changes stay in this browser preview.' : 'Applying a curve sends one custom equalizer update; confirmation comes from the headphones.'}</p></div> : <div className="eq-preset-section eq-model-note"><div className="eq-library-heading eq-preset-heading"><div><span className="eq-control-label">CURVE LIBRARY</span><p>Custom sound, saved on this computer.</p></div></div><p className="eq-library-note">Sony factory curves for this model are not validated yet. Custom studio profiles remain available in preview.</p></div>}
+    {!usable && !preview && !layout && device.model !== 'WH-1000XM6' && <p className="unavailable"><Info size={14}/>{device.model || 'This headphone'} did not describe an equalizer that Sound Connect Desktop can control. It may not have one, or it may use a layout the app does not support yet. What it reported is recorded under App settings, Privacy and diagnostics, Transport diagnostics.</p>}
+    {layout && deviceChoices.length > 0 ? <div className="eq-preset-section"><div className="eq-library-heading eq-preset-heading"><div><span className="eq-control-label">HEADPHONE PRESETS</span><p>Voicings built into your headphone. Pick one, or shape your own curve.</p></div><span>{deviceChoices.length} PRESETS</span></div><div className="sony-eq-library" role="group" aria-label="Headphone equalizer presets">{deviceChoices.map(p => <button className="sony-eq-preset is-plain" key={p.id} disabled={disabled} aria-pressed={selected === `dev:${p.id}`} onClick={() => apply(`dev:${p.id}`)}><span>{p.label}</span></button>)}</div><p className="eq-library-note">Choosing a preset sends one change; the headphone confirms it before it is shown as active.</p></div> : factory.length > 0 ? <div className="eq-preset-section"><div className="eq-library-heading eq-preset-heading"><div><span className="eq-control-label">CURVE LIBRARY</span><p>Start with a voicing, then shape it to your taste.</p></div><span>{factory.length} SONY CURVES</span></div><div className="sony-eq-library" role="group" aria-label="Sony equalizer presets">{factory.map(p => <button className="sony-eq-preset" key={p.name} disabled={disabled} aria-pressed={selected === `sony:${p.name}`} onClick={() => apply(`sony:${p.name}`)}><svg viewBox="0 0 120 60" aria-hidden="true"><line x1="4" y1="30" x2="116" y2="30"/><polyline points={p.bands.map((v, i) => `${6 + i * 12},${52 - (v - (preview ? -range : 0)) * 40 / (preview ? range * 2 : 12)}`).join(' ')}/></svg><span>{p.name}</span><small>{p.description}</small></button>)}</div><p className="eq-library-note">{preview ? 'Changes stay in this browser preview.' : 'Applying a curve sends one custom equalizer update; confirmation comes from the headphones.'}</p></div> : <div className="eq-preset-section eq-model-note"><div className="eq-library-heading eq-preset-heading"><div><span className="eq-control-label">CURVE LIBRARY</span><p>Custom sound, saved on this computer.</p></div></div><p className="eq-library-note">Sony factory curves for this model are not validated yet. Custom studio profiles remain available in preview.</p></div>}
     {target && dirty && <div className="eq-unsaved"><span>Unsaved changes to “{target.name}”</span><button className="text-button" disabled={disabled} onClick={() => { if (persist(mine.map(p => p.name === target.name ? { ...p, bands: [...values] } : p))) { setPreferred(`local:${target.name}`); if (preview) onChange('preset', `local:${target.name}`); } }}><Check size={13}/>Save changes</button></div>}
     {mine.length > 0 && <div className="eq-my-presets"><div className="eq-library-heading"><span className="eyebrow">MY PRESETS</span><span>{mine.length} / 24</span></div>{mine.map(p => <div className="eq-saved-row" key={p.name}><button className="text-button eq-saved-name" disabled={disabled} onClick={() => apply(`local:${p.name}`)} aria-label={`Apply “${p.name}”`} aria-pressed={selected === `local:${p.name}`}>{p.name}{selected === `local:${p.name}` && <Check size={13}/>}</button><button className="icon-button" disabled={busy} onClick={() => openForm('rename', p.name)} aria-label={`Rename “${p.name}”`} title="Rename preset"><Pencil size={13}/></button><button className="icon-button" disabled={busy} onClick={() => remove(p)} aria-label={`Delete “${p.name}”`} title="Delete preset"><Trash2 size={13}/></button></div>)}</div>}
     {form && <form className="save-preset" aria-label={form.kind === 'rename' ? 'Rename preset' : 'Save preset'} onSubmit={e => {
