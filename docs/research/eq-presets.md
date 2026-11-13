@@ -19,7 +19,7 @@ The original 13.3.0 APK's V2 `EqPresetId` enum independently confirms OFF=0x00, 
 
 The desktop therefore applies these **curves through the existing custom-EQ write path**. Signed gains are translated to the current XM6 layout's 0–12 device steps by adding 6. The backend retains its existing capability/firmware gating, serial command queue and matched band readback. The native selector follows confirmed values while a requested curve is pending or rejected. It does not claim to have selected Sony's native factory preset ID or disabled the equalizer DSP when a flat curve is selected.
 
-No new Bluetooth command or factory/custom-bank identifier is sent. This work has browser/IPC fixture validation; complete factory-curve hardware/audio equivalence is not yet confirmed. Native controls remain gated to the existing validated XM6 firmware path. XM5/CH720N curves are not invented or populated from the ten-band XM6 data.
+No new Bluetooth command or factory/custom-bank identifier is sent. This work has browser/IPC fixture validation; complete factory-curve hardware/audio equivalence is not yet confirmed. The XM6 curves above apply to the validated XM6 firmware path only. Other Sony headphones do not use them: they describe their own equalizer (band count, step range, presets and band frequencies) and are controlled from that description, see [v2-equalizer.md](v2-equalizer.md). XM5/CH720N curves are not invented or populated from the ten-band XM6 data.
 
 ## Custom profiles
 

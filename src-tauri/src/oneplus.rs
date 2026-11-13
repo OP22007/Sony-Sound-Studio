@@ -1534,7 +1534,7 @@ pub fn read_basics(
         "hardwareValidation".into(),
         serde_json::json!("Protocol derived from HeyMelody 117.6.6; device testing pending"),
     );
-    let mut result = BasicInfo { protocol: Ok(ProtocolInfo { format: "heymelody-opo-v1", version: 1, ack_observed: false }), model: Some(model.name.clone()), firmware: None, battery: None,
+    let mut result = BasicInfo { protocol: Ok(ProtocolInfo { format: "heymelody-opo-v1", version: 1, ack_observed: false, table2: false }), model: Some(model.name.clone()), firmware: None, battery: None,
         controls: ControlInfo { support_reply_confirmed: true, ..Default::default() }, warnings: vec![format!("{} product ID and capability reply confirmed. Each setting still requires matching readback.", model.name)] };
     if capability(&session.support, 0) {
         match session.exchange(connection, cancelled, 0x0105, &[]) {

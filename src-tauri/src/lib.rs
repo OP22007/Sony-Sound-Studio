@@ -8,6 +8,8 @@ mod media_automation;
 mod game_detector;
 mod history;
 mod listening_policy;
+mod local_radio;
+mod multipoint;
 mod media_vlc;
 #[cfg(windows)]
 mod media_windows;
@@ -578,12 +580,36 @@ async fn connect_device_internal(
     let reconnect_identity = paired.address.clone();
     let connect_cancel = Arc::clone(&cancelled);
     let result = tauri::async_runtime::spawn_blocking(move || {
-        let mut connection = transport::connect(&paired, Arc::clone(&connect_cancel))?;
-        let (basics, read_session) = control_session::read_basics(&paired, &mut *connection, &connect_cancel)?;
-        if !read_session.is_synchronized() {
-            return Err("Device capability discovery lost protocol synchronization; reconnect before retrying.".into());
+        // A headphone sometimes closes the control link just as it is being read (it may still be
+        // tearing down a previous session, or switching devices). Reconnect up to twice; the last
+        // attempt skips the optional equalizer and multipoint reads so the core controls still work.
+        let mut attempt = 0u8;
+        loop {
+            let mut connection = transport::connect(&paired, Arc::clone(&connect_cancel))?;
+            let (mut basics, read_session) = control_session::read_basics_with(&paired, &mut *connection, &connect_cancel, attempt < 2)?;
+            let dropped = discovery::closed_during_discovery(&basics);
+            if (dropped || !read_session.is_synchronized()) && attempt < 2 && !connect_cancel.load(Ordering::Acquire) {
+                attempt += 1;
+                drop(connection);
+                std::thread::sleep(Duration::from_millis(1500));
+                continue;
+            }
+            if !read_session.is_synchronized() {
+                return Err(if dropped {
+                    "The headphone closed the control connection while its settings were being read, three times in a row. Another app or device may be using it (for example the Sony Headphones Connect app on a phone, or another copy of Sound Connect), or the headphone is switching devices. Wait a few seconds and connect again.".into()
+                } else {
+                    "Device capability discovery lost protocol synchronization; reconnect before retrying.".to_string()
+                });
+            }
+            if attempt > 0 {
+                basics.warnings.push(format!(
+                    "The headphone closed the control connection while it was being read, so the app reconnected ({attempt} {}).{}",
+                    if attempt == 1 { "retry" } else { "retries" },
+                    if attempt >= 2 { " The last attempt skipped the optional equalizer and multipoint reads." } else { "" }
+                ));
+            }
+            return Ok::<_, String>((connection, basics, read_session, command_receiver));
         }
-        Ok::<_, String>((connection, basics, read_session, command_receiver))
     })
     .await;
     let result = result
@@ -668,6 +694,9 @@ async fn connect_device_internal(
                 "equalizerPresetCode".into(),
                 Value::from(equalizer.preset_code),
             );
+        }
+        if let Some(layout) = &basics.controls.eq_layout {
+            device.settings.insert("eqLayout".into(), layout.as_json());
         }
         if let Some(battery) = &basics.battery {
             apply_battery_level(device, battery.level);
@@ -1096,20 +1125,51 @@ async fn apply_setting_internal(
             let bands = value
                 .as_array()
                 .ok_or("Equalizer setting must be an array.")?;
-            if bands.len() != 10 {
-                return Err("The WH-1000XM6 equalizer requires ten bands.".into());
+            // A headphone that described its own equalizer sets the band count and step range;
+            // otherwise only the validated WH-1000XM6 layout (ten bands, steps 0 to 12) applies.
+            let (expected, highest) = runtime
+                .inner
+                .lock()
+                .map_err(|_| "Native state unavailable.")?
+                .devices
+                .get(&device_id)
+                .and_then(|device| device.settings.get("eqLayout"))
+                .and_then(|layout| Some((layout.get("bandCount")?.as_u64()?, layout.get("levelSteps")?.as_u64()?.saturating_sub(1))))
+                .unwrap_or((10, 12));
+            if bands.len() as u64 != expected {
+                return Err(format!("This headphone's equalizer requires {expected} bands."));
             }
             let bands = bands
                 .iter()
                 .map(|value| {
                     value
                         .as_u64()
-                        .filter(|v| *v <= 12)
+                        .filter(|v| *v <= highest)
                         .map(|v| v as u8)
-                        .ok_or("Equalizer values must be integer device steps from 0 to 12.")
+                        .ok_or_else(|| format!("Equalizer values must be integer device steps from 0 to {highest}."))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             discovery::SettingChange::Equalizer(bands)
+        }
+        "multipointDevice" => {
+            let address = value
+                .get("address")
+                .and_then(Value::as_str)
+                .filter(|address| multipoint::valid_address(address))
+                .ok_or("A multipoint change needs the device's Bluetooth address.")?;
+            let connect = value
+                .get("connect")
+                .and_then(Value::as_bool)
+                .ok_or("A multipoint change must say whether to connect or disconnect.")?;
+            discovery::SettingChange::MultipointDevice { address: address.to_string(), connect }
+        }
+        "multipointRefresh" => discovery::SettingChange::MultipointRefresh,
+        "sonyEqPreset" => {
+            let id = value
+                .as_u64()
+                .filter(|id| *id <= 255)
+                .ok_or("Equalizer preset must be a preset number.")?;
+            discovery::SettingChange::EqualizerPreset(id as u8)
         }
         "oneplusEqProfile" => {
             if serde_json::to_vec(&value)
@@ -1199,7 +1259,8 @@ async fn apply_setting_internal(
         let capability = match &change {
             discovery::SettingChange::ProbeNoiseSchema => "noise",
             discovery::SettingChange::NoiseMode(_) => "noise",
-            discovery::SettingChange::Equalizer(_) => "equalizer",
+            discovery::SettingChange::Equalizer(_) | discovery::SettingChange::EqualizerPreset(_) => "equalizer",
+            discovery::SettingChange::MultipointDevice { .. } | discovery::SettingChange::MultipointRefresh => "multipointDevices",
             discovery::SettingChange::DeviceControl(change) => &change.key,
             discovery::SettingChange::OnePlusEqProfile(_) => "oneplusEqProfile",
         };
@@ -1443,6 +1504,15 @@ pub fn run() {
     let runtime = Arc::new(Runtime::new());
     let shutdown_runtime = Arc::clone(&runtime);
     let app = tauri::Builder::default()
+        // Registered first. A second launch (autostart, a shortcut, the tray, an update restart) must not
+        // start another process, window and tray icon: two copies share one WebView2 profile, so one
+        // closing leaves the other blank and unresponsive. The new launch hands over to this one and exits.
+        .plugin(tauri_plugin_single_instance::init(|app, args, _working_directory| {
+            let background = args.iter().any(|arg| arg == "--autostart" || arg == "--start-minimized");
+            if !background {
+                let _ = open_main(app);
+            }
+        }))
         .plugin(
             tauri_plugin_autostart::Builder::new()
                 .args(["--autostart"])
