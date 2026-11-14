@@ -4,6 +4,8 @@
   --noise-open: #b8cec4;
   position: absolute; inset: 1% 0 12%; z-index: 2; pointer-events: none;
   mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  /* Its own layer: the moving dashes repaint here, not the whole scene behind it. */
+  will-change: transform;
 }
 :root[data-theme='light'] .noise-field { --noise-outside: #8b6336; --noise-boundary: #557982; --noise-open: #477d6b; }
 .noise-field svg { width: 100%; height: 100%; overflow: visible; }
@@ -15,9 +17,11 @@
 .sound-visual[data-noise='off'] .noise-passive { opacity: .5; }
 .noise-field path, .noise-field ellipse { vector-effect: non-scaling-stroke; stroke-width: .8; }
 .noise-trace { opacity: .22; }
-.noise-arrival { stroke-width: 1.15 !important; stroke-dasharray: 17 83; stroke-dashoffset: 8; animation: noise-arrive 4200ms linear infinite; animation-delay: calc(var(--lane) * -740ms); }
-.noise-counter { stroke: var(--noise-boundary); opacity: .7; stroke-dasharray: 28 72; stroke-dashoffset: 0; animation: noise-counter 4200ms linear infinite; animation-delay: calc(var(--lane) * -740ms); }
+.noise-arrival { stroke-width: 1.15 !important; stroke-dasharray: 17 83; stroke-dashoffset: 8; animation: noise-arrive 4200ms steps(100) infinite; animation-delay: calc(var(--lane) * -740ms); }
+.noise-counter { stroke: var(--noise-boundary); opacity: .7; stroke-dasharray: 28 72; stroke-dashoffset: 0; animation: noise-counter 4200ms steps(100) infinite; animation-delay: calc(var(--lane) * -740ms); }
 .noise-intercept { fill: var(--noise-boundary); opacity: .6; animation: noise-intercept 4200ms cubic-bezier(.37, 0, .63, 1) infinite; animation-delay: calc(var(--lane) * -740ms); }
+/* Sheets and the intercept flash move with transform and opacity only, so they can be drawn once and moved by the compositor. */
+.noise-absorb-sheet, .noise-open-sheet, .noise-intercept { will-change: transform, opacity; }
 .noise-shell-seam { opacity: .13; }
 .noise-lens { opacity: .42; }
 .noise-lens-bevel { opacity: .12; }
@@ -25,7 +29,7 @@
 .noise-open-sheet { opacity: .7; transform-origin: center; animation: noise-open 6500ms cubic-bezier(.37, 0, .63, 1) infinite; animation-delay: calc(var(--sheet) * -2100ms); }
 .noise-ground { opacity: .12; }
 .noise-through-trace { opacity: .32; }
-.noise-through { stroke-width: 1.1 !important; stroke-dasharray: 20 80; stroke-dashoffset: 35; animation: noise-through 6500ms linear infinite; animation-delay: calc(var(--lane) * -1100ms); }
+.noise-through { stroke-width: 1.1 !important; stroke-dasharray: 20 80; stroke-dashoffset: 35; animation: noise-through 6500ms steps(156) infinite; animation-delay: calc(var(--lane) * -1100ms); }
 .noise-open-edge { opacity: .6; }
 .noise-floor-open { opacity: .2; }
 .noise-passive { --noise-open: var(--scene-neutral); }

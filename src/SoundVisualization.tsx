@@ -24,6 +24,8 @@ const settle = cubicBezier(.22, 1, .36, 1);
 const breathe = cubicBezier(.37, 0, .63, 1);
 const sceneName = (value: string) => ({cinema:'Cinema',backgroundMusic:'Background Music',music:'Music',game:'Game',spatialAudioFixed:'Spatial audio',spatialAudioHeadTracked:'Head-tracked spatial audio'}[value] ?? 'Standard');
 const noiseName = (value: string) => value === 'cancelling' ? 'Noise cancelling' : value === 'ambient' ? 'Ambient sound' : value === 'off' ? 'Noise control off' : 'Noise control unconfirmed';
+/** How long an unfocused window keeps animating before the scene rests. */
+const UNFOCUSED_REST_MS = 20_000;
 const roomSpan = (room: unknown) => room === 2 ? 1.2 : room === 1 ? 1 : .82;
 
 export default function SoundVisualization({ deviceId, audioReactive, model, noise, listening, room, bands, initialBands, preview, reducedMotion, pending }: Props) {
@@ -101,16 +103,25 @@ export default function SoundVisualization({ deviceId, audioReactive, model, noi
   useEffect(() => {
     const element = stage.current;
     if (!element) return;
+    // A window left unfocused for a while keeps looping for nobody: rest the motion until it is used again.
+    let resting = false;
+    let restTimer: ReturnType<typeof setTimeout> | undefined;
     const sync = () => {
-      const paused = document.hidden || !visible.current || reducedMotion;
+      const paused = document.hidden || !visible.current || reducedMotion || resting;
       element.dataset.motion = reducedMotion ? 'reduced' : paused ? 'paused' : 'running';
       motions.current.forEach(animation => paused ? animation.pause() : animation.resume());
     };
+    const lose = () => { clearTimeout(restTimer); restTimer = setTimeout(() => { resting = true; sync(); }, UNFOCUSED_REST_MS); };
+    const gain = () => { clearTimeout(restTimer); if (resting) { resting = false; sync(); } };
     const observer = new IntersectionObserver(([entry]) => { visible.current = entry.isIntersecting; sync(); });
     observer.observe(element);
     document.addEventListener('visibilitychange', sync);
+    window.addEventListener('blur', lose);
+    window.addEventListener('focus', gain);
+    window.addEventListener('pointermove', gain, { passive: true });
+    if (typeof document.hasFocus === 'function' && !document.hasFocus()) lose();
     sync();
-    return () => { observer.disconnect(); document.removeEventListener('visibilitychange', sync); };
+    return () => { clearTimeout(restTimer); observer.disconnect(); document.removeEventListener('visibilitychange', sync); window.removeEventListener('blur', lose); window.removeEventListener('focus', gain); window.removeEventListener('pointermove', gain); };
   }, [reducedMotion]);
 
   useEffect(() => {
