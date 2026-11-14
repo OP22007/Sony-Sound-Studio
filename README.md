@@ -23,7 +23,7 @@ A local desktop companion for Sony headphones. Shape your sound, switch listenin
 - **Model-specific equalizers:** built-in sound profiles use each model’s own protocol indices. Custom curves use the earbuds’ reported frequencies and dB range; save edits, rename and apply profiles with matching device readback. Supported models can create a new profile from their original-app tuning layout.
 - **Spatial listening:** model-listed Off/fixed modes and head tracking appear only after compatible live capability and current-mode replies. Older firmware uses its spatial on/off path. [Protocol evidence and model coverage](docs/research/oneplus-spatial.md).
 - **BassWave:** a dedicated slider in the Equalizer tab uses the connected model’s reported range. Supported models also expose a separate enable switch. Both level changes and enablement require device readback.
-- All OnePlus entries are experimental and awaiting hardware testing; these controls are included in 0.1.8. Models outside the catalog can be discovered by their OnePlus headphone name, but unknown product IDs cannot enable settings. Custom profile deletion and multipoint management are unavailable.
+- All OnePlus entries are experimental and awaiting hardware testing; these controls are included in 0.1.9. Models outside the catalog can be discovered by their OnePlus headphone name, but unknown product IDs cannot enable settings. Custom profile deletion and multipoint management are unavailable.
 
 See the [HeyMelody evidence and testing guide](docs/research/oneplus-heymelody.md) for command layouts, original-app references and validation limits.
 
@@ -60,7 +60,7 @@ See [automatic listening setup](docs/media-following.md) for supported rules, br
 
 ## Download
 
-Get the [latest preview release](https://github.com/OP22007/Sony-Sound-Studio/releases). 0.1.8 provides signed Windows x64, macOS Apple Silicon and Intel, and Linux x64 packages. [0.1.8 changes and limitations](docs/releases/v0.1.8.md).
+Get the [latest preview release](https://github.com/OP22007/Sony-Sound-Studio/releases). 0.1.9 provides signed Windows x64, macOS Apple Silicon and Intel, and Linux x64 packages. [0.1.9 changes and limitations](docs/releases/v0.1.9.md).
 
 Package formats and platform support:
 
