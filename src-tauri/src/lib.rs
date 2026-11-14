@@ -6,6 +6,7 @@ mod device_observer;
 mod discovery;
 mod media_automation;
 mod game_detector;
+mod battery_alert;
 mod history;
 mod listening_policy;
 mod local_radio;
@@ -36,6 +37,7 @@ use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, State, WebviewWindowBuilder};
 use tauri_plugin_autostart::ManagerExt as AutostartManagerExt;
+use tauri_plugin_notification::NotificationExt;
 
 const MAX_DIAGNOSTICS: usize = 64;
 const MAX_SESSIONS: usize = 8;
@@ -281,9 +283,41 @@ impl Inner {
     }
 }
 
+static BATTERY_ALERTS: std::sync::LazyLock<Mutex<battery_alert::BatteryAlerts>> =
+    std::sync::LazyLock::new(|| Mutex::new(battery_alert::BatteryAlerts::default()));
+
+/// Publishes a state snapshot and shows an OS notification when a connected headphone's
+/// battery has just dropped below the low-battery level.
+fn emit_snapshot(app: &AppHandle, snapshot: &AppState) {
+    let _ = app.emit("app-state", snapshot);
+    let enabled = app
+        .try_state::<PreferencesState>()
+        .and_then(|state| state.current.lock().ok().map(|p| p.low_battery_alerts))
+        .unwrap_or(true);
+    let mut alerts = BATTERY_ALERTS.lock().unwrap_or_else(|e| e.into_inner());
+    if !enabled {
+        alerts.forget_all();
+        return;
+    }
+    for device in &snapshot.devices {
+        let charging = device
+            .settings
+            .get("batteryCharging")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+        let connected = device.connection == ConnectionState::Connected;
+        if alerts.observe(&device.id, connected, device.battery, charging) {
+            if let Some(level) = device.battery {
+                let (title, body) = battery_alert::message(&device.name, level);
+                let _ = app.notification().builder().title(title).body(body).show();
+            }
+        }
+    }
+}
+
 fn emit_state(app: &AppHandle, runtime: &Runtime) {
     if let Ok(snapshot) = runtime.snapshot() {
-        let _ = app.emit("app-state", snapshot);
+        let _ = emit_snapshot(app, &snapshot);
     }
 }
 
@@ -504,7 +538,7 @@ async fn discover_devices_internal(
     inner.log(&format!("Discovery completed: {count} paired supported headphone entries. Pairing does not imply a live control connection."));
     let snapshot = inner.snapshot();
     drop(inner);
-    let _ = app.emit("app-state", &snapshot);
+    emit_snapshot(&app, &snapshot);
     Ok(snapshot)
 }
 
@@ -776,7 +810,7 @@ async fn connect_device_internal(
                 read_session,
                 command_receiver,
                 |snapshot| {
-                    let _ = reader_app.emit("app-state", snapshot);
+                    emit_snapshot(&reader_app, &snapshot);
                 },
             );
             if unexpected_disconnect {
@@ -787,7 +821,7 @@ async fn connect_device_internal(
             runtime.stop_all();
             "Cannot start Bluetooth reader; connections were closed.".to_string()
         })?;
-    let _ = app.emit("app-state", &snapshot);
+    emit_snapshot(&app, &snapshot);
     Ok(snapshot)
 }
 
@@ -1086,7 +1120,7 @@ fn disconnect_device(
     );
     let snapshot = inner.snapshot();
     drop(inner);
-    let _ = app.emit("app-state", &snapshot);
+    emit_snapshot(&app, &snapshot);
     Ok(snapshot)
 }
 
@@ -1475,7 +1509,7 @@ async fn apply_setting_internal(
     drop(inner);
     drop(confirmation_guard);
     drop(confirmation_authority);
-    let _ = app.emit("app-state", &snapshot);
+    emit_snapshot(&app, &snapshot);
     Ok(snapshot)
 }
 
@@ -1544,6 +1578,7 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_notification::init())
         .manage(app_updates::AppUpdates::new())
         .manage(runtime)
         .invoke_handler(tauri::generate_handler![
