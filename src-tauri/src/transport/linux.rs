@@ -7,12 +7,31 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 fn run_tool(program: &str, args: &[&str], timeout: Duration) -> Result<String, String> {
-    let mut child = Command::new(program).args(args).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null())
-        .spawn().map_err(|_| format!("{program} is unavailable. Install BlueZ tools and enable Bluetooth before retrying."))?;
+    let mut command = Command::new(program);
+    command.args(args).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    // A packaged app (AppImage) points the loader at its own bundled libraries. System tools such
+    // as bluetoothctl must keep using the system ones, or they can fail to start at all.
+    for variable in ["LD_PRELOAD", "PYTHONHOME", "PYTHONPATH", "GIO_MODULE_DIR", "GIO_EXTRA_MODULES"] {
+        command.env_remove(variable);
+    }
+    match std::env::var_os("LD_LIBRARY_PATH_ORIG") {
+        Some(original) => { command.env("LD_LIBRARY_PATH", original); }
+        None => { command.env_remove("LD_LIBRARY_PATH"); }
+    }
+    let mut child = command
+        .spawn().map_err(|error| format!("{program} could not be started ({error}). Install BlueZ tools and enable Bluetooth before retrying."))?;
     let stdout = child
         .stdout
         .take()
         .ok_or("Cannot read Bluetooth tool output.")?;
+    let stderr = child.stderr.take();
+    let error_reader = std::thread::spawn(move || {
+        let mut output = Vec::new();
+        if let Some(stderr) = stderr {
+            let _ = stderr.take(2048).read_to_end(&mut output);
+        }
+        String::from_utf8_lossy(&output).lines().find(|line| !line.trim().is_empty()).unwrap_or_default().trim().chars().take(200).collect::<String>()
+    });
     let reader = std::thread::spawn(move || {
         let mut output = Vec::new();
         let _ = stdout.take(65536).read_to_end(&mut output);
@@ -25,8 +44,10 @@ fn run_tool(program: &str, args: &[&str], timeout: Duration) -> Result<String, S
                 break if status.success() {
                     Ok(())
                 } else {
+                    let detail = error_reader.join().unwrap_or_default();
                     Err(format!(
-                        "{program} failed. Check the Bluetooth service and permissions."
+                        "{program} failed ({status}){}. Check that the Bluetooth service is running and that you may use it.",
+                        if detail.is_empty() { String::new() } else { format!(": {detail}") }
                     ))
                 }
             }
@@ -49,7 +70,7 @@ pub fn enumerate() -> Result<Vec<PairedDevice>, String> {
     // BlueZ 5.65+ accepts `devices Paired`; older releases only know `paired-devices`.
     let output = match run_tool("bluetoothctl", &["devices", "Paired"], Duration::from_secs(5)) {
         Ok(output) if output.lines().any(|line| line.starts_with("Device ")) => output,
-        _ => run_tool("bluetoothctl", &["paired-devices"], Duration::from_secs(5)).unwrap_or_default(),
+        _ => run_tool("bluetoothctl", &["paired-devices"], Duration::from_secs(5))?,
     };
     let mut devices = Vec::new();
     for line in output.lines().take(256) {
