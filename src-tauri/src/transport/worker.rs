@@ -145,7 +145,7 @@ pub(super) fn connect(
     thread::Builder::new()
         .name("bluetooth-owner".into())
         .spawn(move || {
-            let _lease = lease;
+            let mut lease = Some(lease);
             let connect_deadline = Instant::now() + CONNECT_TIMEOUT;
             let result = if worker_signals.stopped() {
                 Err("Bluetooth connection was cancelled.".to_string())
@@ -155,6 +155,9 @@ pub(super) fn connect(
             let (mut driver, service_uuid) = match result {
                 Ok(value) => value,
                 Err(error) => {
+                    // No driver exists, so the device is free: release it before the caller can
+                    // observe the failure and immediately try again.
+                    drop(lease.take());
                     let _ = connected_tx.send(Err(error));
                     return;
                 }

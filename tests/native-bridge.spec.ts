@@ -704,6 +704,17 @@ test('native controls stay unavailable without negotiated capabilities', async (
   expect(calls).not.toContain('apply_setting');
 });
 
+test('low battery alerts default on and can be switched off from app settings', async ({ page }) => {
+  await installNativeFixture(page, false);
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'App settings', exact: true }).click();
+  const alerts = page.getByRole('switch', { name: 'Low battery alerts', exact: true });
+  await expect(alerts).toHaveAttribute('aria-checked', 'true');
+  await alerts.click();
+  await expect(alerts).toHaveAttribute('aria-checked', 'false');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('__fixtureNativePreferences'))).toContain('"lowBatteryAlerts":false');
+});
+
 test('native app preferences persist through IPC and reload from the desktop store', async ({ page }) => {
   await installNativeFixture(page, false);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
