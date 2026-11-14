@@ -10,10 +10,11 @@ export interface AppPreferences {
   launchAtLogin: boolean;
   autoReconnect: boolean;
   startMinimized: boolean;
+  lowBatteryAlerts: boolean;
 }
 export const defaultAppPreferences: AppPreferences = {
   theme: 'dark', reduceMotion: false, closeToTray: true,
-  launchAtLogin: false, autoReconnect: true, startMinimized: false,
+  launchAtLogin: false, autoReconnect: true, startMinimized: false, lowBatteryAlerts: true,
 };
 export type SettingPrimitive = string | number | boolean;
 export interface DeviceControlOption { value: SettingPrimitive; label: string; enabled?: boolean }
@@ -41,7 +42,9 @@ export function isAppPreferences(value: unknown): value is AppPreferences {
     && typeof p.closeToTray === 'boolean'
     && typeof p.launchAtLogin === 'boolean'
     && typeof p.autoReconnect === 'boolean'
-    && typeof p.startMinimized === 'boolean';
+    && typeof p.startMinimized === 'boolean'
+    // Older native builds do not send this switch; it defaults to on.
+    && (p.lowBatteryAlerts === undefined || typeof p.lowBatteryAlerts === 'boolean');
 }
 export interface AppState {
   revision: number; platform: string; transportStatus: string; devices: Device[]; diagnostics: string[];

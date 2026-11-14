@@ -95,6 +95,36 @@ test('reserved names and storage failures leave the saved preset library intact'
   await expect(page.getByRole('button', { name: 'Apply “My profile”', exact: true })).toHaveCount(0);
 });
 
+test('grabbing a point does not move it and a fast drag travels one step at a time', async ({ page }) => {
+  await preview(page);
+  const graph = page.getByRole('slider', { name: '31 Hz', exact: true });
+  const svg = page.locator('.eq-curve');
+  const box = await svg.boundingBox();
+  const point = await graph.boundingBox();
+  if (!box || !point) throw new Error('Equalizer graph is not visible');
+  const before = await graph.getAttribute('aria-valuenow');
+  const cx = point.x + point.width / 2;
+  // Press a few pixels off the point's centre: the value must not change on grab.
+  await page.mouse.move(cx, point.y + point.height / 2 + 6);
+  await page.mouse.down();
+  await expect(graph).toHaveAttribute('aria-valuenow', before ?? '');
+  // Jerk the pointer to the top of the graph in one event; record every value on the way.
+  await page.evaluate(() => {
+    const node = document.querySelector('[aria-label="31 Hz"]') as Element;
+    (window as unknown as { seen: string[] }).seen = [];
+    new MutationObserver(() => (window as unknown as { seen: string[] }).seen.push(node.getAttribute('aria-valuenow') ?? '')).observe(node, { attributes: true, attributeFilter: ['aria-valuenow'] });
+  });
+  await page.mouse.move(cx, box.y + 2, { steps: 1 });
+  await page.mouse.up();
+  await expect(graph).toHaveAttribute('aria-valuenow', '6');
+  const seen = await page.evaluate(() => (window as unknown as { seen: string[] }).seen.map(Number));
+  const steps = seen.slice(1).map((value, index) => Math.abs(value - seen[index]));
+  // One jump from 0 to 6 would be a single update. React may merge two frames into one render,
+  // so allow a pair of steps between observed values, but require a gradual climb.
+  expect(seen.length).toBeGreaterThanOrEqual(3);
+  expect(Math.max(...steps)).toBeLessThanOrEqual(2);
+});
+
 test('graph handles drag with the pointer and expose bounded keyboard sliders', async ({ page }) => {
   await preview(page);
   const graph = page.getByRole('slider', { name: '31 Hz', exact: true });
