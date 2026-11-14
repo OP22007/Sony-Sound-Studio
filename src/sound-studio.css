@@ -76,6 +76,9 @@
 .visual-product-frame { position: absolute; inset: 27px 0 78px; width: min(80%, 355px); margin-inline: auto; z-index: 3; pointer-events: none; }
 .visual-product-wide { width: min(89%, 430px); }
 .scene-entrance, .visual-reaction, .visual-drift { position: absolute; inset: 0; transform-origin: 50% 65%; }
+/* The headphones carry drop shadows and the ground shadow is blurred: promote the moving layers so those are drawn once, not every frame. */
+.visual-drift, .scene-air-pane { will-change: transform; }
+.scene-ground-idle { will-change: transform, opacity; }
 .visual-audio { position: absolute; inset: 0; transform: translateY(calc(var(--audio-energy) * -.7px)) scale(calc(1 + var(--audio-energy) * .0025)); transition: transform 280ms ease-out; }
 .earcup-light { position: absolute; top: 48%; width: 36%; height: 50%; border-radius: 50%; pointer-events: none; background: radial-gradient(ellipse, color-mix(in srgb,var(--scene-spectrum) 12%,transparent),transparent 68%); opacity: calc(.36 + var(--audio-energy) * .18); transition: opacity 280ms ease-out; filter: blur(9px); }
 .earcup-light-left { left: 14%; }
