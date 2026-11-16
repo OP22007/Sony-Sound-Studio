@@ -101,6 +101,422 @@
       "recordedBy": 140067318,
       "recordedOn": "2026-11-16T17:13:52.753Z",
       "result": "confirmed"
+    },
+    "owner-test-e0583c6a-be56-47c4-b417-1b9daf68366c": {
+      "title": "WH-CH720N: Battery readout on windows",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-e0583c6a-be56-47c4-b417-1b9daf68366c",
+      "detail": "No model-specific hardware result recorded.\nfirmware: NA\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-ch720n"
+      ],
+      "platforms": [
+        "windows"
+      ],
+      "features": [
+        "battery"
+      ],
+      "firmware": [
+        "NA"
+      ],
+      "test": {
+        "firmware": "NA",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:17:10.032Z",
+      "result": "confirmed"
+    },
+    "owner-test-25101672-bc1d-4838-8050-ec4f2c96953b": {
+      "title": "WH-CH720N: Noise control & transparency on windows",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-25101672-bc1d-4838-8050-ec4f2c96953b",
+      "detail": "No model-specific hardware result recorded.\nfirmware: NA\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-ch720n"
+      ],
+      "platforms": [
+        "windows"
+      ],
+      "features": [
+        "noise"
+      ],
+      "firmware": [
+        "NA"
+      ],
+      "test": {
+        "firmware": "NA",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:17:10.032Z",
+      "result": "confirmed"
+    },
+    "owner-test-d7d45522-8170-4d85-b396-5cc35821415f": {
+      "title": "WH-CH720N: Ambient sound level on windows",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-d7d45522-8170-4d85-b396-5cc35821415f",
+      "detail": "No model-specific hardware result recorded.\nfirmware: NA\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-ch720n"
+      ],
+      "platforms": [
+        "windows"
+      ],
+      "features": [
+        "ambient"
+      ],
+      "firmware": [
+        "NA"
+      ],
+      "test": {
+        "firmware": "NA",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:17:10.032Z",
+      "result": "confirmed"
+    },
+    "owner-test-3ae8ef55-887f-489a-ae5d-70e3d08221d3": {
+      "title": "WH-CH720N: Equalizer & presets on windows",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-3ae8ef55-887f-489a-ae5d-70e3d08221d3",
+      "detail": "No model-specific hardware result recorded.\nfirmware: NA\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-ch720n"
+      ],
+      "platforms": [
+        "windows"
+      ],
+      "features": [
+        "eq"
+      ],
+      "firmware": [
+        "NA"
+      ],
+      "test": {
+        "firmware": "NA",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:17:10.032Z",
+      "result": "confirmed"
+    },
+    "owner-test-721d2127-1eff-4874-b56c-1d07f45900b4": {
+      "title": "WH-CH720N: Listening modes on windows",
+      "kind": "owner review",
+      "url": "admin-tests.md#owner-test-721d2127-1eff-4874-b56c-1d07f45900b4",
+      "detail": "No model-specific hardware result recorded.\nfirmware: NA\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-ch720n"
+      ],
+      "platforms": [
+        "windows"
+      ],
+      "features": [
+        "listening"
+      ],
+      "firmware": [
+        "NA"
+      ],
+      "test": {
+        "firmware": "NA",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:17:10.032Z",
+      "result": "unsupported"
+    },
+    "owner-test-6674b22f-7c9f-4066-95db-4ee137dae5ef": {
+      "title": "WH-CH720N: Device settings on windows",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-6674b22f-7c9f-4066-95db-4ee137dae5ef",
+      "detail": "No model-specific hardware result recorded.\nfirmware: NA\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-ch720n"
+      ],
+      "platforms": [
+        "windows"
+      ],
+      "features": [
+        "settings"
+      ],
+      "firmware": [
+        "NA"
+      ],
+      "test": {
+        "firmware": "NA",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:17:10.032Z",
+      "result": "confirmed"
+    },
+    "owner-test-1c105e1c-1046-4071-9b44-dbbc5c57ca4f": {
+      "title": "WH-CH720N: Control connection on linux",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-1c105e1c-1046-4071-9b44-dbbc5c57ca4f",
+      "detail": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.\nfirmware: NA\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-ch720n"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "features": [
+        "connection"
+      ],
+      "firmware": [
+        "NA"
+      ],
+      "test": {
+        "firmware": "NA",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:17:10.032Z",
+      "result": "confirmed"
+    },
+    "owner-test-6cd6a718-677a-428c-bc90-4d3d12bf9b30": {
+      "title": "WH-CH720N: Battery readout on linux",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-6cd6a718-677a-428c-bc90-4d3d12bf9b30",
+      "detail": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.\nfirmware: NA\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-ch720n"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "features": [
+        "battery"
+      ],
+      "firmware": [
+        "NA"
+      ],
+      "test": {
+        "firmware": "NA",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:17:10.032Z",
+      "result": "confirmed"
+    },
+    "owner-test-a02a04fd-d844-408e-89fd-6f73f0bbe479": {
+      "title": "WH-CH720N: Noise control & transparency on linux",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-a02a04fd-d844-408e-89fd-6f73f0bbe479",
+      "detail": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.\nfirmware: NA\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-ch720n"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "features": [
+        "noise"
+      ],
+      "firmware": [
+        "NA"
+      ],
+      "test": {
+        "firmware": "NA",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:17:10.032Z",
+      "result": "confirmed"
+    },
+    "owner-test-8d71fccc-79df-427a-b5df-a7b69091a263": {
+      "title": "WH-CH720N: Ambient sound level on linux",
+      "kind": "owner review",
+      "url": "admin-tests.md#owner-test-8d71fccc-79df-427a-b5df-a7b69091a263",
+      "detail": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.\nfirmware: NA\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-ch720n"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "features": [
+        "ambient"
+      ],
+      "firmware": [
+        "NA"
+      ],
+      "test": {
+        "firmware": "NA",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:17:10.032Z",
+      "result": "unsupported"
+    },
+    "owner-test-1aae5226-782f-46fa-adde-435c72ca1935": {
+      "title": "WH-CH720N: Equalizer & presets on linux",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-1aae5226-782f-46fa-adde-435c72ca1935",
+      "detail": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.\nfirmware: NA\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-ch720n"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "features": [
+        "eq"
+      ],
+      "firmware": [
+        "NA"
+      ],
+      "test": {
+        "firmware": "NA",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:17:10.032Z",
+      "result": "confirmed"
+    },
+    "owner-test-c8ee65d5-c331-477c-941f-acb13350f243": {
+      "title": "WH-CH720N: Listening modes on linux",
+      "kind": "owner review",
+      "url": "admin-tests.md#owner-test-c8ee65d5-c331-477c-941f-acb13350f243",
+      "detail": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.\nfirmware: NA\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-ch720n"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "features": [
+        "listening"
+      ],
+      "firmware": [
+        "NA"
+      ],
+      "test": {
+        "firmware": "NA",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:17:10.032Z",
+      "result": "unsupported"
+    },
+    "owner-test-5e217a64-acab-4040-8b93-fd914cf104d5": {
+      "title": "WH-CH720N: Device settings on linux",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-5e217a64-acab-4040-8b93-fd914cf104d5",
+      "detail": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.\nfirmware: NA\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-ch720n"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "features": [
+        "settings"
+      ],
+      "firmware": [
+        "NA"
+      ],
+      "test": {
+        "firmware": "NA",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:17:10.032Z",
+      "result": "confirmed"
     }
   },
   "devices": [
@@ -558,31 +974,31 @@
             ]
           },
           "battery": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "No model-specific hardware result recorded.",
             "evidence": [
-              "implementation"
+              "owner-test-e0583c6a-be56-47c4-b417-1b9daf68366c"
             ]
           },
           "noise": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "No model-specific hardware result recorded.",
             "evidence": [
-              "implementation"
+              "owner-test-25101672-bc1d-4838-8050-ec4f2c96953b"
             ]
           },
           "ambient": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "No model-specific hardware result recorded.",
             "evidence": [
-              "implementation"
+              "owner-test-d7d45522-8170-4d85-b396-5cc35821415f"
             ]
           },
           "eq": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "No model-specific hardware result recorded.",
             "evidence": [
-              "implementation"
+              "owner-test-3ae8ef55-887f-489a-ae5d-70e3d08221d3"
             ]
           },
           "bass": {
@@ -593,17 +1009,17 @@
             ]
           },
           "listening": {
-            "status": "untested",
+            "status": "unsupported",
             "note": "No model-specific hardware result recorded.",
             "evidence": [
-              "implementation"
+              "owner-test-721d2127-1eff-4874-b56c-1d07f45900b4"
             ]
           },
           "settings": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "No model-specific hardware result recorded.",
             "evidence": [
-              "implementation"
+              "owner-test-6674b22f-7c9f-4066-95db-4ee137dae5ef"
             ]
           },
           "firmware": {
@@ -616,38 +1032,38 @@
         },
         "linux": {
           "connection": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.",
             "evidence": [
-              "implementation"
+              "owner-test-1c105e1c-1046-4071-9b44-dbbc5c57ca4f"
             ]
           },
           "battery": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.",
             "evidence": [
-              "implementation"
+              "owner-test-6cd6a718-677a-428c-bc90-4d3d12bf9b30"
             ]
           },
           "noise": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.",
             "evidence": [
-              "implementation"
+              "owner-test-a02a04fd-d844-408e-89fd-6f73f0bbe479"
             ]
           },
           "ambient": {
-            "status": "untested",
+            "status": "unsupported",
             "note": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.",
             "evidence": [
-              "implementation"
+              "owner-test-8d71fccc-79df-427a-b5df-a7b69091a263"
             ]
           },
           "eq": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.",
             "evidence": [
-              "implementation"
+              "owner-test-1aae5226-782f-46fa-adde-435c72ca1935"
             ]
           },
           "bass": {
@@ -658,17 +1074,17 @@
             ]
           },
           "listening": {
-            "status": "untested",
+            "status": "unsupported",
             "note": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.",
             "evidence": [
-              "implementation"
+              "owner-test-c8ee65d5-c331-477c-941f-acb13350f243"
             ]
           },
           "settings": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.",
             "evidence": [
-              "implementation"
+              "owner-test-5e217a64-acab-4040-8b93-fd914cf104d5"
             ]
           },
           "firmware": {
