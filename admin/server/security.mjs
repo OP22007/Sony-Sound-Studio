@@ -11,11 +11,11 @@ export function config(env = process.env) {
   const local = origin.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(origin.hostname) && env.NODE_ENV !== 'production';
   if ((!local && origin.protocol !== 'https:') || origin.pathname !== '/' || origin.search || origin.hash || origin.username || origin.password) throw new HttpError(503, 'ADMIN_ORIGIN must be an HTTPS origin without a path.');
   if (!/^[a-fA-F0-9]{64}$/.test(env.SESSION_SECRET)) throw new HttpError(503, 'SESSION_SECRET must contain 32 random bytes encoded as 64 hex characters.');
-  const branch = env.SOURCE_BRANCH || 'codex/website-scroll-launch';
+  const branch = env.SOURCE_BRANCH || 'codex/admin-compatibility';
   const authMode = env.GITHUB_AUTH_MODE || 'oauth-app';
   if (!['oauth-app', 'github-app'].includes(authMode)) throw new HttpError(503, 'GITHUB_AUTH_MODE must be oauth-app or github-app.');
-  if (!/^codex\/[a-zA-Z0-9-]+$/.test(branch)) throw new HttpError(503, 'SOURCE_BRANCH must be a codex/ working branch.');
-  return { origin: origin.origin, local, authMode, clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET, key: Buffer.from(env.SESSION_SECRET, 'hex'), ownerId: 140067318, branch, repo: 'OP22007/Sony-Sound-Studio', repoId: 1441020213 };
+  if (!/^codex\/admin-[a-zA-Z0-9-]+$/.test(branch)) throw new HttpError(503, 'SOURCE_BRANCH must be a codex/admin- working branch.');
+  return { origin: origin.origin, local, authMode, clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET, key: Buffer.from(env.SESSION_SECRET, 'hex'), ownerId: 140067318, branch, baseBranch: 'main', repo: 'OP22007/Sony-Sound-Studio', repoId: 1441020213 };
 }
 export const random = () => randomBytes(32).toString('base64url');
 export const challenge = value => createHash('sha256').update(value).digest('base64url');

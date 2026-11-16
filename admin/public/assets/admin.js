@@ -70,11 +70,14 @@ function renderVersion(key,value) {
     ? [model.testContext?.firmware,...records.filter(r=>r.models?.includes(model.id)).flatMap(r=>[...(r.firmware||[]),r.test?.firmware])]
     : [...(state.appVersions||[]),...state.registry.devices.map(m=>m.testContext?.appVersion),...records.map(r=>r.test?.appVersion)];
   const versions=[...new Set(known.filter(v=>typeof v==='string'&&v.trim()&&!/^(unknown|not recorded|n\/a|none)$/i.test(v.trim())).map(v=>v.trim()))];
+  // Firmware lists newest first; app versions already arrive newest release first. The newest is preselected.
+  if(key==='firmware')versions.sort((x,y)=>y.localeCompare(x,undefined,{numeric:true}));
+  const latest=(key==='firmware'?versions[0]:versions.find(v=>v===state.appVersions?.[0]))||'';
   const select=$(key);select.replaceChildren();
   for(const [id,label] of [['','Choose a version…'],...versions.map(v=>[v,v]),['__other__','Other version / enter manually…']]){
     const option=text('option',label);option.value=id;select.append(option);
   }
-  select.value=value?(versions.includes(value)?value:'__other__'):'';
+  select.value=value?(versions.includes(value)?value:'__other__'):latest;
   $(key+'-custom').value=select.value==='__other__'?value:'';
 }
 function testValue(key) {return ['firmware','appVersion'].includes(key)&&$(key).value==='__other__'?$(key+'-custom').value:$(key).value;}
@@ -104,7 +107,7 @@ $('test-form').addEventListener('submit',event=>{
 });
 $('save').addEventListener('click',async()=>{
   busy=true;controls();notify('Saving the review to GitHub…');
-  try {const result=await api('/api/save',{baseSha:state.baseSha,modelId:model.id,summary:$('summary').value,changes:[...drafts.values()]});state.registry=result.registry;state.baseSha=result.baseSha;model=state.registry.devices.find(m=>m.id===model.id);drafts.clear();renderModel();notify('Saved to GitHub. The public site has not changed yet.');$('publication').textContent='Saved source commit '+result.baseSha.slice(0,7)+'. Ready to publish.';}
+  try {const result=await api('/api/save',{baseSha:state.baseSha,modelId:model.id,summary:$('summary').value,changes:[...drafts.values()]});state.registry=result.registry;state.baseSha=result.baseSha;model=state.registry.devices.find(m=>m.id===model.id);drafts.clear();renderModel();notify(result.pullUrl?'Saved to GitHub as a pull request. Merge it to update the Vercel site.':'Saved to GitHub. Open a pull request from the admin branch into main to update the Vercel site.');$('publication').textContent='Saved source commit '+result.baseSha.slice(0,7)+'. Ready to publish to GitHub Pages.';if(result.pullUrl){const link=document.createElement('a');link.href=result.pullUrl;link.target='_blank';link.rel='noopener noreferrer';link.textContent=' Review and merge the pull request ↗';$('publication').append(link);}}
   catch(error){notify(error.message,true);}finally{busy=false;controls();}
 });
 $('publish').addEventListener('click',async()=>{

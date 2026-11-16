@@ -37,3 +37,34 @@ export async function commitFiles(github, cfg, branch, snapshot, files, message)
   await github(`/repos/${cfg.repo}/git/refs/heads/${branch}`, {sha: commit.sha, force:false}, 'PATCH');
   return commit.sha;
 }
+
+// The admin never writes to the protected base branch. Edits live on one working branch that is
+// proposed to the base branch through a pull request, so Vercel (built from the base) picks them up on merge.
+export async function openPull(github, cfg) {
+  const pulls = await github(`/repos/${cfg.repo}/pulls?state=open&head=${cfg.repo.split('/')[0]}:${cfg.branch}&base=${cfg.baseBranch}`);
+  return Array.isArray(pulls) && pulls.length ? pulls[0] : null;
+}
+// Source of truth for editing: the working branch while its pull request is open, otherwise the base branch.
+export async function workingSnapshot(github, cfg) {
+  const pull = await openPull(github, cfg);
+  return { ...(await readSnapshot(github, cfg, pull ? cfg.branch : cfg.baseBranch)), pull };
+}
+// Point the working branch at the snapshot before committing. With no open pull request the branch holds
+// nothing unreviewed, so it may be created or moved to the base head.
+export async function prepareBranch(github, cfg, snapshot) {
+  if (snapshot.pull) return;
+  const url = `/repos/${cfg.repo}/git/refs/heads/${cfg.branch}`;
+  let exists = true;
+  try { await github(`/repos/${cfg.repo}/git/ref/heads/${cfg.branch}`); } catch (error) { if (error.status !== 502) throw error; exists = false; }
+  if (exists) await github(url, { sha: snapshot.sha, force: true }, 'PATCH');
+  else await github(`/repos/${cfg.repo}/git/refs`, { ref: `refs/heads/${cfg.branch}`, sha: snapshot.sha });
+}
+export async function ensurePull(github, cfg, snapshot, modelId) {
+  if (snapshot.pull) return snapshot.pull.html_url;
+  try {
+    const pull = await github(`/repos/${cfg.repo}/pulls`, { title: 'Update device compatibility from the owner admin', head: cfg.branch, base: cfg.baseBranch, body: `Owner compatibility review recorded in the admin app (latest: ${modelId}). Merging this updates the website on Vercel.
+
+Further saves in the admin add commits to this pull request.` });
+    return pull.html_url;
+  } catch { return null; }
+}

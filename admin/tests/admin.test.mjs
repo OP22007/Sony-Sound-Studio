@@ -12,7 +12,7 @@ const artwork=JSON.parse(await readFile(new URL('../../docs/compatibility/artwor
 const env={ADMIN_ORIGIN:'https://studio-admin.example',GITHUB_CLIENT_ID:'test-client',GITHUB_CLIENT_SECRET:'test-secret',SESSION_SECRET:'ae'.repeat(32)};
 const cfg=config(env), session={token:'test-access-token',userId:cfg.ownerId,csrf:random()};
 const input=()=>({baseSha:'source-head',modelId:'wh-1000xm6',summary:baseline.devices.find(m=>m.id==='wh-1000xm6').summary,changes:[{platform:'windows',feature:'noise',status:'confirmed',note:'Three modes and hardware-button tracking verified.',test:{firmware:'3.1.5',appVersion:'0.1.3',testedOn:'2026-01-01',osVersion:'Windows 11',requested:'ANC, Ambient, Off',readback:'Matched each requested mode',observed:'Audible changes matched all three modes',steps:'Switch three modes, wait, then use the headphone button.'}}]});
-function mockGitHub({ownerId=cfg.ownerId,refConflict=false,failPagesBuild=false,failPatch=false}={}) {
+function mockGitHub({ownerId=cfg.ownerId,refConflict=false,failPagesBuild=false,failPatch=false,openPull=false}={}) {
   const calls=[];
   const fetcher=async(url,options={})=>{
     const path=new URL(url).pathname, method=options.method||'GET', data=options.body?JSON.parse(options.body):undefined;
@@ -21,6 +21,8 @@ function mockGitHub({ownerId=cfg.ownerId,refConflict=false,failPagesBuild=false,
     if(url==='https://github.com/login/oauth/access_token')result={access_token:'test-access-token'};
     else if(path==='/user')result={id:ownerId,login:'OP22007'};
     else if(path.endsWith('/releases'))result=[{tag_name:'v0.1.3',draft:false},{tag_name:'v9.9.9',draft:true}];
+    else if(path.endsWith('/pulls')&&method==='GET')result=openPull?[{html_url:'https://github.com/pr/1'}]:[];
+    else if(path.endsWith('/pulls')&&method==='POST')result={html_url:'https://github.com/pr/2'};
     else if(path.includes('/git/ref/heads/'))result={object:{sha:path.endsWith('gh-pages')?'pages-head':refConflict?'changed-head':'source-head'}};
     else if(path.includes('/git/commits/')&&method==='GET')result={tree:{sha:'base-tree'}};
     else if(path.includes('/contents/docs/compatibility/')){const value=path.endsWith('artwork.json')?artwork:baseline;result={encoding:'base64',content:Buffer.from(JSON.stringify(value)).toString('base64')};}
@@ -44,7 +46,7 @@ async function request(handler,path,{method='GET',signedIn=false,payload,headers
 test('configuration fails closed and pins owner ID, repository and working branch',()=>{
   assert.throws(()=>config({}),/required/);assert.throws(()=>config({...env,SESSION_SECRET:'short'}),/32 random bytes/);
   assert.throws(()=>config({...env,ADMIN_ORIGIN:'http://unsafe.example'}),/HTTPS/);
-  assert.throws(()=>config({...env,SOURCE_BRANCH:'main'}),/codex/);
+  assert.throws(()=>config({...env,SOURCE_BRANCH:'main'}),/codex\/admin-/);assert.throws(()=>config({...env,SOURCE_BRANCH:'codex/website-scroll-launch'}),/codex\/admin-/);
   assert.throws(()=>config({...env,GITHUB_AUTH_MODE:'unknown'}),/GITHUB_AUTH_MODE/);
   assert.equal(config({...env,ADMIN_GITHUB_USER_ID:'999'}).ownerId,140067318);
 });
@@ -180,7 +182,7 @@ test('stale saves and stale publications fail before writes',async()=>{
 test('save atomically commits registry, GitHub table and journal without publishing',async()=>{
   const mock=mockGitHub(),handler=createHandler({env,fetcher:mock.fetcher});const response=await request(handler,'/api/save',{method:'POST',signedIn:true,payload:input()});assert.equal(response.statusCode,200);assert.equal(response.json().published,false);
   const tree=mock.calls.find(c=>c.path.endsWith('/git/trees'));assert.deepEqual(tree.data.tree.map(f=>f.path).sort(),['docs/compatibility/README.md','docs/compatibility/admin-tests.md','docs/compatibility/devices.json']);
-  const patch=mock.calls.find(c=>c.method==='PATCH');assert.equal(patch.data.force,false);assert.match(patch.path,/heads\/codex\//);assert.ok(!mock.calls.some(c=>c.path.includes('pages/builds')));
+  const patches=mock.calls.filter(c=>c.method==='PATCH');assert.equal(patches[0].data.force,true);assert.equal(patches[0].data.sha,'source-head');assert.equal(patches.at(-1).data.force,false);assert.ok(patches.every(c=>/heads\/codex\/admin-/.test(c.path)));assert.equal(response.json().pullUrl,'https://github.com/pr/2');assert.ok(mock.calls.some(c=>c.method==='POST'&&c.path.endsWith('/pulls')&&c.data.base==='main'));assert.ok(!mock.calls.some(c=>c.path.includes('pages/builds')));
 });
 test('publication preserves assets and reports deployment request failure separately',async()=>{
   const mock=mockGitHub({failPagesBuild:true}),handler=createHandler({env,fetcher:mock.fetcher});const response=await request(handler,'/api/publish',{method:'POST',signedIn:true,payload:{baseSha:'source-head',pagesSha:'pages-head'}});
