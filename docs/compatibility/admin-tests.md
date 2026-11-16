@@ -113,3 +113,115 @@ BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstan
 Result: confirmed. Recorded: 2026-11-16T17:17:10.032Z.
 
 BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.<br>firmware: NA<br>appVersion: v0.1.9<br>testedOn: 2026-11-16
+
+## owner-test-d237ce95-2bca-4592-b673-6d6a8808c600
+
+**WH-1000XM6: Equalizer &amp; presets on windows**
+
+Result: confirmed. Recorded: 2026-11-16T17:20:25.191Z.
+
+One band write/readback recorded. Full preset and audio equivalence are unverified.<br>firmware: 3.1.5<br>appVersion: v0.1.9<br>testedOn: 2026-11-16
+
+## owner-test-63b240a2-df73-424e-8e9b-fbb58695150e
+
+**WH-1000XM6: Battery readout on windows**
+
+Result: confirmed. Recorded: 2026-11-16T17:20:25.191Z.
+
+No model-specific hardware result recorded.<br>firmware: 3.1.5<br>appVersion: v0.1.9<br>testedOn: 2026-11-16
+
+## owner-test-6b5e04c8-e046-49bf-afa0-46690d941a79
+
+**WH-1000XM6: Ambient sound level on windows**
+
+Result: unsupported. Recorded: 2026-11-16T17:20:25.191Z.
+
+No model-specific hardware result recorded.<br>firmware: 3.1.5<br>appVersion: v0.1.9<br>testedOn: 2026-11-16
+
+## owner-test-349103c6-dfb1-43ef-9b40-9e3f2cb6587a
+
+**WH-1000XM6: Bass control on windows**
+
+Result: unsupported. Recorded: 2026-11-16T17:20:25.191Z.
+
+A separate bass slider is not established for this ten-band EQ model.<br>firmware: 3.1.5<br>appVersion: v0.1.9<br>testedOn: 2026-11-16
+
+## owner-test-52d858ca-fefe-473b-8893-afba4907ac04
+
+**WH-1000XM6: Listening modes on windows**
+
+Result: confirmed. Recorded: 2026-11-16T17:20:25.191Z.
+
+Model-gated Standard, Background Music and Cinema paths exist; complete hardware coverage is unverified.<br>firmware: 3.1.5<br>appVersion: v0.1.9<br>testedOn: 2026-11-16
+
+## owner-test-54b271bf-cdfc-4d28-a167-f4c377f9eb71
+
+**WH-1000XM6: Device settings on windows**
+
+Result: confirmed. Recorded: 2026-11-16T17:20:25.191Z.
+
+No model-specific hardware result recorded.<br>firmware: 3.1.5<br>appVersion: v0.1.9<br>testedOn: 2026-11-16
+
+## owner-test-32026806-16d2-40c9-bdcb-68998b67338e
+
+**WH-1000XM6: Control connection on linux**
+
+Result: confirmed. Recorded: 2026-11-16T17:20:25.191Z.
+
+BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.<br>firmware: 3.1.5<br>appVersion: v0.1.9<br>testedOn: 2026-11-16
+
+## owner-test-3e8cd8ef-6bab-49fd-a54d-38a4d73c5da4
+
+**WH-1000XM6: Battery readout on linux**
+
+Result: confirmed. Recorded: 2026-11-16T17:20:25.191Z.
+
+BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.<br>firmware: 3.1.5<br>appVersion: v0.1.9<br>testedOn: 2026-11-16
+
+## owner-test-317ba47f-4885-4466-a1ee-728a206bc2ab
+
+**WH-1000XM6: Noise control &amp; transparency on linux**
+
+Result: confirmed. Recorded: 2026-11-16T17:20:25.191Z.
+
+BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.<br>firmware: 3.1.5<br>appVersion: v0.1.9<br>testedOn: 2026-11-16
+
+## owner-test-f7d7ec10-281d-4a4c-b235-d3a6bb37f529
+
+**WH-1000XM6: Ambient sound level on linux**
+
+Result: unsupported. Recorded: 2026-11-16T17:20:25.191Z.
+
+BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.<br>firmware: 3.1.5<br>appVersion: v0.1.9<br>testedOn: 2026-11-16
+
+## owner-test-b5e8dd7b-89eb-4cd2-afc9-b20fd6c560df
+
+**WH-1000XM6: Equalizer &amp; presets on linux**
+
+Result: confirmed. Recorded: 2026-11-16T17:20:25.191Z.
+
+BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.<br>firmware: 3.1.5<br>appVersion: v0.1.9<br>testedOn: 2026-11-16
+
+## owner-test-28a3ba17-787c-4781-9015-dd4a786288f1
+
+**WH-1000XM6: Bass control on linux**
+
+Result: unsupported. Recorded: 2026-11-16T17:20:25.191Z.
+
+BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.<br>firmware: 3.1.5<br>appVersion: v0.1.9<br>testedOn: 2026-11-16
+
+## owner-test-f64c627f-7c24-4ec7-b89e-73667a5723dd
+
+**WH-1000XM6: Listening modes on linux**
+
+Result: confirmed. Recorded: 2026-11-16T17:20:25.191Z.
+
+BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.<br>firmware: 3.1.5<br>appVersion: v0.1.9<br>testedOn: 2026-11-16
+
+## owner-test-d50bb26a-2dcc-4c5d-97af-09a5920392f1
+
+**WH-1000XM6: Device settings on linux**
+
+Result: confirmed. Recorded: 2026-11-16T17:20:25.191Z.
+
+BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.<br>firmware: 3.1.5<br>appVersion: v0.1.9<br>testedOn: 2026-11-16

@@ -517,6 +517,454 @@
       "recordedBy": 140067318,
       "recordedOn": "2026-11-16T17:17:10.032Z",
       "result": "confirmed"
+    },
+    "owner-test-d237ce95-2bca-4592-b673-6d6a8808c600": {
+      "title": "WH-1000XM6: Equalizer & presets on windows",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-d237ce95-2bca-4592-b673-6d6a8808c600",
+      "detail": "One band write/readback recorded. Full preset and audio equivalence are unverified.\nfirmware: 3.1.5\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-1000xm6"
+      ],
+      "platforms": [
+        "windows"
+      ],
+      "features": [
+        "eq"
+      ],
+      "firmware": [
+        "3.1.5"
+      ],
+      "test": {
+        "firmware": "3.1.5",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:20:25.191Z",
+      "result": "confirmed"
+    },
+    "owner-test-63b240a2-df73-424e-8e9b-fbb58695150e": {
+      "title": "WH-1000XM6: Battery readout on windows",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-63b240a2-df73-424e-8e9b-fbb58695150e",
+      "detail": "No model-specific hardware result recorded.\nfirmware: 3.1.5\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-1000xm6"
+      ],
+      "platforms": [
+        "windows"
+      ],
+      "features": [
+        "battery"
+      ],
+      "firmware": [
+        "3.1.5"
+      ],
+      "test": {
+        "firmware": "3.1.5",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:20:25.191Z",
+      "result": "confirmed"
+    },
+    "owner-test-6b5e04c8-e046-49bf-afa0-46690d941a79": {
+      "title": "WH-1000XM6: Ambient sound level on windows",
+      "kind": "owner review",
+      "url": "admin-tests.md#owner-test-6b5e04c8-e046-49bf-afa0-46690d941a79",
+      "detail": "No model-specific hardware result recorded.\nfirmware: 3.1.5\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-1000xm6"
+      ],
+      "platforms": [
+        "windows"
+      ],
+      "features": [
+        "ambient"
+      ],
+      "firmware": [
+        "3.1.5"
+      ],
+      "test": {
+        "firmware": "3.1.5",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:20:25.191Z",
+      "result": "unsupported"
+    },
+    "owner-test-349103c6-dfb1-43ef-9b40-9e3f2cb6587a": {
+      "title": "WH-1000XM6: Bass control on windows",
+      "kind": "owner review",
+      "url": "admin-tests.md#owner-test-349103c6-dfb1-43ef-9b40-9e3f2cb6587a",
+      "detail": "A separate bass slider is not established for this ten-band EQ model.\nfirmware: 3.1.5\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-1000xm6"
+      ],
+      "platforms": [
+        "windows"
+      ],
+      "features": [
+        "bass"
+      ],
+      "firmware": [
+        "3.1.5"
+      ],
+      "test": {
+        "firmware": "3.1.5",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:20:25.191Z",
+      "result": "unsupported"
+    },
+    "owner-test-52d858ca-fefe-473b-8893-afba4907ac04": {
+      "title": "WH-1000XM6: Listening modes on windows",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-52d858ca-fefe-473b-8893-afba4907ac04",
+      "detail": "Model-gated Standard, Background Music and Cinema paths exist; complete hardware coverage is unverified.\nfirmware: 3.1.5\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-1000xm6"
+      ],
+      "platforms": [
+        "windows"
+      ],
+      "features": [
+        "listening"
+      ],
+      "firmware": [
+        "3.1.5"
+      ],
+      "test": {
+        "firmware": "3.1.5",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:20:25.191Z",
+      "result": "confirmed"
+    },
+    "owner-test-54b271bf-cdfc-4d28-a167-f4c377f9eb71": {
+      "title": "WH-1000XM6: Device settings on windows",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-54b271bf-cdfc-4d28-a167-f4c377f9eb71",
+      "detail": "No model-specific hardware result recorded.\nfirmware: 3.1.5\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-1000xm6"
+      ],
+      "platforms": [
+        "windows"
+      ],
+      "features": [
+        "settings"
+      ],
+      "firmware": [
+        "3.1.5"
+      ],
+      "test": {
+        "firmware": "3.1.5",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:20:25.191Z",
+      "result": "confirmed"
+    },
+    "owner-test-32026806-16d2-40c9-bdcb-68998b67338e": {
+      "title": "WH-1000XM6: Control connection on linux",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-32026806-16d2-40c9-bdcb-68998b67338e",
+      "detail": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.\nfirmware: 3.1.5\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-1000xm6"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "features": [
+        "connection"
+      ],
+      "firmware": [
+        "3.1.5"
+      ],
+      "test": {
+        "firmware": "3.1.5",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:20:25.191Z",
+      "result": "confirmed"
+    },
+    "owner-test-3e8cd8ef-6bab-49fd-a54d-38a4d73c5da4": {
+      "title": "WH-1000XM6: Battery readout on linux",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-3e8cd8ef-6bab-49fd-a54d-38a4d73c5da4",
+      "detail": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.\nfirmware: 3.1.5\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-1000xm6"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "features": [
+        "battery"
+      ],
+      "firmware": [
+        "3.1.5"
+      ],
+      "test": {
+        "firmware": "3.1.5",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:20:25.191Z",
+      "result": "confirmed"
+    },
+    "owner-test-317ba47f-4885-4466-a1ee-728a206bc2ab": {
+      "title": "WH-1000XM6: Noise control & transparency on linux",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-317ba47f-4885-4466-a1ee-728a206bc2ab",
+      "detail": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.\nfirmware: 3.1.5\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-1000xm6"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "features": [
+        "noise"
+      ],
+      "firmware": [
+        "3.1.5"
+      ],
+      "test": {
+        "firmware": "3.1.5",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:20:25.191Z",
+      "result": "confirmed"
+    },
+    "owner-test-f7d7ec10-281d-4a4c-b235-d3a6bb37f529": {
+      "title": "WH-1000XM6: Ambient sound level on linux",
+      "kind": "owner review",
+      "url": "admin-tests.md#owner-test-f7d7ec10-281d-4a4c-b235-d3a6bb37f529",
+      "detail": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.\nfirmware: 3.1.5\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-1000xm6"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "features": [
+        "ambient"
+      ],
+      "firmware": [
+        "3.1.5"
+      ],
+      "test": {
+        "firmware": "3.1.5",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:20:25.191Z",
+      "result": "unsupported"
+    },
+    "owner-test-b5e8dd7b-89eb-4cd2-afc9-b20fd6c560df": {
+      "title": "WH-1000XM6: Equalizer & presets on linux",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-b5e8dd7b-89eb-4cd2-afc9-b20fd6c560df",
+      "detail": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.\nfirmware: 3.1.5\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-1000xm6"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "features": [
+        "eq"
+      ],
+      "firmware": [
+        "3.1.5"
+      ],
+      "test": {
+        "firmware": "3.1.5",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:20:25.191Z",
+      "result": "confirmed"
+    },
+    "owner-test-28a3ba17-787c-4781-9015-dd4a786288f1": {
+      "title": "WH-1000XM6: Bass control on linux",
+      "kind": "owner review",
+      "url": "admin-tests.md#owner-test-28a3ba17-787c-4781-9015-dd4a786288f1",
+      "detail": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.\nfirmware: 3.1.5\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-1000xm6"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "features": [
+        "bass"
+      ],
+      "firmware": [
+        "3.1.5"
+      ],
+      "test": {
+        "firmware": "3.1.5",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:20:25.191Z",
+      "result": "unsupported"
+    },
+    "owner-test-f64c627f-7c24-4ec7-b89e-73667a5723dd": {
+      "title": "WH-1000XM6: Listening modes on linux",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-f64c627f-7c24-4ec7-b89e-73667a5723dd",
+      "detail": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.\nfirmware: 3.1.5\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-1000xm6"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "features": [
+        "listening"
+      ],
+      "firmware": [
+        "3.1.5"
+      ],
+      "test": {
+        "firmware": "3.1.5",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:20:25.191Z",
+      "result": "confirmed"
+    },
+    "owner-test-d50bb26a-2dcc-4c5d-97af-09a5920392f1": {
+      "title": "WH-1000XM6: Device settings on linux",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-d50bb26a-2dcc-4c5d-97af-09a5920392f1",
+      "detail": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.\nfirmware: 3.1.5\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-1000xm6"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "features": [
+        "settings"
+      ],
+      "firmware": [
+        "3.1.5"
+      ],
+      "test": {
+        "firmware": "3.1.5",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:20:25.191Z",
+      "result": "confirmed"
     }
   },
   "devices": [
@@ -539,10 +987,10 @@
             ]
           },
           "battery": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "No model-specific hardware result recorded.",
             "evidence": [
-              "implementation"
+              "owner-test-63b240a2-df73-424e-8e9b-fbb58695150e"
             ]
           },
           "noise": {
@@ -553,38 +1001,38 @@
             ]
           },
           "ambient": {
-            "status": "untested",
+            "status": "unsupported",
             "note": "No model-specific hardware result recorded.",
             "evidence": [
-              "implementation"
+              "owner-test-6b5e04c8-e046-49bf-afa0-46690d941a79"
             ]
           },
           "eq": {
-            "status": "partial",
+            "status": "confirmed",
             "note": "One band write/readback recorded. Full preset and audio equivalence are unverified.",
             "evidence": [
-              "xm6-eq"
+              "owner-test-d237ce95-2bca-4592-b673-6d6a8808c600"
             ]
           },
           "bass": {
-            "status": "unknown",
+            "status": "unsupported",
             "note": "A separate bass slider is not established for this ten-band EQ model.",
             "evidence": [
-              "implementation"
+              "owner-test-349103c6-dfb1-43ef-9b40-9e3f2cb6587a"
             ]
           },
           "listening": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "Model-gated Standard, Background Music and Cinema paths exist; complete hardware coverage is unverified.",
             "evidence": [
-              "implementation"
+              "owner-test-52d858ca-fefe-473b-8893-afba4907ac04"
             ]
           },
           "settings": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "No model-specific hardware result recorded.",
             "evidence": [
-              "implementation"
+              "owner-test-54b271bf-cdfc-4d28-a167-f4c377f9eb71"
             ]
           },
           "firmware": {
@@ -597,59 +1045,59 @@
         },
         "linux": {
           "connection": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.",
             "evidence": [
-              "implementation"
+              "owner-test-32026806-16d2-40c9-bdcb-68998b67338e"
             ]
           },
           "battery": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.",
             "evidence": [
-              "implementation"
+              "owner-test-3e8cd8ef-6bab-49fd-a54d-38a4d73c5da4"
             ]
           },
           "noise": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.",
             "evidence": [
-              "implementation"
+              "owner-test-317ba47f-4885-4466-a1ee-728a206bc2ab"
             ]
           },
           "ambient": {
-            "status": "untested",
+            "status": "unsupported",
             "note": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.",
             "evidence": [
-              "implementation"
+              "owner-test-f7d7ec10-281d-4a4c-b235-d3a6bb37f529"
             ]
           },
           "eq": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.",
             "evidence": [
-              "implementation"
+              "owner-test-b5e8dd7b-89eb-4cd2-afc9-b20fd6c560df"
             ]
           },
           "bass": {
-            "status": "untested",
+            "status": "unsupported",
             "note": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.",
             "evidence": [
-              "implementation"
+              "owner-test-28a3ba17-787c-4781-9015-dd4a786288f1"
             ]
           },
           "listening": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.",
             "evidence": [
-              "implementation"
+              "owner-test-f64c627f-7c24-4ec7-b89e-73667a5723dd"
             ]
           },
           "settings": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding.",
             "evidence": [
-              "implementation"
+              "owner-test-d50bb26a-2dcc-4c5d-97af-09a5920392f1"
             ]
           },
           "firmware": {
@@ -731,7 +1179,7 @@
         "appVersion": "Not recorded",
         "testedOn": "Not recorded"
       },
-      "reviewedOn": "2026-11-07",
+      "reviewedOn": "2026-11-16",
       "evidence": [
         "xm6-noise",
         "xm6-eq"
