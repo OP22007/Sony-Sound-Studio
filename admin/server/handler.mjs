@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { config, HttpError, random, challenge, equal, seal, unseal, cookie, readCookie, checkMutation, securityHeaders } from './security.mjs';
-import { githubClient, requireOwner, readSnapshot, readJSON, commitFiles } from './github.mjs';
+import { githubClient, requireOwner, readSnapshot, readJSON, commitFiles, workingSnapshot, prepareBranch, ensurePull } from './github.mjs';
 import { applyEdits, testJournal } from './edits.mjs';
 import { generateCompatibility } from '../lib/compatibility.mjs';
 
@@ -73,24 +73,26 @@ export function createHandler({env=process.env, fetcher=fetch}={}) {
         res.setHeader('Content-Type','text/html; charset=utf-8');return res.end(await readFile(new URL('../views/dashboard.html',import.meta.url),'utf8'));
       }
       if (path === '/api/state' && req.method === 'GET') {
-        const snapshot=await readSnapshot(gh,cfg);
+        const snapshot=await workingSnapshot(gh,cfg);
         const [registry,pages,releases]=await Promise.all([readJSON(gh,cfg,'docs/compatibility/devices.json',snapshot.sha),readSnapshot(gh,cfg,'gh-pages'),gh(`/repos/${cfg.repo}/releases?per_page=100`).catch(()=>[])]);
         const appVersions=Array.isArray(releases) ? releases.filter(r=>!r.draft && typeof r.tag_name === 'string').map(r=>r.tag_name) : [];
-        return json(res,200,{registry,appVersions,baseSha:snapshot.sha,pagesSha:pages.sha,csrf:token.csrf,user:{login:user.login},branch:cfg.branch});
+        return json(res,200,{registry,appVersions,baseSha:snapshot.sha,pagesSha:pages.sha,csrf:token.csrf,user:{login:user.login},branch:cfg.branch,pullUrl:snapshot.pull?.html_url||null});
       }
       if (path === '/api/save' && req.method === 'POST') {
-        const input=await body(req), snapshot=await readSnapshot(gh,cfg);
+        const input=await body(req), snapshot=await workingSnapshot(gh,cfg);
         if (input?.baseSha !== snapshot.sha) throw new HttpError(409,'The source changed. Reload before saving. Your current draft is still in this tab.');
         const original=await readJSON(gh,cfg,'docs/compatibility/devices.json',snapshot.sha);
         const registry=applyEdits(original,input,cfg.ownerId);
         const artwork=await readJSON(gh,cfg,'docs/compatibility/artwork.json',snapshot.sha);
         const rendered=generateCompatibility(registry,artwork);
         const files=new Map([['docs/compatibility/devices.json',JSON.stringify(registry,null,2)+'\n'],['docs/compatibility/README.md',rendered.get('docs/compatibility/README.md')],['docs/compatibility/admin-tests.md',testJournal(registry)]]);
+        await prepareBranch(gh,cfg,snapshot);
         const sha=await commitFiles(gh,cfg,cfg.branch,snapshot,files,`Record owner compatibility review for ${input.modelId}`);
-        return json(res,200,{registry,baseSha:sha,commitUrl:`https://github.com/${cfg.repo}/commit/${sha}`,published:false});
+        const pullUrl=await ensurePull(gh,cfg,snapshot,input.modelId);
+        return json(res,200,{registry,baseSha:sha,commitUrl:`https://github.com/${cfg.repo}/commit/${sha}`,pullUrl,published:false});
       }
       if (path === '/api/publish' && req.method === 'POST') {
-        const input=await body(req), snapshot=await readSnapshot(gh,cfg);
+        const input=await body(req), snapshot=await workingSnapshot(gh,cfg);
         if (input?.baseSha !== snapshot.sha) throw new HttpError(409,'Source changed. Reload before publishing.');
         const pages=await readSnapshot(gh,cfg,'gh-pages');
         if(input.pagesSha !== pages.sha) throw new HttpError(409,'The public site changed. Reload before publishing.');
