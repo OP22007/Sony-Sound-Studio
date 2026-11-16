@@ -1,6 +1,7 @@
 //! Windows Global System Media Transport Controls observer.
 //!
-//! Only the current session's app identity and playback state are inspected.
+//! The current session's app identity and playback state are inspected. The title and artist are
+//! read only when the caller asks for details (the user turned on exact titles in history).
 
 use std::sync::mpsc::SyncSender;
 use windows::Foundation::TypedEventHandler;
@@ -19,6 +20,9 @@ pub struct Observation {
     pub kind: String,
     pub browser: bool,
     pub playing: bool,
+    /// Present only when details were requested.
+    pub title: Option<String>,
+    pub artist: Option<String>,
 }
 
 pub struct Observer {
@@ -93,8 +97,9 @@ impl Observer {
         })
     }
 
-    /// Return a privacy-safe snapshot of the current session, if any.
-    pub fn current(&mut self) -> Result<Option<Observation>, String> {
+    /// Return a snapshot of the current session, if any. `with_details` also reads the title and
+    /// artist the player publishes; leave it false unless the user has opted in.
+    pub fn current(&mut self, with_details: bool) -> Result<Option<Observation>, String> {
         let current = self.manager.GetCurrentSession().ok();
         self.set_session(current.as_ref());
         let Some(session) = current else {
@@ -141,12 +146,29 @@ impl Observer {
             .and_then(|info| info.PlaybackStatus().ok())
             == Some(GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing);
 
+        let (title, artist) = if with_details {
+            session
+                .TryGetMediaPropertiesAsync()
+                .and_then(|operation| operation.join())
+                .map(|properties| {
+                    let read = |value: windows::core::Result<windows::core::HSTRING>| {
+                        value.ok().and_then(|text| crate::media_automation::clean_text(&text.to_string(), 200))
+                    };
+                    (read(properties.Title()), read(properties.Artist()))
+                })
+                .unwrap_or((None, None))
+        } else {
+            (None, None)
+        };
+
         Ok(Some(Observation {
             source: source.to_string(),
             key,
             kind: kind.to_string(),
             browser,
             playing,
+            title,
+            artist,
         }))
     }
 
@@ -217,7 +239,7 @@ mod tests {
             if session.GetPlaybackInfo().and_then(|info| info.PlaybackStatus()).ok() == Some(GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing) { playing_sessions += 1; }
         }
         println!("Windows media sessions: VLC={vlc_sessions}, playing={playing_sessions}");
-        match observer.current().expect("Read current Windows media session") {
+        match observer.current(false).expect("Read current Windows media session") {
             Some(observation) => {
                 assert!(["movie", "music", "other"].contains(&observation.kind.as_str()));
                 println!("Media observer: source={}, kind={}, browser={}, playing={}", observation.source, observation.kind, observation.browser, observation.playing);

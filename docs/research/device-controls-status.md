@@ -51,3 +51,7 @@ Static APK evidence for these paths: GET command `AUDIO_GET_PARAM` and exact req
 ## Ambient sound level bounds
 
 The UI does not expose an ambient-level slider yet. The APK's range API obtains minimum, maximum and step through a value keyed by `AmbientSoundMode`, so the observed inquiry-`0x17` bytes cannot safely be treated as NC/ASM mode ranges or reused for inquiry `0x19`. Inquiry-`0x19` capability response parsing and mode-specific range semantics remain unresolved. No ambient range is hard-coded.
+
+## Update 2026-11-10: wear detection, general settings, wearing-aware power off
+
+See [MDR V2 system settings](v2-system-settings.md). The `0xF6/0x01` and `0xF2/0x01` paths **are** the wear-detection preference (`V2ControlByWearingRepository`), with SET `[F8, 01, value]`; touch panel, multipoint and voice guidance are general settings 1-4 described by the headphone itself; and the XM6's `0x25` wearing-aware power off now has a decoded SET (`[28, 05, active, time]`). Earlier statements in this file that these paths were unestablished are superseded. Hardware validation is still outstanding.

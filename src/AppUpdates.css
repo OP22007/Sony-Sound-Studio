@@ -12,3 +12,20 @@
   .app-update-content { align-items: flex-start; flex-direction: column; gap: 12px; }
   .app-update-actions { align-self: flex-start; }
 }
+
+/* Banner shown on every page when a newer version is available. */
+.update-banner { display: flex; align-items: center; gap: 16px; margin: 0 0 18px; padding: 14px 18px; border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line-strong)); border-radius: 12px; background: radial-gradient(120% 200% at 0% 0%, var(--accent-wash), transparent 70%), var(--bg); animation: update-banner-in .28s cubic-bezier(.22, 1, .36, 1); }
+.update-banner.is-error { border-color: color-mix(in srgb, var(--danger, #e57a5a) 45%, var(--line-strong)); }
+.update-banner-icon { display: grid; place-items: center; flex: 0 0 auto; width: 36px; height: 36px; border-radius: 10px; background: var(--accent); color: var(--accent-text); }
+.update-banner.is-error .update-banner-icon { background: var(--surface-raised); color: var(--danger, #e57a5a); }
+.update-banner-copy { display: flex; flex: 1 1 auto; flex-direction: column; gap: 3px; min-width: 0; }
+.update-banner-copy strong { color: var(--text); font-size: 14px; font-weight: 500; }
+.update-banner-copy > span { color: var(--text-secondary); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.update-banner-notes { margin-top: 2px; color: var(--muted); font-size: 12px; white-space: pre-line; }
+.update-banner-progress { display: block; width: min(100%, 360px); height: 4px; margin-top: 8px; accent-color: var(--accent); }
+.update-banner-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
+.app-update-auto { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; color: var(--text-secondary); font-size: 12px; cursor: pointer; }
+.app-update-auto input { accent-color: var(--accent); }
+@keyframes update-banner-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@media (max-width: 600px) { .update-banner { align-items: flex-start; flex-wrap: wrap; } .update-banner-actions { margin-left: 52px; } }
+@media (prefers-reduced-motion: reduce) { .update-banner { animation: none; } }

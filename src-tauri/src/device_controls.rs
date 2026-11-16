@@ -27,6 +27,8 @@ impl ControlValue {
 pub struct ControlOption {
     pub value: ControlValue,
     pub label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -124,7 +126,9 @@ impl ConfirmedControl {
                     || step <= 0
                     || *value < min
                     || *value > max
-                    || (*value).checked_sub(min).is_none_or(|offset| offset % step != 0)
+                    || (*value)
+                        .checked_sub(min)
+                        .is_none_or(|offset| offset % step != 0)
                     || d.options.is_some()
                 {
                     return Err("Range control value is outside the device-reported range.".into());
@@ -153,7 +157,9 @@ pub struct DeviceControlConfirmation {
 
 /// Build the stable JSON contract stored under `settings` by native discovery.
 /// Invalid or duplicate controls fail closed rather than being partially shown.
-pub fn settings_map(controls: impl IntoIterator<Item = ConfirmedControl>) -> Result<BTreeMap<String, Value>, String> {
+pub fn settings_map(
+    controls: impl IntoIterator<Item = ConfirmedControl>,
+) -> Result<BTreeMap<String, Value>, String> {
     let mut controls = controls.into_iter().collect::<Vec<_>>();
     if controls.len() > 64 {
         return Err("Device returned too many settings controls.".into());
@@ -164,7 +170,10 @@ pub fn settings_map(controls: impl IntoIterator<Item = ConfirmedControl>) -> Res
     for control in controls {
         control.validate()?;
         let key = control.descriptor.key.clone();
-        if settings.insert(key.clone(), control.value.as_json()).is_some() {
+        if settings
+            .insert(key.clone(), control.value.as_json())
+            .is_some()
+        {
             return Err("Device returned duplicate settings controls.".into());
         }
         let descriptor = serde_json::to_value(control.descriptor)
@@ -187,6 +196,15 @@ pub fn validate_change(
         value: value.clone(),
     };
     candidate.validate()?;
+    if descriptor.kind == ControlKind::Select
+        && descriptor.options.as_ref().is_some_and(|options| {
+            options
+                .iter()
+                .any(|option| option.value == value && option.enabled == Some(false))
+        })
+    {
+        return Err("The selected device option is a read-only current value.".into());
+    }
     Ok(DeviceControlChange {
         key: descriptor.key.clone(),
         value,
@@ -200,4 +218,49 @@ pub fn descriptor_from_json(value: &Value) -> Result<ControlDescriptor, String> 
     }
     serde_json::from_value(value.clone())
         .map_err(|_| "Device setting descriptor has an invalid schema.".into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn disabled_select_option_can_be_current_but_cannot_be_requested() {
+        let descriptor = ControlDescriptor {
+            key: "eqPreset".into(),
+            label: "Equalizer preset".into(),
+            description: "Select a listed preset.".into(),
+            kind: ControlKind::Select,
+            options: Some(vec![
+                ControlOption {
+                    value: ControlValue::Integer(3),
+                    label: "Balanced".into(),
+                    enabled: None,
+                },
+                ControlOption {
+                    value: ControlValue::Integer(99),
+                    label: "Current device profile (99)".into(),
+                    enabled: Some(false),
+                },
+            ]),
+            min: None,
+            max: None,
+            step: None,
+        };
+        let current = ConfirmedControl {
+            descriptor: descriptor.clone(),
+            value: ControlValue::Integer(99),
+        };
+        assert!(current.validate().is_ok());
+        assert_eq!(
+            validate_change(&descriptor, ControlValue::Integer(3))
+                .unwrap()
+                .value,
+            ControlValue::Integer(3)
+        );
+        assert!(validate_change(&descriptor, ControlValue::Integer(99)).is_err());
+
+        let json = serde_json::to_value(&descriptor).unwrap();
+        assert_eq!(descriptor_from_json(&json).unwrap(), descriptor);
+    }
 }

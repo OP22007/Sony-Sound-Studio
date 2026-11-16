@@ -5,11 +5,11 @@ for (const width of [1440, 960, 390]) test(`equalizer curve aligns with all ten 
   await page.goto('/');
   await page.getByRole('button', { name: 'Explore studio preview', exact: true }).click();
   await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
-  const sliders = page.locator('.equalizer-workspace .band input');
+  const sliders = page.locator('.equalizer-workspace .eq-graph-handle');
   await expect(sliders).toHaveCount(10);
   const positions = await page.locator('.equalizer-workspace').evaluate(panel => {
     const curve = [...panel.querySelectorAll('.eq-point')].map(node => node.getBoundingClientRect());
-    return [...panel.querySelectorAll('.band input')].map((node, i) => {
+    return [...panel.querySelectorAll('.band')].map((node, i) => {
       const box = node.getBoundingClientRect();
       return { center: box.x + box.width / 2, point: curve[i].x + curve[i].width / 2, left: box.left, right: box.right };
     });
@@ -19,10 +19,11 @@ for (const width of [1440, 960, 390]) test(`equalizer curve aligns with all ten 
     expect(band.right).toBeLessThanOrEqual(width);
     expect(Math.abs(band.center - band.point)).toBeLessThan(2);
   }
+  await page.locator('.eq-curve').scrollIntoViewIfNeeded();
   await expect(page.getByRole('slider', { name: '16 kHz', exact: true })).toBeInViewport();
   await page.getByRole('slider', { name: '16 kHz', exact: true }).focus();
   await page.keyboard.press('ArrowRight');
-  await expect(page.getByRole('slider', { name: '16 kHz', exact: true })).toHaveValue('1');
+  await expect(page.getByRole('slider', { name: '16 kHz', exact: true })).toHaveAttribute('aria-valuenow', '1');
   await page.screenshot({ path: `tests/artifacts/equalizer-page-${width}-dark.png`, fullPage: true });
   await page.getByRole('button', { name: 'Light theme', exact: true }).click();
   await page.screenshot({ path: `tests/artifacts/equalizer-page-${width}-light.png`, fullPage: true });

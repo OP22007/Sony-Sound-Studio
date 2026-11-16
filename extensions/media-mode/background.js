@@ -1,4 +1,6 @@
 const ENDPOINT = "http://127.0.0.1:47653/media";
+const PAIR_ENDPOINT = "http://127.0.0.1:47653/pair";
+const HEARTBEAT_ALARM = "sound-connect-pair-heartbeat";
 const SOURCE = "sound-connect-chromium";
 const states = new Map();
 const reportQueues = new Map();
@@ -6,7 +8,11 @@ const reportQueues = new Map();
 const MUSIC_HOSTS = new Set([
   "music.youtube.com",
   "music.apple.com",
-  "tidal.com"
+  "tidal.com",
+  "open.spotify.com",
+  "soundcloud.com",
+  "deezer.com",
+  "music.amazon.com"
 ]);
 
 const MOVIE_HOSTS = new Set([
@@ -56,6 +62,22 @@ async function getSessionId(tabId) {
   return sessionId;
 }
 
+// The exact address and title of a playing tab, for the optional local listening history. Sent only
+// while something is playing, never from a private window, and fail closed: if the tab cannot be
+// looked up (and so cannot be shown to be non-private) nothing beyond the site name is sent. The
+// desktop discards these fields unless the user has turned on "Record exact titles and URLs".
+async function pageDetails(tabId, url) {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    if (!tab || tab.incognito !== false || !/^https?:\/\//i.test(url)) return {};
+    const details = { url: url.slice(0, 2048) };
+    if (typeof tab.title === "string" && tab.title) details.title = tab.title.slice(0, 300);
+    return details;
+  } catch {
+    return {};
+  }
+}
+
 async function postState(tabId, url, playing) {
   const hostname = hostnameFromUrl(url);
   if (!hostname) return;
@@ -69,7 +91,8 @@ async function postState(tabId, url, playing) {
     kind: classify(hostname),
     playing: Boolean(playing),
     spatial: false,
-    sessionId
+    sessionId,
+    ...(playing ? await pageDetails(tabId, url) : {})
   };
   try {
     const response = await fetch(ENDPOINT, {
@@ -165,4 +188,34 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   } catch {
     // The tab can close between activation and lookup.
   }
+});
+
+// Pair with the desktop without the popup: on install, on browser start, when the key is
+// saved, and on a 30-second alarm that also wakes a sleeping MV3 service worker. The desktop
+// treats the browser as connected only while it keeps hearing from it. A closed or disabled
+// desktop simply rejects the call and the next heartbeat retries.
+async function pairWithDesktop() {
+  const token = await getToken();
+  if (!token) return;
+  try {
+    await fetch(PAIR_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(3000)
+    });
+  } catch {
+    // Desktop app not running yet.
+  }
+}
+
+chrome.alarms?.create(HEARTBEAT_ALARM, { periodInMinutes: 0.5 });
+chrome.alarms?.onAlarm.addListener((alarm) => {
+  if (alarm.name === HEARTBEAT_ALARM) void pairWithDesktop();
+});
+chrome.runtime.onStartup?.addListener(() => void pairWithDesktop());
+chrome.runtime.onInstalled.addListener(() => void pairWithDesktop());
+chrome.storage.onChanged?.addListener((changes, area) => {
+  if (area === "local" && changes.pairingToken) void pairWithDesktop();
 });

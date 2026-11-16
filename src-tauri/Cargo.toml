@@ -1,6 +1,6 @@
 [package]
 name = "sound-connect-desktop"
-version = "0.1.3"
+version = "0.1.9"
 description = "Independent desktop companion for Sony headphones"
 edition = "2021"
 rust-version = "1.90"
@@ -19,10 +19,12 @@ tauri = { version = "2", features = ["tray-icon"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri-plugin-autostart = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-single-instance = "2"
 tauri-plugin-updater = "2"
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.62", features = ["Foundation", "Foundation_Collections", "Media", "Media_Control", "Win32_System_WinRT", "Win32_System_Com"] }
+windows = { version = "0.62", features = ["Foundation", "Foundation_Collections", "Media", "Media_Control", "Win32_Devices_FunctionDiscovery", "Win32_Media_Audio", "Win32_Media_Audio_Endpoints", "Win32_System_WinRT", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_UI_Shell_PropertiesSystem", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_System_Threading"] }
 windows-sys = { version = "0.61", features = ["Win32_Devices_Bluetooth", "Win32_Foundation", "Win32_Networking_WinSock"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
@@ -30,7 +32,7 @@ libc = "0.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray", "NSDate", "NSRunLoop", "NSObject", "NSString"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray", "NSDate", "NSRunLoop", "NSObjCRuntime", "NSObject", "NSString"] }
 objc2-io-bluetooth = { version = "0.3", default-features = false, features = ["std", "objc2", "objc2-foundation", "Bluetooth", "IOBluetoothObject", "IOBluetoothDevice", "IOBluetoothRFCOMMChannel", "IOBluetoothSDPUUID", "IOBluetoothSDPServiceRecord", "IOBluetoothTypes"] }
 
 [profile.release]

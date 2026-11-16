@@ -1,18 +1,31 @@
-const productArt = {
-  'WH-1000XM6': '/headphones/wh-1000xm6-black.png',
-  'WH-1000XM5': '/headphones/wh-1000xm5-black.png',
-  'WH-CH720N': '/headphones/wh-ch720n-black.png',
-};
+import { isOnePlusModel } from './oneplus';
+import { productArtwork } from './headphoneArtwork';
 
 export default function Headphones({ compact = false, model = 'WH-1000XM6' }: { compact?: boolean; model?: string }) {
-  const knownModel = (Object.keys(productArt) as (keyof typeof productArt)[]).find(key => model.toUpperCase().includes(key));
-  if (!knownModel) return <div className="headphones art-unavailable">Product artwork unavailable</div>;
+  const normalizedModel = model.trim().toUpperCase();
+  const knownModel = isOnePlusModel(model)
+    ? Object.keys(productArtwork).find(key => key.startsWith('ONEPLUS ') && normalizedModel === key)
+    : Object.keys(productArtwork).find(key => !key.startsWith('ONEPLUS ') && normalizedModel.includes(key));
+  if (!knownModel) return <div className="headphones art-unavailable">{isOnePlusModel(model) ? 'OnePlus product artwork unavailable' : 'Product artwork unavailable'}</div>;
+
+  const artwork = productArtwork[knownModel];
+  const classes = [
+    'headphones',
+    'product-render',
+    compact ? 'compact' : '',
+    artwork.kind === 'earbud' ? 'oneplus-earbud-render' : '',
+    artwork.kind === 'neckband' ? 'oneplus-neckband-render' : '',
+    artwork.presentation === 'scene' ? 'product-scene' : '',
+    knownModel === 'WH-CH720N' ? 'ch720-render' : '',
+  ].filter(Boolean).join(' ');
+
   return <img
-    className={`headphones product-render ${compact ? 'compact' : ''} ${knownModel === 'WH-CH720N' ? 'ch720-render' : ''}`}
-    src={productArt[knownModel]}
-    alt={`${knownModel} official Sony product render`}
-    width={1200}
-    height={knownModel === 'WH-CH720N' ? 821 : 1200}
+    className={classes}
+    src={artwork.src}
+    alt={artwork.alt}
+    width={artwork.width}
+    height={artwork.height}
+    style={artwork.presentation === 'scene' ? { rotate: '0deg', filter: 'none' } : undefined}
     draggable={false}
     decoding="async"
   />;

@@ -85,7 +85,7 @@ test('Equalizer has its own tab; listening and noise controls share the Sound st
   await expect(page.getByRole('switch', { name: 'Sound enhancement', exact: true })).toBeVisible();
   const preset = page.getByLabel('Equalizer preset', { exact: true });
   await preset.selectOption({ label: 'Heavy' });
-  await expect(page.getByRole('slider', { name: '31 Hz', exact: true })).toHaveValue('4');
+  await expect(page.getByRole('slider', { name: '31 Hz', exact: true })).toHaveAttribute('aria-valuenow', '4');
   await soundTab.click();
   await expect(page.getByLabel('Equalizer preset', { exact: true })).toHaveCount(0);
   await equalizerTab.click();
@@ -100,10 +100,10 @@ test('noise and EQ preview changes are independent for each model and keyboard o
   await openEqualizer(page);
   await page.getByLabel('Equalizer preset', { exact: true }).selectOption({ label: 'Off' });
   const bassBand = page.getByRole('slider', { name: '63 Hz', exact: true });
-  await expect(bassBand).toHaveValue('0');
+  await expect(bassBand).toHaveAttribute('aria-valuenow', '0');
   await bassBand.focus();
   await page.keyboard.press('ArrowRight');
-  await expect(bassBand).toHaveValue('1');
+  await expect(bassBand).toHaveAttribute('aria-valuenow', '1');
   await expect(page.getByLabel('Equalizer preset', { exact: true })).toHaveValue('Custom');
   await page.getByRole('button', { name: 'Select WH-1000XM5', exact: true }).click();
   await page.getByRole('button', { name: 'Sound studio', exact: true }).click();
@@ -111,9 +111,9 @@ test('noise and EQ preview changes are independent for each model and keyboard o
   await page.getByRole('button', { name: 'Select WH-1000XM6', exact: true }).click();
   await expect(ambient).toHaveAttribute('aria-pressed', 'true');
   await openEqualizer(page);
-  await expect(bassBand).toHaveValue('1');
+  await expect(bassBand).toHaveAttribute('aria-valuenow', '1');
   await page.getByRole('button', { name: 'Reset equalizer', exact: true }).click();
-  await expect(bassBand).toHaveValue('0');
+  await expect(bassBand).toHaveAttribute('aria-valuenow', '0');
   await expect(page.getByLabel('Equalizer preset', { exact: true })).toHaveValue('sony:Off');
   await page.screenshot({ path: 'tests/artifacts/sound-studio-dark.png', fullPage: true });
 });
@@ -198,7 +198,7 @@ test('custom EQ preset saves locally, survives reload and can be deleted', async
   await page.getByRole('button', { name: 'Explore studio preview', exact: true }).click();
   await openEqualizer(page);
   await page.getByLabel('Equalizer preset', { exact: true }).selectOption({ label: 'Evening session' });
-  await expect(page.getByRole('slider', { name: '63 Hz', exact: true })).toHaveValue('4');
+  await expect(page.getByRole('slider', { name: '63 Hz', exact: true })).toHaveAttribute('aria-valuenow', '4');
   await page.getByRole('button', { name: 'Delete “Evening session”', exact: true }).click();
   await expect(page.getByLabel('Equalizer preset', { exact: true }).locator('option', { hasText: 'Evening session' })).toHaveCount(0);
 });

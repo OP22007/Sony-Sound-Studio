@@ -1,4 +1,4 @@
-use super::{is_sony_headphone, model_from_name, Connection, PairedDevice};
+use super::{is_supported_headphone, model_from_name, Connection, PairedDevice};
 use std::io::{self, Read};
 use std::mem::size_of;
 use std::process::{Command, Stdio};
@@ -6,18 +6,32 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-const SERVICES: [&str; 2] = [
-    "96cc203e-5068-46ad-b32d-e316f5e069ba",
-    "956c7b26-d49a-4ba8-b03f-b17d393cb6e2",
-];
-
 fn run_tool(program: &str, args: &[&str], timeout: Duration) -> Result<String, String> {
-    let mut child = Command::new(program).args(args).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null())
-        .spawn().map_err(|_| format!("{program} is unavailable. Install BlueZ tools and enable Bluetooth before retrying."))?;
+    let mut command = Command::new(program);
+    command.args(args).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    // A packaged app (AppImage) points the loader at its own bundled libraries. System tools such
+    // as bluetoothctl must keep using the system ones, or they can fail to start at all.
+    for variable in ["LD_PRELOAD", "PYTHONHOME", "PYTHONPATH", "GIO_MODULE_DIR", "GIO_EXTRA_MODULES"] {
+        command.env_remove(variable);
+    }
+    match std::env::var_os("LD_LIBRARY_PATH_ORIG") {
+        Some(original) => { command.env("LD_LIBRARY_PATH", original); }
+        None => { command.env_remove("LD_LIBRARY_PATH"); }
+    }
+    let mut child = command
+        .spawn().map_err(|error| format!("{program} could not be started ({error}). Install BlueZ tools and enable Bluetooth before retrying."))?;
     let stdout = child
         .stdout
         .take()
         .ok_or("Cannot read Bluetooth tool output.")?;
+    let stderr = child.stderr.take();
+    let error_reader = std::thread::spawn(move || {
+        let mut output = Vec::new();
+        if let Some(stderr) = stderr {
+            let _ = stderr.take(2048).read_to_end(&mut output);
+        }
+        String::from_utf8_lossy(&output).lines().find(|line| !line.trim().is_empty()).unwrap_or_default().trim().chars().take(200).collect::<String>()
+    });
     let reader = std::thread::spawn(move || {
         let mut output = Vec::new();
         let _ = stdout.take(65536).read_to_end(&mut output);
@@ -30,8 +44,10 @@ fn run_tool(program: &str, args: &[&str], timeout: Duration) -> Result<String, S
                 break if status.success() {
                     Ok(())
                 } else {
+                    let detail = error_reader.join().unwrap_or_default();
                     Err(format!(
-                        "{program} failed. Check the Bluetooth service and permissions."
+                        "{program} failed ({status}){}. Check that the Bluetooth service is running and that you may use it.",
+                        if detail.is_empty() { String::new() } else { format!(": {detail}") }
                     ))
                 }
             }
@@ -51,11 +67,11 @@ fn run_tool(program: &str, args: &[&str], timeout: Duration) -> Result<String, S
 }
 
 pub fn enumerate() -> Result<Vec<PairedDevice>, String> {
-    let output = run_tool(
-        "bluetoothctl",
-        &["devices", "Paired"],
-        Duration::from_secs(5),
-    )?;
+    // BlueZ 5.65+ accepts `devices Paired`; older releases only know `paired-devices`.
+    let output = match run_tool("bluetoothctl", &["devices", "Paired"], Duration::from_secs(5)) {
+        Ok(output) if output.lines().any(|line| line.starts_with("Device ")) => output,
+        _ => run_tool("bluetoothctl", &["paired-devices"], Duration::from_secs(5))?,
+    };
     let mut devices = Vec::new();
     for line in output.lines().take(256) {
         let mut fields = line.splitn(3, ' ');
@@ -64,7 +80,7 @@ pub fn enumerate() -> Result<Vec<PairedDevice>, String> {
         }
         let address = fields.next().unwrap_or_default();
         let name = fields.next().unwrap_or_default();
-        if valid_address(address) && is_sony_headphone(name) {
+        if valid_address(address) && is_supported_headphone(name) {
             devices.push(PairedDevice {
                 address: address.into(),
                 name: name.chars().filter(|c| !c.is_control()).take(128).collect(),
@@ -78,12 +94,59 @@ pub fn enumerate() -> Result<Vec<PairedDevice>, String> {
     Ok(devices)
 }
 
+pub fn activity_snapshot() -> Result<super::DeviceActivitySnapshot, String> {
+    use super::{ActiveAudioDevice, AudioTransport, DeviceActivitySnapshot};
+    let output = run_tool(
+        "bluetoothctl",
+        &["devices", "Connected"],
+        Duration::from_secs(5),
+    )?;
+    let mut snapshot = DeviceActivitySnapshot::default();
+    for line in output.lines().take(256) {
+        let mut fields = line.splitn(3, ' ');
+        if fields.next() != Some("Device") {
+            continue;
+        }
+        let address = fields.next().unwrap_or_default();
+        let name = fields.next().unwrap_or_default();
+        if valid_address(address) && is_supported_headphone(name) {
+            snapshot.bluetooth_connected.push(ActiveAudioDevice {
+                identity: address.into(),
+                name: name.into(),
+                transport: AudioTransport::Bluetooth,
+            });
+        }
+    }
+    // BlueZ does not reliably expose the system's active audio route through bluetoothctl.
+    Ok(snapshot)
+}
+
 fn valid_address(address: &str) -> bool {
     address.len() == 17
         && address.split(':').count() == 6
         && address
             .split(':')
             .all(|part| part.len() == 2 && u8::from_str_radix(part, 16).is_ok())
+}
+
+const SOL_RFCOMM: libc::c_int = 18;
+const RFCOMM_LM: libc::c_int = 3;
+const RFCOMM_LM_AUTH: u32 = 0x0002;
+const RFCOMM_LM_ENCRYPT: u32 = 0x0004;
+
+/// Finds the RFCOMM channel of the record whose service class list contains `uuid`
+/// in `sdptool browse` output.
+fn rfcomm_channel_for_service(records: &str, uuid: &str) -> Option<u8> {
+    records
+        .split("Service RecHandle:")
+        .filter(|record| record.to_ascii_lowercase().contains(uuid))
+        .find_map(|record| {
+            record.lines().find_map(|line| {
+                line.trim()
+                    .strip_prefix("Channel:")
+                    .and_then(|x| x.trim().parse::<u8>().ok())
+            })
+        })
 }
 
 #[repr(C)]
@@ -110,21 +173,18 @@ pub fn connect(
     if !valid_address(&device.address) {
         return Err("Invalid cached Bluetooth address; discover again.".into());
     }
-    for service in SERVICES {
+    // `sdptool search` only understands 16-bit and named services, so 128-bit Sony UUIDs are
+    // looked up from one `sdptool browse` listing instead.
+    let records = run_tool("sdptool", &["browse", &device.address], Duration::from_secs(8)).map_err(|_| {
+        "Could not read the headphones' Bluetooth service records. Make sure the headphones are on and connected, and that BlueZ's sdptool is installed.".to_string()
+    })?;
+    let mut notes: Vec<String> = Vec::new();
+    for &service in super::service_uuids(device) {
         if cancelled.load(Ordering::Acquire) {
             return Err("Connection was cancelled.".into());
         }
-        let output = run_tool(
-            "sdptool",
-            &["search", "--bdaddr", &device.address, service],
-            Duration::from_secs(4),
-        )?;
-        let channel = output.lines().find_map(|line| {
-            line.trim()
-                .strip_prefix("Channel:")
-                .and_then(|x| x.trim().parse::<u8>().ok())
-        });
-        let Some(channel) = channel.filter(|c| (1..=30).contains(c)) else {
+        let Some(channel) = rfcomm_channel_for_service(&records, service).filter(|c| (1..=30).contains(c)) else {
+            notes.push(format!("service {service} is not in the headphones' service records"));
             continue;
         };
         let raw = unsafe {
@@ -135,9 +195,23 @@ pub fn connect(
             )
         };
         if raw < 0 {
-            return Err("Cannot open a Linux RFCOMM socket; check Bluetooth permissions.".into());
+            return Err(format!(
+                "Cannot open a Linux RFCOMM socket ({}); check Bluetooth permissions.",
+                io::Error::last_os_error()
+            ));
         }
         let socket = BluetoothSocket(raw, service);
+        // Match the security level the headset expects (authenticated, encrypted link).
+        let link_mode: u32 = RFCOMM_LM_AUTH | RFCOMM_LM_ENCRYPT;
+        unsafe {
+            libc::setsockopt(
+                raw,
+                SOL_RFCOMM,
+                RFCOMM_LM,
+                &link_mode as *const u32 as *const libc::c_void,
+                size_of::<u32>() as libc::socklen_t,
+            );
+        }
         let mut address = [0; 6];
         for (index, part) in device.address.split(':').rev().enumerate() {
             address[index] = u8::from_str_radix(part, 16).unwrap_or(0);
@@ -157,7 +231,9 @@ pub fn connect(
         if result == 0 {
             return Ok(Box::new(socket));
         }
-        if io::Error::last_os_error().raw_os_error() != Some(libc::EINPROGRESS) {
+        let started = io::Error::last_os_error();
+        if started.raw_os_error() != Some(libc::EINPROGRESS) {
+            notes.push(format!("RFCOMM channel {channel} refused the connection ({started})"));
             continue;
         }
         let deadline = Instant::now() + Duration::from_secs(4);
@@ -182,11 +258,21 @@ pub fn connect(
                 if success == 0 && error == 0 && poll.revents & libc::POLLOUT != 0 {
                     return Ok(Box::new(socket));
                 }
+                notes.push(format!(
+                    "RFCOMM channel {channel} failed ({})",
+                    io::Error::from_raw_os_error(if success == 0 { error } else { libc::EIO })
+                ));
                 break;
             }
         }
+        if !notes.last().is_some_and(|n| n.contains(&format!("channel {channel}"))) {
+            notes.push(format!("RFCOMM channel {channel} did not connect within 4 seconds"));
+        }
     }
-    Err("Sony's RFCOMM control service did not connect. Wake the paired headphones and close other headphone-control apps. Linux transport is not hardware-tested.".into())
+    Err(format!(
+        "Sony's RFCOMM control service did not connect: {}. Make sure the headphones are on and connected in your Bluetooth settings, and close other headphone-control apps. Linux transport is not hardware-tested.",
+        if notes.is_empty() { "no usable service was found".to_string() } else { notes.join("; ") }
+    ))
 }
 
 impl Connection for BluetoothSocket {
@@ -260,5 +346,18 @@ impl Connection for BluetoothSocket {
             return Err(io::Error::last_os_error());
         }
         Ok(count as usize)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const BROWSE: &str = "Browsing 58:18:62:A1:FE:E9 ...\nService RecHandle: 0x10001\nService Class ID List:\n  \"Headset\" (0x1108)\nProtocol Descriptor List:\n  \"RFCOMM\" (0x0003)\n    Channel: 1\n\nService RecHandle: 0x20000000\nService Class ID List:\n  UUID 128: 956c7b26-d49a-4ba8-b03f-b17d393cb6e2\nProtocol Descriptor List:\n  \"L2CAP\" (0x0100)\n  \"RFCOMM\" (0x0003)\n    Channel: 9\n";
+
+    #[test]
+    fn finds_the_channel_of_the_matching_128_bit_service_only() {
+        assert_eq!(rfcomm_channel_for_service(BROWSE, "956c7b26-d49a-4ba8-b03f-b17d393cb6e2"), Some(9));
+        assert_eq!(rfcomm_channel_for_service(BROWSE, "96cc203e-5068-46ad-b32d-e316f5e069ba"), None);
     }
 }

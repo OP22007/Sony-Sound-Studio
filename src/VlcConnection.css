@@ -48,3 +48,8 @@
   .vlc-playing { font-size: 7px; }
   .vlc-action.test { margin-left: 0; }
 }
+.vlc-startup { display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 20px 0; margin-top: 10px; border-top: 1px solid var(--line); }
+.vlc-startup strong { font-size: 13px; font-weight: 500; }
+.vlc-startup p { color: var(--text-secondary); font-size: 12px; line-height: 1.7; max-width: 64ch; margin: 7px 0 0; }
+.vlc-startup button { flex-shrink: 0; }
+@media (max-width: 600px) { .vlc-startup { align-items: flex-start; flex-direction: column; gap: 14px; } }

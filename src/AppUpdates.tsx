@@ -3,6 +3,8 @@ import { ArrowDownToLine, Check, CircleHelp, LoaderCircle, RefreshCw, RotateCw, 
 import { listen } from '@tauri-apps/api/event';
 import { nativeAvailable, nativeCommand } from './bridge';
 import type { AppUpdateSnapshot } from './bridge';
+import { saveLocal } from './storage';
+import { autoUpdateEnabled } from './UpdateBanner';
 import './AppUpdates.css';
 
 const browserSnapshot: AppUpdateSnapshot = {
@@ -15,6 +17,7 @@ export default function AppUpdates({ onVersionChange }: { onVersionChange: (vers
     ? { ...browserSnapshot, status: 'idle', error: null }
     : browserSnapshot);
   const [pendingAction, setPendingAction] = useState<'check' | 'install' | null>(null);
+  const [auto, setAuto] = useState(() => autoUpdateEnabled());
 
   useEffect(() => {
     if (!nativeAvailable) return;
@@ -75,6 +78,7 @@ export default function AppUpdates({ onVersionChange }: { onVersionChange: (vers
           {statusText}
         </p>
         {snapshot.notes && snapshot.status === 'available' && <p className="app-update-notes">{snapshot.notes}</p>}
+        <label className="app-update-auto"><input type="checkbox" checked={auto} disabled={!nativeAvailable} onChange={event => { setAuto(event.target.checked); saveLocal('auto-update-check', event.target.checked); if (event.target.checked) void run('check'); }}/>Check for updates automatically</label>
         {downloading && <progress className="app-update-progress" max={snapshot.total ?? undefined} value={snapshot.total === null ? undefined : snapshot.downloaded} aria-label="Update download progress"/>}
       </div>
       <div className="app-update-actions">

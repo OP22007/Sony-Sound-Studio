@@ -31,6 +31,7 @@ pub struct AppPreferences {
     pub launch_at_login: bool,
     pub auto_reconnect: bool,
     pub start_minimized: bool,
+    pub low_battery_alerts: bool,
 }
 
 impl Default for AppPreferences {
@@ -42,6 +43,7 @@ impl Default for AppPreferences {
             launch_at_login: false,
             auto_reconnect: true,
             start_minimized: false,
+            low_battery_alerts: true,
         }
     }
 }

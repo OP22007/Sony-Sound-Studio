@@ -1,0 +1,40 @@
+/* Multipoint: one row per paired device. A filled amber edge and a lit switch mark what is connected. */
+.multipoint .mp-lead { max-width: 64ch; margin: 4px 0 0; }
+.mp-refresh { display: inline-flex; align-items: center; gap: 8px; }
+.mp-count { margin: 18px 0 12px; color: var(--muted); font-size: 12px; letter-spacing: .2px; }
+.mp-list { display: grid; margin: 0; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--bg); }
+.mp-device { position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 14px 18px; border-top: 1px solid var(--line); transition: background .2s cubic-bezier(.25, 1, .5, 1); }
+.mp-device:first-child { border-top: 0; }
+.mp-device::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 3px; background: transparent; transition: background .2s cubic-bezier(.25, 1, .5, 1); }
+.mp-device.is-connected { background: var(--accent-wash); }
+.mp-device.is-connected::before { background: var(--accent); }
+.mp-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--surface-raised); color: var(--text-secondary); }
+.mp-device.is-connected .mp-icon { background: var(--accent); color: var(--accent-text); }
+.mp-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.mp-main strong { color: var(--text); font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
+.mp-main small { color: var(--muted); font: 11px var(--mono, ui-monospace, Consolas, monospace); letter-spacing: .3px; }
+.mp-state { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.mp-device.is-connected .mp-state { color: var(--green); }
+.mp-state.is-playing { color: var(--accent); }
+.mp-device.is-pending .mp-state { color: var(--text-secondary); }
+.mp-switch { position: relative; width: 50px; height: 28px; flex: 0 0 auto; padding: 3px; border: 1px solid var(--line-strong); border-radius: 20px; background: var(--surface-raised); cursor: pointer; transition: background .2s cubic-bezier(.25, 1, .5, 1), border-color .2s cubic-bezier(.25, 1, .5, 1); }
+.mp-switch span { display: block; width: 20px; height: 20px; border-radius: 50%; background: var(--muted); transition: transform .2s cubic-bezier(.25, 1, .5, 1), background .2s cubic-bezier(.25, 1, .5, 1); }
+.mp-switch[aria-checked='true'] { background: var(--accent); border-color: var(--accent); }
+.mp-switch[aria-checked='true'] span { transform: translateX(22px); background: var(--accent-text); }
+.mp-switch:disabled { opacity: .5; cursor: not-allowed; }
+.mp-switch:focus-visible, .mp-refresh:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.mp-spin { animation: mp-rotate 1s linear infinite; }
+@keyframes mp-rotate { to { transform: rotate(360deg); } }
+
+@media (max-width: 640px) {
+  .mp-device { grid-template-columns: 40px minmax(0, 1fr) auto; padding: 14px; }
+  .mp-state { grid-column: 2 / -1; grid-row: 2; white-space: normal; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mp-device, .mp-device::before, .mp-switch, .mp-switch span { transition: none; }
+  .mp-spin { animation: none; }
+}
+
+.mp-tag { margin-left: 10px; padding: 2px 8px; border: 1px solid var(--line-strong); border-radius: 99px; color: var(--text-secondary); font: 400 10px var(--mono, ui-monospace, Consolas, monospace); font-style: normal; letter-spacing: .4px; vertical-align: 2px; }
+.mp-hint { color: var(--text-secondary); font: 12px var(--heading-font, sans-serif); letter-spacing: 0; }
+.mp-hint.is-blocked { color: var(--muted); }

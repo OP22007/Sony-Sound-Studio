@@ -1,0 +1,18 @@
+.bass-panel { margin-top: 18px; }
+.bass-panel .section-title { margin-bottom: 12px; }
+.bass-description { color: var(--text-secondary); font-size: 12px; line-height: 1.7; margin: 0 0 24px; }
+.bass-level, .bass-toggle-row { display: flex; align-items: center; justify-content: space-between; }
+.bass-toggle-row { margin-bottom: 20px; font-size: 12px; }
+.bass-level label { color: var(--text-secondary); font-size: 12px; }
+.bass-level output { color: var(--accent); font-size: 30px; font-variant-numeric: tabular-nums; }
+.bass-level output small { margin-left: 9px; font: 9px var(--mono); color: var(--muted); letter-spacing: .1em; }
+.bass-slider { appearance: none; width: 100%; height: 3px; margin: 22px 0 16px; border-radius: 2px; cursor: pointer; }
+.bass-slider::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--accent); }
+.bass-slider::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); border: 2px solid var(--surface); }
+.bass-slider:disabled { opacity: .4; cursor: default; }
+.bass-scale { position: relative; display: flex; justify-content: space-between; font: 10px var(--mono); color: var(--muted); }
+.bass-scale > span:nth-child(2):not(:last-child) { position: absolute; transform: translateX(-50%); }
+.bass-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line); }
+.bass-footer > span { color: var(--text-secondary); font-size: 11px; }
+.bass-footer > div { display: flex; align-items: center; gap: 20px; }
+@media (max-width: 600px) { .bass-footer { align-items: flex-start; flex-direction: column; } .bass-footer > div { align-self: flex-end; } }
