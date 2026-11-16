@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reviewedOn": "2026-11-07",
+  "reviewedOn": "2026-11-16",
   "releaseBaseline": "0.1.3",
   "features": {
     "connection": "Control connection",
@@ -69,6 +69,38 @@
       "url": "evidence.md#sony-catalog",
       "sourceUrl": "https://www.sony.com/electronics/support/articles/00346846",
       "detail": "Sony USA article 00346846, listed as of September 2026; reviewed 2026-11-07. It lists 47 headphones/earphones, two gaming models and 13 speakers. It establishes compatibility with Sony’s phone app only, not this independent desktop project."
+    },
+    "owner-test-7c17c87a-5a89-4e96-97c2-2e390e3c4d6c": {
+      "title": "WH-CH720N: Control connection on windows",
+      "kind": "hardware confirmation",
+      "url": "admin-tests.md#owner-test-7c17c87a-5a89-4e96-97c2-2e390e3c4d6c",
+      "detail": "No model-specific hardware result recorded.\nfirmware: NA\nappVersion: v0.1.9\ntestedOn: 2026-11-16",
+      "models": [
+        "wh-ch720n"
+      ],
+      "platforms": [
+        "windows"
+      ],
+      "features": [
+        "connection"
+      ],
+      "firmware": [
+        "NA"
+      ],
+      "test": {
+        "firmware": "NA",
+        "appVersion": "v0.1.9",
+        "testedOn": "2026-11-16",
+        "osVersion": "",
+        "requested": "",
+        "readback": "",
+        "observed": "",
+        "steps": "",
+        "reference": ""
+      },
+      "recordedBy": 140067318,
+      "recordedOn": "2026-11-16T17:13:52.753Z",
+      "result": "confirmed"
     }
   },
   "devices": [
@@ -519,10 +551,10 @@
       "platforms": {
         "windows": {
           "connection": {
-            "status": "untested",
+            "status": "confirmed",
             "note": "No model-specific hardware result recorded.",
             "evidence": [
-              "implementation"
+              "owner-test-7c17c87a-5a89-4e96-97c2-2e390e3c4d6c"
             ]
           },
           "battery": {
@@ -718,7 +750,7 @@
         "appVersion": "Not recorded",
         "testedOn": "Not recorded"
       },
-      "reviewedOn": "2026-11-07",
+      "reviewedOn": "2026-11-16",
       "evidence": [
         "implementation"
       ],

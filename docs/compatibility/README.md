@@ -1,6 +1,6 @@
 # Device compatibility
 
-Generated from [devices.json](devices.json). Reviewed 2026-11-07. Do not edit this table directly.
+Generated from [devices.json](devices.json). Reviewed 2026-11-16. Do not edit this table directly.
 
 [Search the website directory](https://op22007.github.io/Sony-Sound-Studio/devices/). Coverage: 92 named models; 32 OnePlus product IDs. Sony coverage includes its official phone-app list (62 models as of September 2026), with only three explicit desktop profiles. This is an implementation/catalog index, not a list of universally supported or necessarily retail-available products.
 
@@ -162,7 +162,7 @@ Firmware: Not recorded. App version: Not recorded. Test date: Not recorded.
 
 | Feature | Windows | macOS | Linux |
 | --- | --- | --- | --- |
-| Control connection | Untested — No model-specific hardware result recorded. ([evidence](evidence.md#implementation)) | Not implemented — macOS control connections are disabled. Paired-device discovery does not establish control support. ([evidence](evidence.md#implementation)) | Untested — BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding. ([evidence](evidence.md#implementation)) |
+| Control connection | Confirmed working — No model-specific hardware result recorded. ([evidence](admin-tests.md#owner-test-7c17c87a-5a89-4e96-97c2-2e390e3c4d6c)) | Not implemented — macOS control connections are disabled. Paired-device discovery does not establish control support. ([evidence](evidence.md#implementation)) | Untested — BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding. ([evidence](evidence.md#implementation)) |
 | Battery readout | Untested — No model-specific hardware result recorded. ([evidence](evidence.md#implementation)) | Not implemented — macOS control connections are disabled. Paired-device discovery does not establish control support. ([evidence](evidence.md#implementation)) | Untested — BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding. ([evidence](evidence.md#implementation)) |
 | Noise control & transparency | Untested — No model-specific hardware result recorded. ([evidence](evidence.md#implementation)) | Not implemented — macOS control connections are disabled. Paired-device discovery does not establish control support. ([evidence](evidence.md#implementation)) | Untested — BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding. ([evidence](evidence.md#implementation)) |
 | Ambient sound level | Untested — No model-specific hardware result recorded. ([evidence](evidence.md#implementation)) | Not implemented — macOS control connections are disabled. Paired-device discovery does not establish control support. ([evidence](evidence.md#implementation)) | Untested — BlueZ/RFCOMM implementation exists; model-specific Linux testing remains outstanding. ([evidence](evidence.md#implementation)) |
